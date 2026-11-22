@@ -3774,52 +3774,18 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 										"neighbors are chosen among the visible ones. More candidates find visible neighbors more often in occluded "
 										"regions.");
 
-		if (ImGui::SliderInt("MIS group size", &union_domain_settings.mis_group_size, 1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE, "%d",
-							 ImGuiSliderFlags_AlwaysClamp))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("How many pixels of the domain (one shadow ray each) stand for the whole domain in the denominator of the "
-										"group-wise MIS weights. 1 is stochastic pairwise MIS, larger groups get closer to the balance heuristic.");
-
 		// The canonical MIS weight uses at most RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES pixels in total: the group count is kept within that maximum
-		// for the current group size (also when the group size was just raised)
-		int max_canonical_group_count = RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES / std::max(1, union_domain_settings.mis_group_size);
-		if (union_domain_settings.canonical_group_count > max_canonical_group_count)
-		{
-			union_domain_settings.canonical_group_count = max_canonical_group_count;
-
-			m_render_window->set_render_dirty(true);
-		}
-
+		int max_canonical_group_count = RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES / RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE;
 		if (ImGui::SliderInt("Canonical group count", &union_domain_settings.canonical_group_count, 1, max_canonical_group_count, "%d",
 							 ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker("How many groups of \"MIS group size\" pixels estimate the MIS weight of the canonical sample. At most 8 pixels in "
-										"total (group count x group size), the weight is averaged over all the groups that can be formed with these "
-										"pixels, for the same cost.");
+		ImGuiRenderer::show_help_marker("How many groups of 2 pixels (one shadow ray each) estimate the MIS weight of the canonical sample. The weight is "
+										"averaged over all the groups that can be formed with these pixels, for the same cost.");
 
 		if (ImGui::SliderInt("Total neighbor budget", &union_domain_settings.total_neighbor_budget, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "
 										"Larger domains draw that many stratified candidates in total, split over the neighbors.");
-
-		if (ImGui::Checkbox("Shadow split kernels", &union_domain_settings.use_shadow_split_kernels))
-			m_render_window->set_render_dirty(true);
-		ImGuiRenderer::show_help_marker(
-			"Runs the union domain spatial reuse as four kernels instead of one: the shadow rays are split out into two small kernels that keep almost no "
-			"state while they traverse the BVH, which makes each ray cheaper. Same estimator as the single kernel, faster on most scenes.\n\nNeeds an MIS "
-			"group size of 2 and at most 4 neighbors, the single kernel runs otherwise. Uses extra VRAM for the per-pixel state passed between the kernels, "
-			"only allocated while the shadow split kernels run.");
-
-		if (using_union_domain_reuse && union_domain_settings.use_shadow_split_kernels)
-		{
-			// Telling the user which condition of ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels() makes the single kernel run
-			if (union_domain_settings.mis_group_size != 2)
-				ImGui::TextWrapped("Inactive: needs an MIS group size of 2.");
-			else if (union_domain_settings.neighbor_count > RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS)
-				ImGui::TextWrapped("Inactive: needs at most %d neighbors.", RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS);
-			else if (!render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass)
-				ImGui::TextWrapped("Inactive: needs the spatial reuse pass to be enabled.");
-		}
 		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));

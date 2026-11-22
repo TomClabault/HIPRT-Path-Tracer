@@ -27,10 +27,9 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// How many neighbors are resampled from the union domain. Replaces ReSTIRPTSpatialPassSettings::reuse_neighbor_count. Clamped to
 	// [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS]
 	int neighbor_count = 3;
-	// Number of pixels per group of the stochastic group-wise MIS weights. 1 is pairwise MIS. Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE]
-	int mis_group_size = 2;
-	// How many groups of mis_group_size pixels (one shadow ray each) estimate the MIS weight of the canonical sample. canonical_group_count x mis_group_size
-	// is at most RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES (probes beyond that are not traced)
+	// How many groups of RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE pixels (one shadow ray each) estimate the MIS weight of the canonical sample.
+	// canonical_group_count x RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE is at most RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES (probes beyond that are
+	// not traced)
 	int canonical_group_count = 2;
 
 	// Domains with at most that many non-zero neighbors are sampled exactly (streaming over all their neighbors). Larger domains draw that many
@@ -40,12 +39,8 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// with a pool of 6 and 3 canonical groups
 	int total_neighbor_budget = 32;
 	// The neighbors are taken among the visible candidates of ONE pool of visibility_pool_size candidates for the pixel (one shadow ray each, whatever
-	// neighbor_count), see spmis_union_domain_select_neighbors(). Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE]
+	// neighbor_count), see the neighbor selection of SpatialSPMISUnionDomain.h. Clamped to [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE]
 	int visibility_pool_size = 5;
-	// Whether the spatial reuse runs as the shadow split kernels of SpatialSPMISUnionDomainShadowSplit.h (the shadow rays traced by lean kernels)
-	// instead of the single union domain kernel. Same estimator. GPU only, and only used when
-	// ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels() is true: the single kernel runs otherwise
-	bool use_shadow_split_kernels = true;
 
 	// For every pixel with a non-zero spatial reuse input reservoir, RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT floats at the slot of the
 	// pixel in its cell (same indexing as pixel_indices_sorted), built every frame by ReSTIR_PT_SPMIS_BuildNeighborRecords
@@ -57,7 +52,7 @@ struct ReSTIRPTSPMISUnionDomainSettings
 	// Per-pixel cache of the union domain (RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE unsigned ints per pixel) so that the cell search only runs when the cache
 	// is empty. Emptied whenever the reuse cell cache all_pixels_reuse_cell_pixel_index is
 	unsigned int* domain_cache = nullptr;
-	// State of the shadow split kernels, set by the render pass while they run
+	// State that crosses the kernels of the spatial reuse (SpatialSPMISUnionDomainShadowSplit.h), set by the renderer while the union domain reuse runs
 	ReSTIRPTSPMISUnionDomainShadowSplitBuffers shadow_split_buffers;
 };
 

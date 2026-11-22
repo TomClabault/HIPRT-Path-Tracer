@@ -13,16 +13,15 @@
 #include "HostDeviceCommon/RenderData.h"
 
 /**
- * p_j(y): the target function (visibility included) of a path y of the center pixel at pixel j of the reuse domain, in the measure of the center pixel
- * (times the Jacobian of the center -> j shift). 'sample' is the canonical sample or the sample of a neighbor (the reconnection data is the same whichever
- * pixel the sample comes from). Same evaluation as the canonical MIS weight of the stochastic pairwise MIS (get_resampling_MIS_weight_canonical())
+ * p_j(y): the target function of a path y of the center pixel at pixel j of the reuse domain, in the measure of the center pixel (times the Jacobian of
+ * the center -> j shift), with the pixel j assumed visible: no shadow ray. 'sample' is the canonical sample or the sample of a neighbor (the reconnection
+ * data is the same whichever pixel the sample comes from)
  *
  * The MIS target function BSDF approximation (SpatialMISTargetFunctionBSDFApproximation.h) replaces the target function, the Jacobian is unchanged
  *
- * 'withVisibility' false: the same value with the pixel assumed visible, no shadow ray. The shadow split kernels of the union domain reuse
- * (SpatialSPMISUnionDomainShadowSplit.h) evaluate it this way and trace the ray of the probe in another kernel when the value is non-zero
+ * The kernels of the union domain spatial reuse (SpatialSPMISUnionDomainShadowSplit.h) evaluate the probes with it and trace the ray of a probe in
+ * another kernel when its value is non-zero
  */
-template <bool withVisibility = true>
 HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& render_data,
 														 const ReSTIRPTReservoirSample& sample,
 														 float3_t center_pixel_shading_point,
@@ -32,7 +31,7 @@ HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& 
 	float3_t pixel_shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
 
 	float target_function =
-		ReSTIR_PT_evaluate_target_function_at_pixel<withVisibility, true>(render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
+		ReSTIR_PT_evaluate_target_function_at_pixel<false, true>(render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
 	if (target_function > 0.0f && !sample.is_envmap_path())
 	{
 		// If this is an envmap path the jacobian is just 1
@@ -46,31 +45,8 @@ HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& 
 }
 
 /**
- * Sum of p_j(y) over 'draw_count' pixels j drawn uniformly (with replacement) in the reuse domain
- */
-HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRenderData& render_data,
-																const ReSTIRPTReservoirSample& sample,
-																const ReSTIRPTSurface& center_pixel_surface,
-																const ReSTIRPTSPMISUnionDomain& domain,
-																int draw_count,
-																Xorshift32Generator& random_number_generator)
-{
-	float target_function_sum = 0.0f;
-
-	for (int draw = 0; draw < draw_count; draw++)
-	{
-		unsigned int pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
-
-		target_function_sum +=
-			spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_surface.shading_point, pixel_index, random_number_generator);
-	}
-
-	return target_function_sum;
-}
-
-/**
- * Stochastic group-wise MIS weights of the SPMIS union domain reuse (ReSTIRPTSPMISUnionDomainSettings::mis_group_size = g), a generalization of the
- * stochastic pairwise MIS weights of "Stochastic Pairwise MIS for Unbiased Large-Kernel Reuse in Real-Time, Hedstrom et al. 2026".
+ * Stochastic group-wise MIS weights of the SPMIS union domain reuse (groups of g = RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE pixels), a generalization
+ * of the stochastic pairwise MIS weights of "Stochastic Pairwise MIS for Unbiased Large-Kernel Reuse in Real-Time, Hedstrom et al. 2026".
  *
  * The generalized balance heuristic over the canonical pixel c and all the pixels j of the reuse domain D has the denominator
  *
@@ -91,6 +67,9 @@ HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRende
  * The partition of unity holds for any functions p_j with the support of the target functions. Every p_j(y) of these weights is the MIS target function
  * BSDF approximation of SpatialMISTargetFunctionBSDFApproximation.h, the own terms passed by the caller included
  * (ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term())
+ *
+ * The visibility of the probes is traced in separate kernels (SpatialSPMISUnionDomainShadowSplit.h): these functions take the probe values with their
+ * visibility already applied (zero for an occluded probe)
  */
 struct ReSTIRPTSpatialGroupwiseMISWeight
 {
@@ -99,82 +78,27 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 *
 	 *		m_c(y) = c_c p_c(y) / (c_c p_c(y) + (C / g) x sum over a group of g uniform pixels of p_j(y))
 	 *
-	 * estimated with 'canonical_group_count' x g probes (one shadow ray each) drawn i.i.d. uniformly in the domain, at most
-	 * RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES probes. The bracket is averaged over ALL the subsets of size g of the probes (U-statistic):
-	 * every subset is a group of g i.i.d. uniform pixels so every bracket is an unbiased estimate of E[m_c], with the same rays as canonical_group_count
-	 * disjoint groups. This is the only estimator of the canonical weight: a single probe site (target evaluation + shadow ray) is compiled
+	 * estimated with 'probe_count' probes (canonical_group_count x g, one shadow ray each) drawn i.i.d. uniformly in the domain, at most
+	 * RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES probes. The bracket is averaged over ALL the subsets of size g of the probes (U-statistic): every
+	 * subset is a group of g i.i.d. uniform pixels so every bracket is an unbiased estimate of E[m_c], with the same rays as canonical_group_count disjoint
+	 * groups. The U-statistic is valid for any number of probes >= g, not only for the multiples of g.
 	 *
-	 * 'group_size' must be in [1, 3] (RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE) and 'canonical_group_count' >= 1
-	 *
-	 * 'center_pixel_reservoir_target_function' is the MIS target function BSDF approximation of the canonical sample at the center pixel
+	 * 'probe_target_functions' holds the 'probe_count' values p_j(y) (zero for an occluded probe), 'canonical_numerator' is c_c p_c with p_c the MIS
+	 * target function BSDF approximation of the canonical sample at the center pixel and 'group_scale' is C / g
 	 */
-	HIPRT_DEVICE float get_resampling_MIS_weight_canonical(const HIPRTRenderData& render_data,
-														   const ReSTIRPTReservoirSample& center_pixel_reservoir_sample,
-														   int center_pixel_reservoir_confidence,
-														   float center_pixel_reservoir_target_function,
-														   const ReSTIRPTSurface& center_pixel_surface,
-														   const ReSTIRPTSPMISUnionDomain& domain,
-														   int group_size,
-														   int canonical_group_count,
-														   Xorshift32Generator& random_number_generator)
+	HIPRT_DEVICE float get_canonical_MIS_weight_from_probes(float canonical_numerator, float group_scale, const float* probe_target_functions, int probe_count)
 	{
-		float canonical_numerator = center_pixel_reservoir_target_function * center_pixel_reservoir_confidence;
-		// The g pixels of a group stand for the whole domain
-		float group_scale = static_cast<float>(domain.confidence_sum) / group_size;
+		static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE == 2, "The subsets of the U-statistic are enumerated as pairs");
 
-		// The settings window keeps canonical_group_count x mis_group_size within RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES, clamping anyway: the probes
-		// are stored in an array of that size. The U-statistic is valid for any number of probes >= g, not only for the multiples of g
-		int probe_count = hippt::min(canonical_group_count * group_size, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
-
-		float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
-		for (int probe = 0; probe < probe_count; probe++)
-			probe_target_functions[probe] = spmis_union_domain_group_target_function_sum(render_data, center_pixel_reservoir_sample, center_pixel_surface,
-																						 domain, 1, random_number_generator);
-
-		return get_canonical_MIS_weight_from_probes(canonical_numerator, group_scale, probe_target_functions, probe_count, group_size);
-	}
-
-	/**
-	 * The U-statistic of get_resampling_MIS_weight_canonical() over the 'probe_count' values p_j(y) of 'probe_target_functions' (zero for an occluded
-	 * probe): the average over all the subsets of size 'group_size' of the probes of c_c p_c / (c_c p_c + group_scale x sum of the p_j of the subset).
-	 * 'canonical_numerator' is c_c p_c and 'group_scale' is C / g.
-	 *
-	 * Also used by the shadow split kernels of the union domain reuse (SpatialSPMISUnionDomainShadowSplit.h), whose probe values and visibilities come from two
-	 * kernels
-	 */
-	HIPRT_DEVICE float get_canonical_MIS_weight_from_probes(
-		float canonical_numerator, float group_scale, const float* probe_target_functions, int probe_count, int group_size)
-	{
-		// The subsets of the U-statistic are enumerated by up to 3 nested loops below
 		float bracket_sum		  = 0.0f;
 		unsigned int subset_count = 0;
 
 		for (int first = 0; first < probe_count; first++)
 		{
-			if (group_size == 1)
-			{
-				bracket_sum += canonical_bracket(canonical_numerator, group_scale, probe_target_functions[first]);
-				subset_count++;
-
-				continue;
-			}
-
 			for (int second = first + 1; second < probe_count; second++)
 			{
-				if (group_size == 2)
-				{
-					bracket_sum += canonical_bracket(canonical_numerator, group_scale, probe_target_functions[first] + probe_target_functions[second]);
-					subset_count++;
-
-					continue;
-				}
-
-				for (int third = second + 1; third < probe_count; third++)
-				{
-					bracket_sum += canonical_bracket(canonical_numerator, group_scale,
-													 probe_target_functions[first] + probe_target_functions[second] + probe_target_functions[third]);
-					subset_count++;
-				}
+				bracket_sum += canonical_bracket(canonical_numerator, group_scale, probe_target_functions[first] + probe_target_functions[second]);
+				subset_count++;
 			}
 		}
 
@@ -183,60 +107,29 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 
 	/**
 	 * MIS weight of the sample y_i of the neighbor i selected for one of the 'reused_neighbors_count' neighbor slots with the selection "probability"
-	 * 'neighbor_selection_probability' (1 / unbiased contribution weight of the selection, see spmis_union_domain_select_neighbors()):
+	 * 'neighbor_selection_probability' (1 / unbiased contribution weight of the selection, see the neighbor selection of SpatialSPMISUnionDomain.h):
 	 *
 	 *		m_i(y_i) = c_i p_i(y_i) / (c_c p_c(y_i) + (C / g) x (p_i(y_i) + sum over g - 1 uniform pixels of p_j(y_i)))
 	 *
-	 * The neighbor itself and g - 1 uniformly drawn pixels stand for the whole domain. The returned weight includes the 1 / (N P_i) factor of the stochastic
-	 * MIS: each of the N slots draws one neighbor with P_i, so that (1 / N) x sum over the slots of m_i f / P_i is an unbiased estimate of the sum over
-	 * the domain of m_i f.
+	 * The neighbor itself and g - 1 uniformly drawn pixels (the companions of the slot) stand for the whole domain. The returned weight includes the
+	 * 1 / (N P_i) factor of the stochastic MIS: each of the N slots draws one neighbor with P_i, so that (1 / N) x sum over the slots of m_i f / P_i is an
+	 * unbiased estimate of the sum over the domain of m_i f.
 	 *
 	 * 'target_function_at_neighbor' is p_i(y_i) in the measure of the center pixel (target function of the sample at its pixel / Jacobian of the shift)
-	 * and 'target_function_at_center' is p_c(y_i). Both must be > 0 (the caller skips the neighbor otherwise, its contribution is zero)
-	 *
-	 * 'target_function_at_neighbor' and 'target_function_at_center' are the MIS target function BSDF approximations of the neighbor's sample
-	 */
-	HIPRT_DEVICE float get_resampling_MIS_weight_non_canonical(const HIPRTRenderData& render_data,
-															   const ReSTIRPTReservoirSample& neighbor_reservoir_sample,
-															   float neighbor_reservoir_confidence,
-															   float target_function_at_neighbor,
-															   int center_pixel_reservoir_confidence,
-															   float target_function_at_center,
-															   const ReSTIRPTSurface& center_pixel_surface,
-															   const ReSTIRPTSPMISUnionDomain& domain,
-															   int group_size,
-															   int reused_neighbors_count,
-															   float neighbor_selection_probability,
-															   Xorshift32Generator& random_number_generator)
-	{
-		float group_target_function_sum =
-			target_function_at_neighbor + spmis_union_domain_group_target_function_sum(render_data, neighbor_reservoir_sample, center_pixel_surface, domain,
-																					   group_size - 1, random_number_generator);
-
-		return get_MIS_weight_non_canonical_from_group_sum(neighbor_reservoir_confidence, target_function_at_neighbor, center_pixel_reservoir_confidence,
-														   target_function_at_center, static_cast<float>(domain.confidence_sum), group_size,
-														   reused_neighbors_count, neighbor_selection_probability, group_target_function_sum);
-	}
-
-	/**
-	 * The MIS weight of get_resampling_MIS_weight_non_canonical() for the sum 'group_target_function_sum' of p_i(y_i) and of the g - 1 probes of the
-	 * group (zero for an occluded probe). 'domain_confidence_sum' is C.
-	 *
-	 * Also used by the shadow split kernels of the union domain reuse (SpatialSPMISUnionDomainShadowSplit.h): their weights kernel evaluates it for the two
-	 * possible visibilities of the companion, whose ray is traced by the resolve kernel
+	 * and 'target_function_at_center' is p_c(y_i), both the MIS target function BSDF approximations of the neighbor's sample. 'group_target_function_sum'
+	 * is the sum of p_i(y_i) and of the g - 1 companions of the group (zero for an occluded companion). 'domain_confidence_sum' is C.
 	 */
 	HIPRT_DEVICE float get_MIS_weight_non_canonical_from_group_sum(float neighbor_reservoir_confidence,
 																   float target_function_at_neighbor,
 																   int center_pixel_reservoir_confidence,
 																   float target_function_at_center,
 																   float domain_confidence_sum,
-																   int group_size,
 																   int reused_neighbors_count,
 																   float neighbor_selection_probability,
 																   float group_target_function_sum)
 	{
 		float denominator = target_function_at_center * center_pixel_reservoir_confidence;
-		denominator += domain_confidence_sum / group_size * group_target_function_sum;
+		denominator += domain_confidence_sum / RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE * group_target_function_sum;
 		if (denominator > 0.0f)
 			return neighbor_reservoir_confidence * target_function_at_neighbor / denominator / (reused_neighbors_count * neighbor_selection_probability);
 		else

@@ -23,7 +23,7 @@
 
 /**
  * Spatial reuse with stochastic pairwise MIS over a single reuse cell (legacy SPMIS path). The union domain reuse
- * (ReSTIRPTSettings::do_spmis_union_domain_reuse()) has its own kernel, ReSTIR_PT_SpatialReuseSPMISUnionDomain in SpatialReuseSPMISUnionDomain.h, launched
+ * (ReSTIRPTSettings::do_spmis_union_domain_reuse()) has its own kernels (SpatialSPMISUnionDomainShadowSplit.h), launched
  * instead of this one: each kernel only carries the code of its own path
  */
 #ifdef __KERNELCC__

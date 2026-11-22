@@ -7,21 +7,21 @@
 #define DEVICE_RESTIR_PT_SPATIAL_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_H
 
 /**
- * Shadow split version of the union domain spatial reuse ReSTIR_PT_SPMIS_union_domain_spatial_reuse() (SpatialReuseSPMISUnionDomain.h), used instead
- * of the single union domain kernel when ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels() is true. GPU only.
+ * Spatial reuse of the SPMIS union domain reuse (ReSTIRPTSPMISUnionDomainSettings, see SpatialSPMISUnionDomain.h), used instead of the legacy single
+ * reuse cell path when ReSTIRPTSettings::do_spmis_union_domain_reuse() is true. It runs as four kernels, its shadow rays split out of the heavy ones.
  *
- * Why split the shadow rays out: the single kernel traces several shadow rays per pixel (stage 2 of the neighbor selection, the reverse probe of every chosen
- *neighbor, the canonical probes) in the middle of a lot of live state (domain, pool, surface, reservoir being built). That state stays in registers across
- * every BVH traversal, which lowers the occupancy of the kernel and makes each of its rays expensive. The shadow split moves the rays into two lean kernels
- * that keep almost nothing live during the traversal, the rest of the work stays in two heavy kernels that trace no ray:
+ * Why split the shadow rays out: the spatial reuse traces several shadow rays per pixel (stage 2 of the neighbor selection, the reverse probe of every
+ * chosen neighbor, the canonical probes). Traced in the middle of the rest of the work, a lot of live state (domain, pool, surface, reservoir being built)
+ * would stay in registers across every BVH traversal, which lowers the occupancy of the kernel and makes each of its rays expensive. The rays are traced
+ * by two lean kernels that keep almost nothing live during the traversal, the rest of the work is in two heavy kernels that trace no ray:
  *
  *	- prepare (heavy, SpatialReuseSPMISUnionDomainShadowSplitPrepare.h): domain, stage 1 of the neighbor selection (the pool), the stage-2 ray record of
  *	  every pool pick, the uniform companion of every neighbor slot (the reverse probe pixel of the MIS weight of that slot), the canonical probes
  *	  (pixels, values without visibility, ray records), the duplicate map of the rays. The pixels without work (inactive, no primary hit, no domain)
- *	  are finished here exactly as the single kernel does
+ *	  are finished here: their output reservoir is written and the other kernels skip them
  *	- trace selection (lean, SpatialReuseSPMISUnionDomainShadowSplitTraceSelection.h): the stage-2 and canonical probe rays, one visibility bit each.
  *	  A ray that repeats the query of an earlier ray of the pixel is not traced, its bit is copied (see "Duplicate rays" below)
- *	- weights (heavy, SpatialReuseSPMISUnionDomainShadowSplitWeights.h): the choice of the neighbors among the visible picks (same partial Fisher-Yates
+ *	- weights (heavy, SpatialReuseSPMISUnionDomainShadowSplitWeights.h): the choice of the neighbors among the visible picks (partial Fisher-Yates
  *	  shuffle), the shifts, the target functions at the center, for every chosen neighbor its resampling weight with the companion visible and the
  *	  correction of that weight when the companion is occluded, the reverse probe ray records, the canonical MIS weight from the probe bits
  *	- resolve (lean, SpatialReuseSPMISUnionDomainShadowSplitResolve.h): the reverse probe rays, the final weights, the reservoir merge, the normalization,
@@ -30,10 +30,9 @@
  * The state that crosses kernels is in ReSTIRPTSPMISUnionDomainShadowSplitBuffers. The surface of the center pixel does not cross kernels: the weights kernel
  * only needs its shading point, read from the G-buffer.
  *
- * Same estimator as the single kernel: every random decision of the single kernel is made with the same probabilities, only the order in which the
- * random numbers of the pixel are drawn changes. The random numbers of a pixel come from ONE generator chain: the prepare kernel starts it from the
- * seed of the pixel and stores its state, the weights kernel continues from that state and stores it again, the resolve kernel draws the merge
- * uniforms from it and stores the random seed of the pixel (the only seed store, as in the single kernel). So:
+ * The random numbers of a pixel come from ONE generator chain: the prepare kernel starts it from the seed of the pixel and stores its state, the weights
+ * kernel continues from that state and stores it again, the resolve kernel draws the merge uniforms from it and stores the random seed of the pixel (the
+ * only seed store). So:
  *	- the companions are drawn by the prepare kernel (uniform in the domain, independent of everything else, so they can be drawn before the
  *	  neighbors are chosen), which lets the weights kernel work without the domain
  *	- the Fisher-Yates shuffle draws its numbers in the weights kernel, after the visibility of the picks is known
@@ -42,14 +41,12 @@
  *	  which would have to come from a separate generator started from the seed of the pixel (the seed buffer is not written before the resolve
  *	  kernel) to leave the chain above undisturbed and repeat the random decisions of the prepare kernel
  *
- * The rays are the rays of the single kernel (same origin, endpoint, distance, origin primitive and alpha test seed). A probe ray is traced when the
- * value of its probe without visibility is non-zero: same condition as the single kernel with the MIS target function BSDF approximation (except for a zero
- * Jacobian, which the single kernel tests after its ray), fewer rays without it (the single kernel then traces before evaluating the target
- * function). A ray whose value is zero cannot change the estimate. A ray that repeats the query of an earlier ray of the same pixel (same origin,
- * endpoint and seed) is traced once and its answer copied: the single kernel traces it again and gets the same answer.
+ * A probe ray is only traced when the value of its probe without visibility (MIS target function BSDF approximation times the Jacobian) is non-zero: a
+ * ray whose value is zero cannot change the estimate. A ray that repeats the query of an earlier ray of the same pixel (same origin, endpoint and seed)
+ * is traced once and its answer copied, see "Duplicate rays" below.
  *
- * Every kernel runs one thread per pixel over the 8 x 8 blocks of the single kernel: the global BVH traversal stack has one slot per thread of
- * such a launch, a kernel with more threads than pixels would overflow it. The lean kernels distribute the rays of a block over its threads, see
+ * Every kernel runs one thread per pixel over 8 x 8 blocks: the global BVH traversal stack has one slot per thread of such a launch, a kernel with more
+ * threads than pixels would overflow it. On the GPU, the lean kernels distribute the rays of a block over its threads, see
  * spmis_union_domain_shadow_split_trace_rays_block()
  */
 
@@ -97,13 +94,10 @@ static constexpr unsigned int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_
 
 static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE <= 8, "The prepare flags hold one stage-2 ray bit and one envmap bit per pool pick");
 static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES <= 8, "The prepare flags hold one ray bit per canonical probe");
-static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS <= 4, "The resolve flags hold three bits per neighbor slot");
+static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS <= 4, "The resolve flags hold three bits per neighbor slot");
 static_assert(RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_PICK_SOURCE_BITS <=
 				  RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_SHIFT,
 			  "The pick fields of the duplicate map hold one pick index each, below the canonical probe fields");
-
-// The shadow split kernels only run with an MIS group size of 2 (ReSTIRPTSettings::use_spmis_union_domain_shadow_split_kernels()): one companion per neighbor
-static constexpr int RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE = 2;
 
 /**
  * Duplicate rays of the trace selection kernel.
@@ -174,7 +168,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_store_ray(float* rays, unsigne
 }
 
 /**
- * The shadow ray of the single kernel from the primary hit of 'viewpoint_pixel' to the ray record 'ray' (reconnection vertex, or envmap direction when
+ * The shadow ray from the primary hit of 'viewpoint_pixel' to the ray record 'ray' (reconnection vertex, or envmap direction when
  * 'envmap_sample'). Same origin, direction, distance, origin primitive and alpha test as ReSTIR_PT_evaluate_target_function<true>() at the surface of
  * the center pixel (whose shading point is its primary hit) and as ReSTIR_PT_evaluate_target_function_at_pixel<true>(). Returns true if visible
  */
@@ -342,6 +336,31 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_trace_rays_block(const
 	__syncthreads();
 
 	return block_visible_masks[thread_index];
+}
+#else  // #ifdef __KERNELCC__
+/**
+ * CPU version of the block-distributed tracing: the CPU renderer runs one pixel at a time, without blocks to distribute the rays over, so every pixel
+ * traces its own rays. Returns the visibility bits of the pixel (same bit positions as 'ray_mask')
+ */
+template <bool reverseRays>
+HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_trace_rays_block(const HIPRTRenderData& render_data,
+																		   unsigned int center_pixel_index,
+																		   unsigned int ray_mask,
+																		   unsigned int flags)
+{
+	unsigned int visible_mask	= 0;
+	unsigned int remaining_rays = ray_mask;
+
+	while (remaining_rays != 0)
+	{
+		unsigned int ray_bit = hippt::lowest_set_bit(remaining_rays);
+		remaining_rays &= remaining_rays - 1u;
+
+		if (spmis_union_domain_shadow_split_trace_pixel_ray<reverseRays>(render_data, center_pixel_index, ray_bit, flags))
+			visible_mask |= 1u << ray_bit;
+	}
+
+	return visible_mask;
 }
 #endif // #ifdef __KERNELCC__
 

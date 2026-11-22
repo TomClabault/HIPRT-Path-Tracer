@@ -6,9 +6,8 @@
 #ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_H
 #define DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_H
 
-// The shadow rays of this kernel are the mostly visible rays of the single union domain kernel (SpatialReuseSPMISUnionDomain.h): they keep the
-// default traversal hint as there (Intersect.h). Defined before the includes so that Intersect.h sees it. GPU only: the CPU renderer compiles every
-// kernel in one translation unit
+// The shadow rays of this kernel are mostly visible and are not faster with the shadow ray traversal hint (Intersect.h): they keep the default hint.
+// Defined before the includes so that Intersect.h sees it. GPU only: the CPU renderer compiles every kernel in one translation unit
 #ifdef __KERNELCC__
 #define SHADOW_RAY_TRAVERSAL_HINT hiprtTraversalHintDefault
 #endif
@@ -23,7 +22,7 @@
  * Resolve kernel for the center pixel whose resolve flags are 'resolve_flags' (pixel not done) once its reverse probe rays are traced
  * ('companion_visible_mask': the slots whose companion is visible), see the top of SpatialSPMISUnionDomainShadowSplit.h.
  *
- * Merges the candidate slots in slot order then the canonical sample (the order of the single kernel) with streaming resampling. One uniform is drawn
+ * Merges the candidate slots in slot order then the canonical sample with streaming resampling. One uniform is drawn
  * per candidate whatever its weight (a zero weight is never selected): same distribution as ReSTIRPTReservoir::combine_with(), but only the sample
  * of the selected candidate is loaded, once, at the end. Then the normalization, the M-cap, the output reservoir and the random seed of the pixel
  */
@@ -46,7 +45,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData&
 	unsigned int companion_occluded_mask = reverse_ray_mask & ~companion_visible_mask;
 
 	// The canonical sample is the candidate after the neighbor slots
-	constexpr int canonical_candidate = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS;
+	constexpr int canonical_candidate = RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS;
 
 	float weight_sum = 0.0f;
 	// -1 = nothing selected
@@ -108,12 +107,13 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData&
 	}
 	spatial_reuse_output_reservoir.weight_sum = weight_sum;
 
-	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
+	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
 
 	spatial_reuse_output_reservoir.confidence = reused_neighbors_count + input_reservoir_buffer[center_pixel_index].confidence;
 	spatial_reuse_output_reservoir.end_with_normalization(1.0f, 1.0f);
 
-	// M-capping as the single kernel
+	// M-capping so that we don't have to M-cap when reading reservoirs on the next frame. The union domain reuse only runs with a single spatial
+	// reuse pass, this is the last one
 	bool m_cap_enabled = render_data.render_settings.restir_pt_settings.m_cap > 0;
 	if (m_cap_enabled)
 		spatial_reuse_output_reservoir.confidence = hippt::min(spatial_reuse_output_reservoir.confidence, render_data.render_settings.restir_pt_settings.m_cap);
@@ -125,7 +125,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData&
 /**
  * Resolve kernel of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h): the reverse probe rays recorded by the
  * weights kernel, block-distributed (spmis_union_domain_shadow_split_trace_rays_block()), then the final weights, the merge, the normalization and the
- * output reservoir. One thread per pixel over the 8 x 8 blocks of the render resolution, as the single union domain kernel. GPU only.
+ * output reservoir. One thread per pixel over the 8 x 8 blocks of the render resolution.
  */
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
@@ -138,15 +138,20 @@ GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuseSPMISU
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitResolve(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
-	// GPU only (shared memory and barriers of the block-distributed tracing): the CPU renderer runs the single union domain kernel
-#if defined(__KERNELCC__) && ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
+#ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PT_RENDER_DATA);
+#endif
+
+	// Only compiling this whole kernel if we're using stochastic pairwise MIS: the union domain reuse is not used with the other MIS weights
+#if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
 
 	const ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers =
 		render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers;
 
+#ifdef __KERNELCC__
 	unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+#endif
 
 	// No early return before the block-distributed tracing (barriers): a thread without pixel (border blocks) or whose pixel is done has no ray
 	bool thread_has_pixel			= x < render_data.render_settings.render_resolution.x && y < render_data.render_settings.render_resolution.y;
@@ -165,7 +170,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMISUnionDomainShado
 
 	if (!pixel_done)
 		spmis_union_domain_shadow_split_resolve_pixel(render_data, center_pixel_index, resolve_flags, companion_visible_mask);
-#endif // #if defined(__KERNELCC__) && ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
+#endif // #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
 }
 
 #endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_H

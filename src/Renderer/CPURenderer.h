@@ -159,6 +159,8 @@ private:
 
 		ReSTIRPTDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
 		ReSTIRPTSPMISDataHost<std::vector> spmis_data;
+		// Per-pixel state of the union domain spatial reuse kernels: every array of ReSTIRPTSPMISUnionDomainShadowSplitBuffers in one allocation
+		std::vector<float4_t> spmis_union_domain_shadow_split_buffer;
 	} m_restir_pt_state;
 
 	struct ReSTIRPGState

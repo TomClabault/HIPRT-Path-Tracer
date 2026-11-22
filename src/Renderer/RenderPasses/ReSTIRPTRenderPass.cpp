@@ -12,12 +12,11 @@
 #include <algorithm>
 #include <cstdlib>
 #include <ranges>
-const std::string ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME						   = "ReSTIR PT Render pass";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID			   = "ReSTIR PT - Initial candidates";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID				   = "ReSTIR PT - Temporal reuse";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID					   = "ReSTIR PT - Spatial reuse";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID			   = "ReSTIR PT - Spatial reuse SPMIS";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID = "ReSTIR PT - Spatial reuse SPMIS Union Domain";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME			  = "ReSTIR PT Render pass";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID  = "ReSTIR PT - Initial candidates";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID	  = "ReSTIR PT - Temporal reuse";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID		  = "ReSTIR PT - Spatial reuse";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID = "ReSTIR PT - Spatial reuse SPMIS";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID =
 	"ReSTIR PT - Spatial reuse SPMIS Union Domain Shadow Split Prepare";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID =
@@ -43,7 +42,6 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID, "ReSTIR_PT_TemporalReuse" },
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, "ReSTIR_PT_SpatialReuse" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMIS" },
-	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMISUnionDomain" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitPrepare" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitTraceSelection" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_WEIGHTS_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitWeights" },
@@ -66,7 +64,6 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/TemporalReuse.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuse.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMIS.h" },
-	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMISUnionDomain.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID,
 	  DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitPrepare.h" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID,
@@ -150,21 +147,7 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(const std::string& render_pass_name, GPUR
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->get_kernel_options().set_macro_value(
 		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
 
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID);
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->set_kernel_file_path(
-		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID));
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->set_kernel_function_name(
-		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID));
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->synchronize_options_with(m_compiler_options,
-																												  GPURenderer::KERNEL_OPTIONS_NOT_SYNCHRONIZED);
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->get_kernel_options().set_macro_value(
-		GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL, KERNEL_OPTION_TRUE);
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->get_kernel_options().set_macro_value(
-		GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE, 8);
-
-	// The kernels of the shadow split version of the union domain kernel have the per-kernel traversal options of the union domain kernel so that their rays
-	// use the same traversal
+	// The kernels of the union domain spatial reuse use the shared stack BVH traversal, as the legacy SPMIS spatial reuse kernel
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID);
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID]->set_kernel_file_path(
@@ -325,7 +308,7 @@ void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_spmis_data.resize(new_width, new_height);
 
 	if (m_spmis_union_domain_shadow_split_buffer.size() > 0)
-		// Keeping the state of the shadow split union domain kernels allocated, at the new resolution
+		// Keeping the state of the union domain spatial reuse kernels allocated, at the new resolution
 		resize_spmis_union_domain_shadow_split_buffer(new_width, new_height);
 }
 
@@ -376,7 +359,6 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 		{
 			// SPMIS has never been compiled but we need it now
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets,
 																															  use_cache, silent);
 			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID]->compile(
@@ -563,8 +545,10 @@ bool ReSTIRPTRenderPass::pre_render_update_spmis_union_domain_shadow_split_buffe
 {
 	int mis_weight_type = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
 
-	// Only allocated while the shadow split kernels run: freed when they are switched off or when the settings make the single kernel run
-	if (!render_data.render_settings.restir_pt_settings.use_spmis_union_domain_shadow_split_kernels(mis_weight_type))
+	// Only allocated while the union domain reuse runs: freed when the settings make the legacy SPMIS spatial reuse run
+	bool union_domain_reuse = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(mis_weight_type) &&
+							  render_data.render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass;
+	if (!union_domain_reuse)
 		return free_spmis_union_domain_shadow_split_buffer();
 
 	if (m_spmis_union_domain_shadow_split_buffer.size() > 0)
@@ -575,71 +559,12 @@ bool ReSTIRPTRenderPass::pre_render_update_spmis_union_domain_shadow_split_buffe
 	return true;
 }
 
-template <typename T>
-void ReSTIRPTRenderPass::reserve_spmis_union_domain_shadow_split_array(unsigned char* buffer_device_pointer,
-																	   size_t& buffer_byte_size,
-																	   size_t element_count,
-																	   T*& out_array)
-{
-	size_t offset	 = (buffer_byte_size + 255) / 256 * 256;
-	buffer_byte_size = offset + element_count * sizeof(T);
-
-	out_array = buffer_device_pointer == nullptr ? nullptr : reinterpret_cast<T*>(buffer_device_pointer + offset);
-}
-
-size_t ReSTIRPTRenderPass::layout_spmis_union_domain_shadow_split_buffers(unsigned char* buffer_device_pointer,
-																		  unsigned int pixel_count,
-																		  ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers)
-{
-	// Entries of the per-pixel and per-slot arrays. A ray record is 4 floats
-	size_t pixels		  = pixel_count;
-	size_t pool_slots	  = RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE * pixels;
-	size_t probe_slots	  = RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES * pixels;
-	size_t neighbor_slots = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS * pixels;
-
-	size_t buffer_byte_size = 0;
-
-	// Per-pixel flags and random state
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels, shadow_split_buffers.prepare_flags);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels, shadow_split_buffers.random_states);
-
-	// Prepare -> trace selection
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pool_slots * 4, shadow_split_buffers.selection_rays);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels * 4, shadow_split_buffers.canonical_rays);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, probe_slots, shadow_split_buffers.canonical_viewpoints);
-
-	// Trace selection -> weights
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels, shadow_split_buffers.selection_visibility);
-
-	// Prepare -> weights
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pool_slots, shadow_split_buffers.pick_pixels);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pool_slots, shadow_split_buffers.pick_probabilities);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.companions);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, probe_slots, shadow_split_buffers.canonical_values);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels, shadow_split_buffers.canonical_numerators);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels, shadow_split_buffers.domain_confidence_sums);
-
-	// Weights -> resolve
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels, shadow_split_buffers.resolve_flags);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_pixels);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_targets);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_weights);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_weight_corrections);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, neighbor_slots * 4, shadow_split_buffers.reverse_rays);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.reverse_viewpoints);
-	reserve_spmis_union_domain_shadow_split_array(buffer_device_pointer, buffer_byte_size, pixels, shadow_split_buffers.canonical_weights);
-
-	shadow_split_buffers.pixel_count = buffer_device_pointer == nullptr ? 0 : pixel_count;
-
-	return buffer_byte_size;
-}
-
 void ReSTIRPTRenderPass::resize_spmis_union_domain_shadow_split_buffer(unsigned int width, unsigned int height)
 {
 	unsigned int pixel_count = width * height;
 
 	ReSTIRPTSPMISUnionDomainShadowSplitBuffers unused_shadow_split_buffers;
-	size_t buffer_byte_size = layout_spmis_union_domain_shadow_split_buffers(nullptr, pixel_count, unused_shadow_split_buffers);
+	size_t buffer_byte_size = ReSTIRPTSPMISUnionDomainShadowSplitBuffers::layout(nullptr, pixel_count, unused_shadow_split_buffers);
 
 	m_spmis_union_domain_shadow_split_buffer.resize(static_cast<int>((buffer_byte_size + sizeof(float4_t) - 1) / sizeof(float4_t)));
 	m_spmis_union_domain_shadow_split_pixel_count = pixel_count;
@@ -973,35 +898,24 @@ void ReSTIRPTRenderPass::configure_spatial_reuse_pass(HIPRTRenderData& render_da
 	render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs = output_reservoirs;
 }
 
-bool ReSTIRPTRenderPass::use_spmis_union_domain_kernel(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) const
+bool ReSTIRPTRenderPass::use_spmis_union_domain_kernels(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) const
 {
-	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
+	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings		   = render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
+	const ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers = union_domain_settings.shadow_split_buffers;
 
-	// The union domain reuse buffers are allocated by pre_render_update_spmis_buffers() whenever do_spmis_union_domain_reuse() is true, checking them
-	// anyway so that a frame that doesn't have them falls back to the legacy kernel
-	return render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
-			   compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE)) &&
-		   union_domain_settings.neighbor_records != nullptr && union_domain_settings.domain_cache != nullptr;
-}
-
-bool ReSTIRPTRenderPass::use_spmis_union_domain_shadow_split_kernels(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options) const
-{
-	const ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers =
-		render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers;
-
-	// The state of the shadow split kernels is allocated by pre_render_update_spmis_union_domain_shadow_split_buffer() whenever
-	// use_spmis_union_domain_shadow_split_kernels() is true, checking it anyway so that a frame that doesn't have it runs the single kernel
 	unsigned int pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
 
-	return use_spmis_union_domain_kernel(render_data, compiler_options) &&
-		   render_data.render_settings.restir_pt_settings.use_spmis_union_domain_shadow_split_kernels(
+	// The buffers of the union domain reuse are allocated by pre_render_update_spmis_buffers() and pre_render_update_spmis_union_domain_shadow_split_buffer()
+	// whenever do_spmis_union_domain_reuse() is true, checking them anyway so that a frame that doesn't have them falls back to the legacy kernel
+	return render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
 			   compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE)) &&
+		   union_domain_settings.neighbor_records != nullptr && union_domain_settings.domain_cache != nullptr &&
 		   shadow_split_buffers.prepare_flags != nullptr && shadow_split_buffers.pixel_count == pixel_count;
 }
 
 void ReSTIRPTRenderPass::launch_spmis_union_domain_shadow_split_kernels(HIPRTRenderData& render_data)
 {
-	// In this order. Every kernel is launched as the single union domain kernel, one thread per pixel over 8 x 8 blocks: the global BVH traversal stack
+	// In this order. Every kernel is launched with one thread per pixel over 8 x 8 blocks: the global BVH traversal stack
 	// has one slot per thread of such a launch
 	const std::string shadow_split_kernel_ids[] = { ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID,
 													ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID,
@@ -1032,20 +946,16 @@ void ReSTIRPTRenderPass::launch_spatial_reuse_pass(HIPRTRenderData& render_data,
 		{
 			launch_spmis_create_reuse_cells_pass(render_data, compiler_options, render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
 
-			// The union domain reuse and the legacy single reuse cell path are two kernels: each one only carries the code of its own path
-			const std::string& spmis_spatial_reuse_kernel_id = use_spmis_union_domain_kernel(render_data, compiler_options)
-																   ? ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID
-																   : ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID;
-
-			if (use_spmis_union_domain_shadow_split_kernels(render_data, compiler_options))
-				// Same estimator as the union domain kernel, its shadow rays traced by lean kernels
+			// The union domain reuse and the legacy single reuse cell path are separate kernels: each one only carries the code of its own path
+			if (use_spmis_union_domain_kernels(render_data, compiler_options))
 				launch_spmis_union_domain_shadow_split_kernels(render_data);
 			else
 			{
-				upload_render_data(spmis_spatial_reuse_kernel_id, render_data);
+				upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID, render_data);
 
-				m_kernels[spmis_spatial_reuse_kernel_id]->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x,
-																			  m_renderer->m_render_resolution.y, nullptr, m_renderer->get_main_stream());
+				m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID]->launch_asynchronous(
+					KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, nullptr,
+					m_renderer->get_main_stream());
 			}
 		}
 		else
@@ -1168,16 +1078,16 @@ void ReSTIRPTRenderPass::update_render_data()
 		m_directional_spatial_reuse_data.to_device(render_data);
 		m_spmis_data.to_device(render_data);
 
-		// The pointers of the shadow split union domain kernels are published here, before the frame is launched, and are never changed by launch_async():
+		// The pointers of the union domain spatial reuse kernels are published here, before the frame is launched, and are never changed by launch_async():
 		// every kernel of the frame sees the same pointers
 		ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers =
 			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers;
 
 		if (m_spmis_union_domain_shadow_split_buffer.size() > 0)
-			layout_spmis_union_domain_shadow_split_buffers(reinterpret_cast<unsigned char*>(m_spmis_union_domain_shadow_split_buffer.get_device_pointer()),
-														   m_spmis_union_domain_shadow_split_pixel_count, shadow_split_buffers);
+			ReSTIRPTSPMISUnionDomainShadowSplitBuffers::layout(reinterpret_cast<unsigned char*>(m_spmis_union_domain_shadow_split_buffer.get_device_pointer()),
+															   m_spmis_union_domain_shadow_split_pixel_count, shadow_split_buffers);
 		else
-			// Shadow split kernels not used, their buffer is not allocated
+			// Union domain reuse not used, its buffer is not allocated
 			shadow_split_buffers = ReSTIRPTSPMISUnionDomainShadowSplitBuffers();
 	}
 	else if (!path_sampling_strategy_is_restir_pt(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY)))

@@ -49,8 +49,8 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_set_duplicate_source(u
 }
 
 /**
- * True when ReSTIR_PT_sample_visible_at_surface() (stage 2 of spmis_union_domain_select_neighbors()) traces its shadow ray for this sample at this
- * surface. These are the zero tests of ReSTIR_PT_evaluate_target_function() (degenerate distance, backfacing light of a DI sample, cosine <= 0 outside of
+ * True when ReSTIR_PT_sample_visible_at_surface() (stage 2 of the neighbor selection of SpatialSPMISUnionDomain.h) traces its shadow ray for this sample at
+ * this surface. These are the zero tests of ReSTIR_PT_evaluate_target_function() (degenerate distance, backfacing light of a DI sample, cosine <= 0 outside of
  * a transmission lobe), duplicated here because that function traces the ray right after them: keep both in sync
  */
 HIPRT_DEVICE bool spmis_union_domain_shadow_split_stage2_needs_ray(const ReSTIRPTReservoirSample& sample, const ReSTIRPTSurface& surface)
@@ -81,7 +81,7 @@ HIPRT_DEVICE bool spmis_union_domain_shadow_split_stage2_needs_ray(const ReSTIRP
 }
 
 /**
- * Prepare kernel for the center pixel: everything of the single kernel before its first shadow ray, see the top of SpatialSPMISUnionDomainShadowSplit.h
+ * Prepare kernel for the center pixel: everything of the spatial reuse before its first shadow ray, see the top of SpatialSPMISUnionDomainShadowSplit.h
  */
 HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData& render_data, unsigned int center_pixel_index, int2_t center_pixel_coords)
 {
@@ -92,7 +92,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
 	{
-		// As the single kernel: pixel inactive because of adaptive sampling or no primary hit, empty output reservoir, no random seed stored
+		// Pixel inactive because of adaptive sampling or no primary hit: empty output reservoir, no random seed stored
 		render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = ReSTIRPTReservoir();
 		shadow_split_buffers.prepare_flags[center_pixel_index] = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PIXEL_DONE_BIT;
 		shadow_split_buffers.resolve_flags[center_pixel_index] = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_DONE_BIT;
@@ -107,7 +107,8 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 		spmis_get_union_domain(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface, random_number_generator);
 	if (domain.cell_count == 0)
 	{
-		// As the single kernel: no spatial reuse, the input reservoir is the output, no random seed stored
+		// Can happen if we completely fail to resolve hash collision and the pixel couldn't find a hash cell index. No spatial reuse in this case then: the
+		// input reservoir is the output, no random seed stored
 		render_data.render_settings.restir_pt_settings.spatial_pass.output_reservoirs[center_pixel_index] = input_reservoir_buffer[center_pixel_index];
 		shadow_split_buffers.prepare_flags[center_pixel_index] = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PIXEL_DONE_BIT;
 		shadow_split_buffers.resolve_flags[center_pixel_index] = RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_DONE_BIT;
@@ -115,7 +116,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 		return;
 	}
 
-	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
+	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
 	int canonical_group_count  = hippt::max(1, union_domain_settings.canonical_group_count);
 	int pool_size			   = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE, union_domain_settings.visibility_pool_size);
 
@@ -125,7 +126,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 	// Duplicate rays of the pixel, see spmis_union_domain_shadow_split_duplicate_map_identity()
 	unsigned int duplicate_map = spmis_union_domain_shadow_split_duplicate_map_identity();
 
-	// Stage 1 of spmis_union_domain_select_neighbors() and the stage-2 ray records of the picks that trace one
+	// Stage 1 of the neighbor selection of SpatialSPMISUnionDomain.h and the stage-2 ray records of the picks that trace one
 	if (domain.non_zero_count > 0)
 	{
 		unsigned int pool_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
@@ -141,7 +142,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 			for (int pick = 0; pick < pool_size; pick++)
 			{
-				// Same skipped picks as stage 2 of spmis_union_domain_select_neighbors()
+				// Same skipped picks as stage 2 of the neighbor selection of SpatialSPMISUnionDomain.h
 				if (pool_selection_targets[pick] <= 0.0f || pool_selection_probabilities[pick] <= 0.0f)
 					continue;
 
@@ -190,7 +191,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 					prepare_flags |= 1u << (RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PICK_ENVMAP_SHIFT + pick);
 			}
 
-			// The uniform companion of every neighbor slot (the g - 1 = 1 pixel of the group of get_resampling_MIS_weight_non_canonical()), drawn here
+			// The uniform companion of every neighbor slot (the g - 1 = 1 pixel of the group of get_MIS_weight_non_canonical_from_group_sum()), drawn here
 			// uniformly in the domain and independently of the selection
 			for (int slot = 0; slot < reused_neighbors_count; slot++)
 				shadow_split_buffers.companions[slot * pixel_count + center_pixel_index] =
@@ -198,7 +199,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 		}
 	}
 
-	// Canonical probes of get_resampling_MIS_weight_canonical(): pixels and values without visibility here, rays in the trace selection kernel, MIS
+	// Canonical probes of get_canonical_MIS_weight_from_probes(): pixels and values without visibility here, rays in the trace selection kernel, MIS
 	// weight in the weights kernel
 	const ReSTIRPTReservoir& center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
 	if (center_pixel_reservoir.UCW > 0.0f)
@@ -211,8 +212,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 		shadow_split_buffers.canonical_numerators[center_pixel_index] = canonical_mis_target * center_pixel_reservoir_confidence;
 
-		int probe_count =
-			hippt::min(canonical_group_count * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
+		int probe_count = hippt::min(canonical_group_count * RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
 
 		// Pixels of the deduplicated probes, only read for the probes that have a ray bit
 		unsigned int probe_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES];
@@ -221,8 +221,8 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 		{
 			unsigned int probe_pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
 
-			float probe_value = spmis_target_function_at_domain_pixel<false>(render_data, center_pixel_reservoir.sample, center_pixel_surface.shading_point,
-																			 probe_pixel_index, random_number_generator);
+			float probe_value = spmis_target_function_at_domain_pixel(render_data, center_pixel_reservoir.sample, center_pixel_surface.shading_point,
+																	  probe_pixel_index, random_number_generator);
 			if (probe_value > 0.0f)
 			{
 				// Only the probes with a ray can be non-zero: the weights kernel reads the value of a probe whose ray is visible only. A duplicate keeps
@@ -287,7 +287,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 /**
  * Prepare kernel of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h): domain, pool, stage-2 and canonical probe
- * ray records. Traces no ray. One thread per pixel over the 8 x 8 blocks of the render resolution, as the single union domain kernel.
+ * ray records. Traces no ray. One thread per pixel over the 8 x 8 blocks of the render resolution.
  */
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.

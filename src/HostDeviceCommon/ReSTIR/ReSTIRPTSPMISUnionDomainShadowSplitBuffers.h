@@ -7,8 +7,8 @@
 #define HOST_DEVICE_RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_BUFFERS_H
 
 /**
- * Per-pixel state passed between the kernels of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h). All the
- * arrays live in one allocation of the render pass, made only while the shadow split kernels run (nullptr otherwise).
+ * Per-pixel state passed between the kernels of the union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h). All the arrays live in one
+ * allocation of the renderer (see layout()), made only while the union domain reuse runs (nullptr otherwise).
  *
  * Every per-slot array is slot-major: the entry of slot s of pixel p is at s x pixel_count + p, so that the lanes of a wave load one slot of
  * consecutive pixels. A ray record is 4 floats: the reconnection vertex (or the envmap direction) and the bits of the alpha test seed of the sample.
@@ -66,7 +66,7 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 	// for the picks that need a ray (traced or duplicate). Read by the weights kernel: the selection probability of a chosen neighbor
 	float* pick_probabilities = nullptr;
 
-	// One pixel index per neighbor slot: RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS slots per pixel, slot-major. The uniform companion
+	// One pixel index per neighbor slot: RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS slots per pixel, slot-major. The uniform companion
 	// (reverse probe pixel) of the MIS weight of the slot, written by the prepare kernel when the pool is valid. Read by the weights kernel: the
 	// companion's value without visibility and the origin of its reverse probe ray
 	unsigned int* companions = nullptr;
@@ -108,7 +108,7 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 	// weights kernel for the candidate slots. Read by the resolve kernel, added to the merge weight when the reverse probe ray is occluded
 	float* neighbor_weight_corrections = nullptr;
 
-	// One ray record per neighbor slot: RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS slots per pixel of 4 floats, slot-major (the sample of
+	// One ray record per neighbor slot: RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS slots per pixel of 4 floats, slot-major (the sample of
 	// the neighbor). Written by the weights kernel for the slots with a reverse ray bit. Read by the resolve kernel: the endpoint and seed of the
 	// reverse probe ray
 	float* reverse_rays = nullptr;
@@ -120,6 +120,73 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 	// One float per pixel: the resampling weight of the canonical sample. Written by the weights kernel when the canonical sample is resampled. Read
 	// by the resolve kernel: the merge weight of the canonical sample
 	float* canonical_weights = nullptr;
+
+#ifndef __KERNELCC__
+	/**
+	 * Layout of all the arrays of ReSTIRPTSPMISUnionDomainShadowSplitBuffers in one buffer for 'pixel_count' pixels (about 460 bytes per pixel with the
+	 * maximum pool size and probe count of ReSTIRPTOptions.h, plus alignment). Sets the pointers of 'shadow_split_buffers' into the buffer
+	 * 'buffer_pointer' (nullptr pointers when 'buffer_pointer' is nullptr) and returns the byte size of the buffer
+	 */
+	static size_t layout(unsigned char* buffer_pointer, unsigned int pixel_count, ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers)
+	{
+		// Entries of the per-pixel and per-slot arrays. A ray record is 4 floats
+		size_t pixels		  = pixel_count;
+		size_t pool_slots	  = RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE * pixels;
+		size_t probe_slots	  = RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES * pixels;
+		size_t neighbor_slots = RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS * pixels;
+
+		size_t buffer_byte_size = 0;
+
+		// Per-pixel flags and random state
+		reserve_array(buffer_pointer, buffer_byte_size, pixels, shadow_split_buffers.prepare_flags);
+		reserve_array(buffer_pointer, buffer_byte_size, pixels, shadow_split_buffers.random_states);
+
+		// Prepare -> trace selection
+		reserve_array(buffer_pointer, buffer_byte_size, pool_slots * 4, shadow_split_buffers.selection_rays);
+		reserve_array(buffer_pointer, buffer_byte_size, pixels * 4, shadow_split_buffers.canonical_rays);
+		reserve_array(buffer_pointer, buffer_byte_size, probe_slots, shadow_split_buffers.canonical_viewpoints);
+
+		// Trace selection -> weights
+		reserve_array(buffer_pointer, buffer_byte_size, pixels, shadow_split_buffers.selection_visibility);
+
+		// Prepare -> weights
+		reserve_array(buffer_pointer, buffer_byte_size, pool_slots, shadow_split_buffers.pick_pixels);
+		reserve_array(buffer_pointer, buffer_byte_size, pool_slots, shadow_split_buffers.pick_probabilities);
+		reserve_array(buffer_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.companions);
+		reserve_array(buffer_pointer, buffer_byte_size, probe_slots, shadow_split_buffers.canonical_values);
+		reserve_array(buffer_pointer, buffer_byte_size, pixels, shadow_split_buffers.canonical_numerators);
+		reserve_array(buffer_pointer, buffer_byte_size, pixels, shadow_split_buffers.domain_confidence_sums);
+
+		// Weights -> resolve
+		reserve_array(buffer_pointer, buffer_byte_size, pixels, shadow_split_buffers.resolve_flags);
+		reserve_array(buffer_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_pixels);
+		reserve_array(buffer_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_targets);
+		reserve_array(buffer_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_weights);
+		reserve_array(buffer_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.neighbor_weight_corrections);
+		reserve_array(buffer_pointer, buffer_byte_size, neighbor_slots * 4, shadow_split_buffers.reverse_rays);
+		reserve_array(buffer_pointer, buffer_byte_size, neighbor_slots, shadow_split_buffers.reverse_viewpoints);
+		reserve_array(buffer_pointer, buffer_byte_size, pixels, shadow_split_buffers.canonical_weights);
+
+		shadow_split_buffers.pixel_count = buffer_pointer == nullptr ? 0 : pixel_count;
+
+		return buffer_byte_size;
+	}
+
+private:
+	/**
+	 * Reserves 'element_count' elements of type T at a 256 byte aligned offset of the buffer whose first 'buffer_byte_size' bytes are already reserved,
+	 * and moves 'buffer_byte_size' past them. 'out_array' points to the reserved elements in the buffer 'buffer_pointer', or is nullptr when the buffer
+	 * pointer is nullptr (only the size of the buffer is computed)
+	 */
+	template <typename T>
+	static void reserve_array(unsigned char* buffer_pointer, size_t& buffer_byte_size, size_t element_count, T*& out_array)
+	{
+		size_t offset	 = (buffer_byte_size + 255) / 256 * 256;
+		buffer_byte_size = offset + element_count * sizeof(T);
+
+		out_array = buffer_pointer == nullptr ? nullptr : reinterpret_cast<T*>(buffer_pointer + offset);
+	}
+#endif // #ifndef __KERNELCC__
 };
 
 #endif // #ifndef HOST_DEVICE_RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_BUFFERS_H

@@ -301,28 +301,6 @@ struct ReSTIRPTSettings
 			   !temporal_pass.do_temporal_reuse_pass && spatial_pass.number_of_passes == 1;
 	}
 
-	/**
-	 * Whether the union domain spatial reuse runs as the shadow split kernels of SpatialSPMISUnionDomainShadowSplit.h instead of the single union domain
-	 *kernel. GPU only: the CPU renderer always runs the single kernel.
-	 *
-	 * 'restir_pt_mis_weights_type' is as in do_spmis_union_domain_reuse(). The shadow split kernels need:
-	 *	- the union domain reuse (do_spmis_union_domain_reuse()) with its spatial reuse pass enabled and their setting enabled
-	 *	- an MIS group size of 2: the MIS weight of a neighbor then has a single uniform companion, whose visibility the resolve kernel applies as a
-	 *	  correction of the weight computed with the companion visible
-	 *	- at most RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS neighbors: the per-pixel flags hold that many neighbor slots
-	 *
-	 * The kernels clamp mis_group_size and neighbor_count to [1, maximum]: the clamped group size is 2 exactly when mis_group_size is, the clamped
-	 * neighbor count is at most RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS exactly when neighbor_count is
-	 */
-	HIPRT_HOST_DEVICE bool use_spmis_union_domain_shadow_split_kernels(int restir_pt_mis_weights_type) const
-	{
-		const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = spmis_settings.union_domain;
-
-		return do_spmis_union_domain_reuse(restir_pt_mis_weights_type) && spatial_pass.do_spatial_reuse_pass &&
-			   union_domain_settings.use_shadow_split_kernels && union_domain_settings.mis_group_size == 2 &&
-			   union_domain_settings.neighbor_count <= RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS;
-	}
-
 private:
 	float jacobian_rejection_threshold;
 };

@@ -6,9 +6,8 @@
 #ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_H
 #define DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_H
 
-// The shadow rays of this kernel are the mostly visible rays of the single union domain kernel (SpatialReuseSPMISUnionDomain.h): they keep the
-// default traversal hint as there (Intersect.h). Defined before the includes so that Intersect.h sees it. GPU only: the CPU renderer compiles every
-// kernel in one translation unit
+// The shadow rays of this kernel are mostly visible and are not faster with the shadow ray traversal hint (Intersect.h): they keep the default hint.
+// Defined before the includes so that Intersect.h sees it. GPU only: the CPU renderer compiles every kernel in one translation unit
 #ifdef __KERNELCC__
 #define SHADOW_RAY_TRAVERSAL_HINT hiprtTraversalHintDefault
 #endif
@@ -60,7 +59,7 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_copy_duplicate_visibil
  * Trace selection kernel of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h): the stage-2 rays of the pool
  * picks and the canonical probe rays recorded by the prepare kernel, block-distributed (spmis_union_domain_shadow_split_trace_rays_block()), one
  * visibility bit per ray. The bits of the duplicate rays are copied from the rays they repeat (spmis_union_domain_shadow_split_copy_duplicate_visibility()).
- * One thread per pixel over the 8 x 8 blocks of the render resolution, as the single union domain kernel. GPU only.
+ * One thread per pixel over the 8 x 8 blocks of the render resolution.
  */
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
@@ -73,15 +72,20 @@ GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_SpatialReuseSPMISU
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitTraceSelection(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
 {
-	// GPU only (shared memory and barriers of the block-distributed tracing): the CPU renderer runs the single union domain kernel
-#if defined(__KERNELCC__) && ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
+#ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(RESTIR_PT_RENDER_DATA);
+#endif
+
+	// Only compiling this whole kernel if we're using stochastic pairwise MIS: the union domain reuse is not used with the other MIS weights
+#if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
 
 	const ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers =
 		render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers;
 
+#ifdef __KERNELCC__
 	unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+#endif
 
 	// No early return before the block-distributed tracing (barriers): a thread without pixel (border blocks) or whose pixel is done has no ray
 	bool thread_has_pixel			= x < render_data.render_settings.render_resolution.x && y < render_data.render_settings.render_resolution.y;
@@ -103,7 +107,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMISUnionDomainShado
 
 	if (!pixel_done)
 		shadow_split_buffers.selection_visibility[center_pixel_index] = visible_mask;
-#endif // #if defined(__KERNELCC__) && ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
+#endif // #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS
 }
 
 #endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_H

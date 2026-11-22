@@ -17,7 +17,10 @@
 #include "Device/kernels/ReSTIR/PT/Shading.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuseSPMIS.h"
-#include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomain.h"
+#include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitPrepare.h"
+#include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitResolve.h"
+#include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitTraceSelection.h"
+#include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitWeights.h"
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
 
 #include "Device/kernels/ReSTIR/SPMIS/BuildAliasTables.h"
@@ -171,6 +174,10 @@ void CPURenderer::setup_buffers()
 		HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 	// Always allocated on the CPU, the spatial reuse decides every frame whether it uses them (ReSTIRPTSettings::do_spmis_union_domain_reuse())
 	m_restir_pt_state.spmis_data.resize_union_domain_buffers(width, height);
+
+	ReSTIRPTSPMISUnionDomainShadowSplitBuffers unused_shadow_split_buffers;
+	size_t shadow_split_buffer_byte_size = ReSTIRPTSPMISUnionDomainShadowSplitBuffers::layout(nullptr, width * height, unused_shadow_split_buffers);
+	m_restir_pt_state.spmis_union_domain_shadow_split_buffer.resize((shadow_split_buffer_byte_size + sizeof(float4_t) - 1) / sizeof(float4_t));
 #endif // #if PathSamplingStrategyIsReSTIRPT
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -401,6 +408,10 @@ void CPURenderer::update_render_data()
 
 	m_restir_pt_state.directional_spatial_reuse_data_buffer.to_device(m_render_data);
 	m_restir_pt_state.spmis_data.to_device(m_render_data);
+
+	ReSTIRPTSPMISUnionDomainShadowSplitBuffers::layout(reinterpret_cast<unsigned char*>(m_restir_pt_state.spmis_union_domain_shadow_split_buffer.data()),
+													   m_resolution.x * m_resolution.y,
+													   m_render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers);
 #endif // #if PathSamplingStrategyIsReSTIRPT
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -1225,16 +1236,21 @@ void CPURenderer::launch_ReSTIR_PT_spatial_reuse_pass()
 	{
 		launch_ReSTIR_PT_spmis_create_reuse_cells_pass(m_render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs);
 
-		// Same kernel selection as ReSTIRPTRenderPass::use_spmis_union_domain_kernel(): the union domain reuse and the legacy single reuse cell path
-		// are two kernels
+		// Same kernel selection as ReSTIRPTRenderPass::use_spmis_union_domain_kernels(): the union domain reuse and the legacy single reuse cell path
+		// are separate kernels
 		const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = m_render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
-		bool use_union_domain_kernel = m_render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType) &&
-									   union_domain_settings.neighbor_records != nullptr && union_domain_settings.domain_cache != nullptr;
+		bool use_union_domain_kernels = m_render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType) &&
+										union_domain_settings.neighbor_records != nullptr && union_domain_settings.domain_cache != nullptr &&
+										union_domain_settings.shadow_split_buffers.prepare_flags != nullptr;
 
-		// The shadow split version of the union domain kernel (SpatialSPMISUnionDomainShadowSplit.h,
-		// ReSTIRPTSPMISUnionDomainSettings::use_shadow_split_kernels) is GPU only: the CPU always runs the single union domain kernel, same estimator
-		if (use_union_domain_kernel)
-			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMISUnionDomain(m_render_data, x, y); });
+		if (use_union_domain_kernels)
+		{
+			// In this order, each kernel over all the pixels before the next one (see SpatialSPMISUnionDomainShadowSplit.h)
+			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitPrepare(m_render_data, x, y); });
+			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitTraceSelection(m_render_data, x, y); });
+			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitWeights(m_render_data, x, y); });
+			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitResolve(m_render_data, x, y); });
+		}
 		else
 			debug_render_pass([this](int x, int y) { ReSTIR_PT_SpatialReuseSPMIS(m_render_data, x, y); });
 	}

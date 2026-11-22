@@ -17,7 +17,7 @@
 
 /**
  * SPMIS "union domain" spatial reuse (ReSTIRPTSPMISUnionDomainSettings), the reuse domain and the neighbor selection. The MIS weights are in
- * SpatialGroupwiseMISWeight.h and the spatial reuse itself in ReSTIR_PT_SPMIS_union_domain_spatial_reuse() (SpatialReuseSPMISUnionDomain.h).
+ * SpatialGroupwiseMISWeight.h and the kernels of the spatial reuse itself are described in SpatialSPMISUnionDomainShadowSplit.h.
  *
  *	- The reuse domain of a pixel is the union of up to RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS distinct SPMIS cells, each found by the SPMIS cell search
  *	  with the cells already in the domain excluded. It is searched once and cached per pixel (one representative pixel per cell), as the single reuse cell
@@ -789,91 +789,26 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 }
 
 /**
- * Two-stage visibility-aware neighbor selection of the union domain reuse with a visibility pool (ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size
- * = L >= 1): every pixel traces exactly L shadow rays, whatever the number of neighbors N.
+ * Neighbor selection of the union domain reuse: two-stage and visibility-aware, with a visibility pool
+ * (ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size = L >= 1). Every pixel traces exactly L shadow rays, whatever the number of neighbors N.
  *
- * Stage 1: ONE pool for the pixel, spmis_union_domain_select_pool_candidates(): the K stratified candidates of the whole domain resampled by L
- * reservoirs with rotated copies of one acceptance uniform. Every pick l is marginally drawn proportionally to the RIS weights w of the pool,
- * P_l = t_l / W with W the sum of the RIS weights, so that for any function g of the neighbors that is zero where t is zero:
+ * Stage 1: ONE pool for the pixel, spmis_union_domain_select_pool_candidates() (prepare kernel, SpatialReuseSPMISUnionDomainShadowSplitPrepare.h): the
+ * K stratified candidates of the whole domain resampled by L reservoirs with rotated copies of one acceptance uniform. Every pick l is marginally drawn
+ * proportionally to the RIS weights w of the pool, P_l = t_l / W with W the sum of the RIS weights, so that for any function g of the neighbors that is
+ * zero where t is zero:
  *
  *		E[(1 / L) x sum over the L picks of g(i_l) / P_l] = E[sum over the pool of w_k g(c_k) / t_k] = sum over the domain of g
  *
- * Stage 2: the visibility V_l of every pick at the center pixel (one ray each, same test as ReSTIR_PT_sample_visible_at_surface()). g contains the
- * visibility (an occluded sample has a zero contribution at the center) so only the n_vis visible picks contribute. min(N, n_vis) of them are chosen
- * uniformly without replacement, each visible pick with the inclusion probability pi = min(1, N / n_vis), which only depends on the visibility of the
- * picks, not on their values (Horvitz-Thompson):
+ * Stage 2: the visibility V_l of every pick at the center pixel (one ray each, traced by the trace selection kernel, same test as
+ * ReSTIR_PT_sample_visible_at_surface()). g contains the visibility (an occluded sample has a zero contribution at the center) so only the n_vis visible
+ * picks contribute. min(N, n_vis) of them are chosen uniformly without replacement by the weights kernel, each visible pick with the inclusion
+ * probability pi = min(1, N / n_vis), which only depends on the visibility of the picks, not on their values (Horvitz-Thompson):
  *
  *		E[sum over the chosen picks of g(i_l) / (pi L P_l)] = E[(1 / L) x sum over the visible picks of g(i_l) / P_l]
  *
- * The spatial reuse divides every neighbor contribution by N x P (see ReSTIRPTSpatialGroupwiseMISWeight::get_resampling_MIS_weight_non_canonical()),
- * so the returned "probability" of a chosen pick is P = pi L P_l / N. The slots beyond min(N, n_vis) get HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX
- * (skipped by the caller). Duplicate picks are distinct terms of the estimator: each one is traced and can be chosen.
- *
- * Returns the number of slots written: N, or 0 when the pool is empty
+ * The spatial reuse divides every neighbor contribution by N x P (see ReSTIRPTSpatialGroupwiseMISWeight::get_MIS_weight_non_canonical_from_group_sum()),
+ * so the "probability" of a chosen pick is P = pi L P_l / N. The slots beyond min(N, n_vis) have no neighbor. Duplicate picks are distinct terms of the
+ * estimator: each one can be chosen.
  */
-HIPRT_DEVICE int spmis_union_domain_select_neighbors(const HIPRTRenderData& render_data,
-													 ReSTIRPTSurface& center_surface,
-													 const ReSTIRPTSPMISUnionDomain& domain,
-													 int center_pixel_reservoir_confidence,
-													 int neighbor_count,
-													 int pool_size,
-													 unsigned int* out_pixel_indices,
-													 float* out_selection_probabilities,
-													 Xorshift32Generator& rng)
-{
-	neighbor_count = hippt::min(neighbor_count, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS);
-	pool_size	   = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE, pool_size);
-
-	unsigned int pool_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
-	float pool_selection_probabilities[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
-	float pool_selection_targets[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
-
-	// Stage 1: one pool of L picks
-	bool pool_valid = spmis_union_domain_select_pool_candidates(render_data, center_surface, domain, center_pixel_reservoir_confidence, pool_size,
-																pool_pixel_indices, pool_selection_probabilities, pool_selection_targets, rng);
-	if (!pool_valid)
-		return 0;
-
-	for (int slot = 0; slot < neighbor_count; slot++)
-	{
-		out_pixel_indices[slot]			  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
-		out_selection_probabilities[slot] = 1.0f;
-	}
-
-	// Stage 2: exactly one visibility ray per pick
-	const ReSTIRPTReservoir* input_reservoirs = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs;
-	int visible_picks[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
-	int visible_pick_count = 0;
-
-	for (int pick = 0; pick < pool_size; pick++)
-	{
-		if (pool_selection_targets[pick] <= 0.0f || pool_selection_probabilities[pick] <= 0.0f)
-			continue;
-
-		const ReSTIRPTReservoir& pick_reservoir = input_reservoirs[pool_pixel_indices[pick]];
-		if (pick_reservoir.UCW <= 0.0f)
-			continue;
-
-		if (ReSTIR_PT_sample_visible_at_surface(render_data, pick_reservoir.sample, center_surface, rng))
-			visible_picks[visible_pick_count++] = pick;
-	}
-
-	// min(N, n_vis) visible picks chosen uniformly without replacement (partial Fisher-Yates shuffle)
-	int chosen_count			= hippt::min(neighbor_count, visible_pick_count);
-	float inclusion_probability = visible_pick_count > neighbor_count ? neighbor_count / static_cast<float>(visible_pick_count) : 1.0f;
-
-	for (int chosen = 0; chosen < chosen_count; chosen++)
-	{
-		int swapped_index			 = chosen + static_cast<int>(rng.random_index(visible_pick_count - chosen));
-		int chosen_pick				 = visible_picks[swapped_index];
-		visible_picks[swapped_index] = visible_picks[chosen];
-		visible_picks[chosen]		 = chosen_pick;
-
-		out_pixel_indices[chosen]			= pool_pixel_indices[chosen_pick];
-		out_selection_probabilities[chosen] = inclusion_probability * pool_size * pool_selection_probabilities[chosen_pick] / neighbor_count;
-	}
-
-	return neighbor_count;
-}
 
 #endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_SPMIS_UNION_DOMAIN_H

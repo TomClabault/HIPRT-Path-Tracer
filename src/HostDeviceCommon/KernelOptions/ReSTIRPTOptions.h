@@ -118,13 +118,17 @@
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS 4
 // Maximum number of SPMIS cell searches done to find the cells of a union domain (a search may not find a new cell)
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELL_SEARCHES 8
-// Maximum values of ReSTIRPTSPMISUnionDomainSettings::neighbor_count and mis_group_size
-#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS		8
-#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_MIS_GROUP_SIZE 3
+// Maximum value of ReSTIRPTSPMISUnionDomainSettings::neighbor_count: the per-pixel flags of the spatial reuse kernels (SpatialSPMISUnionDomainShadowSplit.h)
+// hold that many neighbor slots
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS 4
+// Number of pixels per group of the stochastic group-wise MIS weights of the union domain reuse (SpatialGroupwiseMISWeight.h): the neighbor itself and
+// one uniform companion per neighbor slot
+#define RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE 2
 // Maximum value of ReSTIRPTSPMISUnionDomainSettings::visibility_pool_size
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE 8
-// Maximum number of probes (canonical_group_count x mis_group_size) of the canonical MIS weight of the union domain reuse, computed as a U-statistic over
-// all the groups of probes. The settings window keeps the product of the two settings within this maximum and the kernel clamps the number of probes to it
+// Maximum number of probes (canonical_group_count x RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE) of the canonical MIS weight of the union domain reuse,
+// computed as a U-statistic over all the groups of probes. The settings window keeps canonical_group_count within this maximum and the kernels clamp the number
+// of probes to it
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES 8
 // Number of floats of the neighbor record of a pixel (two float4, see ReSTIR_PT_SPMIS_BuildNeighborRecords)
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORD_FLOAT_COUNT 8u
@@ -134,8 +138,5 @@
 #define RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE 128u
 // Per pixel in the union domain cache: the number of cached cells then one representative pixel per cell
 #define RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE_STRIDE (1u + RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS)
-// Maximum value of ReSTIRPTSPMISUnionDomainSettings::neighbor_count with which the shadow split kernels of the union domain reuse run (see
-// SpatialSPMISUnionDomainShadowSplit.h), the single kernel runs with more neighbors
-#define RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS 4
 
 #endif // #ifndef HOST_DEVICE_COMMON_RESTIR_PT_OPTIONS_H

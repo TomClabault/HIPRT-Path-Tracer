@@ -39,7 +39,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 	// pixel, they only need its shading point, see the top of SpatialSPMISUnionDomainShadowSplit.h
 	float3_t center_pixel_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
 
-	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
+	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
 	int canonical_group_count  = hippt::max(1, union_domain_settings.canonical_group_count);
 	int pool_size			   = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE, union_domain_settings.visibility_pool_size);
 
@@ -52,7 +52,8 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 
 	if (prepare_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_POOL_VALID_BIT)
 	{
-		// Stage 2 of spmis_union_domain_select_neighbors(): the visible picks in pick order, min(N, n_vis) of them chosen uniformly without replacement
+		// Stage 2 of the neighbor selection of SpatialSPMISUnionDomain.h: the visible picks in pick order, min(N, n_vis) of them chosen uniformly without
+		// replacement
 		int visible_picks[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
 		int visible_pick_count = 0;
 
@@ -75,7 +76,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			float neighbor_selection_probability =
 				inclusion_probability * pool_size * shadow_split_buffers.pick_probabilities[pick_entry_index] / reused_neighbors_count;
 
-			// From here, the neighbor loop of ReSTIR_PT_SPMIS_union_domain_spatial_reuse()
+			// Shift and resampling weight of the chosen neighbor
 			ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
 			float shift_mapping_jacobian = 1.0f;
@@ -96,7 +97,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			float resampling_target_function_at_center =
 				ReSTIR_PT_resampling_target_function_bsdf_approximation(neighbor_reservoir.sample, mis_target_at_center);
 			if (!(resampling_target_function_at_center > 0.0f && shift_mapping_jacobian != 0.0f))
-				// Zero MIS weight in the single kernel: zero resampling weight, never selected
+				// Zero MIS weight: zero resampling weight, never selected
 				continue;
 
 			// Own term of the neighbor's sample at the neighbor in the measure of the center pixel, from its target function in its own measure (the Jacobian
@@ -108,22 +109,20 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 
 			// The companion of the slot drawn by the prepare kernel and its value without visibility: its ray is traced by the resolve kernel
 			unsigned int companion_pixel_index = shadow_split_buffers.companions[chosen * pixel_count + center_pixel_index];
-			float companion_target_function = spmis_target_function_at_domain_pixel<false>(render_data, neighbor_reservoir.sample, center_pixel_shading_point,
-																						   companion_pixel_index, random_number_generator);
-			bool reverse_ray_needed			= companion_target_function > 0.0f;
+			float companion_target_function	   = spmis_target_function_at_domain_pixel(render_data, neighbor_reservoir.sample, center_pixel_shading_point,
+																					   companion_pixel_index, random_number_generator);
+			bool reverse_ray_needed			   = companion_target_function > 0.0f;
 
-			// The MIS weight of get_resampling_MIS_weight_non_canonical() for both visibilities V of the companion: the group sum is p_i + V q_J
+			// The MIS weight of get_MIS_weight_non_canonical_from_group_sum() for both visibilities V of the companion: the group sum is p_i + V q_J
 			float mis_weight_companion_visible = mis_weight_function.get_MIS_weight_non_canonical_from_group_sum(
 				static_cast<float>(neighbor_reservoir.confidence), mis_target_at_neighbor, center_pixel_reservoir_confidence, mis_target_at_center,
-				domain_confidence_sum, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE, reused_neighbors_count, neighbor_selection_probability,
-				mis_target_at_neighbor + companion_target_function);
+				domain_confidence_sum, reused_neighbors_count, neighbor_selection_probability, mis_target_at_neighbor + companion_target_function);
 
 			float mis_weight_companion_occluded = mis_weight_companion_visible;
 			if (reverse_ray_needed)
 				mis_weight_companion_occluded = mis_weight_function.get_MIS_weight_non_canonical_from_group_sum(
 					static_cast<float>(neighbor_reservoir.confidence), mis_target_at_neighbor, center_pixel_reservoir_confidence, mis_target_at_center,
-					domain_confidence_sum, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE, reused_neighbors_count, neighbor_selection_probability,
-					mis_target_at_neighbor);
+					domain_confidence_sum, reused_neighbors_count, neighbor_selection_probability, mis_target_at_neighbor);
 
 			// The resampling weight of ReSTIRPTReservoir::combine_with(): MIS weight x target function x UCW x Jacobian. The resolve kernel adds the
 			// correction when the companion is occluded
@@ -156,15 +155,14 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 		}
 	}
 
-	// Canonical MIS weight of get_resampling_MIS_weight_canonical() from the probe values and their visibility bits (a probe without a ray is zero)
+	// Canonical MIS weight of get_canonical_MIS_weight_from_probes() from the probe values and their visibility bits (a probe without a ray is zero)
 	if (prepare_flags & RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_PRESENT_BIT)
 	{
 		float canonical_numerator = shadow_split_buffers.canonical_numerators[center_pixel_index];
 		// The g pixels of a group stand for the whole domain
-		float group_scale = domain_confidence_sum / RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE;
+		float group_scale = domain_confidence_sum / RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE;
 
-		int probe_count =
-			hippt::min(canonical_group_count * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
+		int probe_count = hippt::min(canonical_group_count * RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_GROUP_SIZE, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
 
 		float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
 
@@ -174,8 +172,8 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			probe_target_functions[probe] = probe_visible ? shadow_split_buffers.canonical_values[probe * pixel_count + center_pixel_index] : 0.0f;
 		}
 
-		float canonical_mis_weight = mis_weight_function.get_canonical_MIS_weight_from_probes(
-			canonical_numerator, group_scale, probe_target_functions, probe_count, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE);
+		float canonical_mis_weight =
+			mis_weight_function.get_canonical_MIS_weight_from_probes(canonical_numerator, group_scale, probe_target_functions, probe_count);
 
 		// Resampling weight of the canonical sample: MIS weight x its resampling target function x its UCW (Jacobian 1)
 		const ReSTIRPTReservoir& center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
@@ -193,7 +191,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 /**
  * Weights kernel of the shadow split union domain spatial reuse (see SpatialSPMISUnionDomainShadowSplit.h): choice of the neighbors among the visible
  * picks, shifts, resampling weights for both visibilities of the companions, reverse probe ray records, canonical MIS weight. Traces no ray. One thread
- * per pixel over the 8 x 8 blocks of the render resolution, as the single union domain kernel.
+ * per pixel over the 8 x 8 blocks of the render resolution.
  */
 #ifdef __KERNELCC__
 // HIP does not support dynamic initialization of device pointers in constant memory, so keep the uploaded structure as raw bytes.
