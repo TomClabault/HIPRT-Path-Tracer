@@ -24,14 +24,8 @@ extern GPUKernelCompiler g_gpu_kernel_compiler;
 extern ImGuiLogger g_imgui_logger;
 
 // ******* TODO ReSTIR PT & refactor **********
-// - Remove directional spatial reuse
 // - NEE++ visibility queries for direct-light reuse
-// - Remove LTC shading
-// - After removing ReGIR, do we still need the BSDF_pdf() functions and 'sample_direction_only'?
-// - Remove RIS LTC estimator
-// - Rename tree cut to light cut everywhere
 // - Remove principled lobe oren nayar support, just use Lambertian all the time
-// - Remove enforce_strong_energy_conservation
 //
 // Ideas for learning to cluster:
 //	- Spatial filtering to reduce grid artifacts, Practical Path Guiding 2019

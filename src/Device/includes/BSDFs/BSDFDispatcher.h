@@ -52,34 +52,6 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& rend
 #endif								// #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 }
 
-template <typename MaterialType>
-HIPRT_DEVICE static float bsdf_dispatcher_pdf(const HIPRTRenderData& render_data, BSDFContextT<MaterialType>& bsdf_context)
-{
-#if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
-	/*switch (brdf_type)
-	{
-	...
-	...
-	default:
-		break;
-	}*/
-	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationDiffuse)
-		return principled_specialized_diffuse_pdf(bsdf_context);
-	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationGlass)
-		return principled_specialized_glass_pdf(render_data, bsdf_context);
-	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSingleMetallic)
-		return principled_specialized_metallic_pdf(render_data, bsdf_context);
-	else if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationSpecularDiffuse)
-		return principled_specialized_specular_diffuse_pdf(render_data, bsdf_context);
-	else
-		return principled_bsdf_pdf(render_data, bsdf_context);
-#elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
-	return lambertian_brdf_pdf(hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal));
-#elif BSDF_MODEL == BSDF_OREN_NAYAR // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
-	return oren_nayar_brdf_pdf(bsdf_context.to_light_direction);
-#endif								// #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
-}
-
 /**
  * If the 'ray_volume_state' argument is passed as nullptr, the volume state of the ray won't
  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)

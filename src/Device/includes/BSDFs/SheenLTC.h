@@ -117,31 +117,6 @@ HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_dat
 	return material.sheen_color * AiBiRi.b * Do / local_to_light_direction.z;
 }
 
-HIPRT_DEVICE static float sheen_ltc_pdf(const HIPRTRenderData& render_data,
-										const DeviceUnpackedPrincipledFullMaterial& material,
-										const float3_t& local_to_light_direction,
-										const float3_t& local_view_direction)
-{
-	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
-		return 0.0f;
-
-	// The LTC needs to be evaluated in a Z-up coordinate frame with view direction aligned
-	// with phi=0 (so no rotation on the X/Y plane).
-	//
-	// We're thus computing the phi angle and then rotating the to light direction backwards
-	// on that phi angle so that the view direction is at phi=0.
-	float phi = get_phi(local_view_direction);
-
-	// Rotating the to light direction around z axis such that the view direction is aligned
-	// with phi=0 (because we computed the rotation angle, phi, from the view direction)
-	float3_t to_light_standard_frame = rotate_vector(local_to_light_direction, make_float3(0.0f, 0.0f, 1.0f), -phi);
-
-	ColorRGB32F AiBiRi = read_LTC_parameters(render_data, material.sheen_roughness, local_view_direction.z);
-	float Do		   = sheen_eval_ltc(to_light_standard_frame, AiBiRi);
-
-	return Do;
-}
-
 HIPRT_DEVICE static float3_t sheen_ltc_sample(const HIPRTRenderData& render_data,
 											  const DeviceUnpackedPrincipledFullMaterial& material,
 											  const float3_t& local_view_direction,

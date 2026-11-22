@@ -69,14 +69,6 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const MaterialType& materia
 	return material.base_color * hippt::M_INV_PI * (oren_nayar_A + oren_nayar_B * max_cos * sin_alpha * tan_beta);
 }
 
-HIPRT_DEVICE static float oren_nayar_brdf_pdf(const float3_t& local_to_light_direction)
-{
-	if (local_to_light_direction.z <= 0.0f)
-		return 0.0f;
-
-	return local_to_light_direction.z * hippt::M_INV_PI;
-}
-
 /**
  * Override of the eval function for world space directions
  */

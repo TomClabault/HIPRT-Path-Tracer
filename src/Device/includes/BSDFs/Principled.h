@@ -84,34 +84,6 @@ HIPRT_DEVICE static ColorRGB32F principled_coat_eval(const HIPRTRenderData& rend
 												coat_delta_direction_sampled, rng);
 }
 
-HIPRT_DEVICE static float principled_coat_pdf(const HIPRTRenderData& render_data,
-											  const BSDFContext& bsdf_context,
-											  const float3_t& local_view_direction,
-											  const float3_t& local_to_light_direction,
-											  const float3_t& local_halfway_vector)
-{
-	// The coat lobe is just a microfacet lobe
-	float HoL					= hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_halfway_vector, local_to_light_direction));
-	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.coat_roughness,
-		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-
-	// We're only evaluating the coat lobe if, either:
-	// - The incident light direction was sampled from the clearcoat lobe
-	// - The coat is not a delta distribution (not perfectly smooth)
-	// - The incident light direction was sampled from another perfectly specular lobe
-	//
-	// Because if none of these two conditions are true, the evaluation of the coat will
-	// yield 0.0f anyways
-	//
-	// All the conditions are handled in 'is_specular_delta_reflection_sampled'
-	SpecularDeltaReflectionSampled coat_delta_direction_sampled = bsdf_context.material.is_specular_delta_reflection_sampled(
-		regularized_roughness, bsdf_context.material.coat_anisotropy, bsdf_context.incident_light_info);
-
-	return microfacet_GGX_pdf_reflect(regularized_roughness, bsdf_context.material.coat_anisotropy, local_view_direction, local_to_light_direction,
-									  local_halfway_vector, coat_delta_direction_sampled);
-}
-
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
@@ -134,14 +106,6 @@ HIPRT_DEVICE static ColorRGB32F principled_sheen_eval(const HIPRTRenderData& ren
 													  float& out_sheen_reflectance)
 {
 	return sheen_ltc_eval(render_data, material, local_to_light_direction, local_view_direction, pdf, out_sheen_reflectance);
-}
-
-HIPRT_DEVICE static float principled_sheen_pdf(const HIPRTRenderData& render_data,
-											   const DeviceUnpackedPrincipledFullMaterial& material,
-											   const float3_t& local_view_direction,
-											   const float3_t& local_to_light_direction)
-{
-	return sheen_ltc_pdf(render_data, material, local_to_light_direction, local_view_direction);
 }
 
 HIPRT_DEVICE static float3_t principled_sheen_sample(const HIPRTRenderData& render_data,
@@ -222,42 +186,6 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_eval(const HIPRTRenderData& 
 	return eval;
 }
 
-template <typename MaterialType>
-HIPRT_DEVICE static float principled_metallic_pdf(const HIPRTRenderData& render_data,
-												  BSDFContextT<MaterialType>& bsdf_context,
-												  float roughness,
-												  float anisotropy,
-												  const float3_t& local_view_direction,
-												  const float3_t& local_to_light_direction,
-												  const float3_t& local_half_vector)
-{
-	float regularized_roughness =
-		MicrofacetRegularization::regularize_reflection(render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, roughness,
-														bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-
-	SpecularDeltaReflectionSampled metal_delta_direction_sampled =
-		bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, anisotropy, bsdf_context.incident_light_info);
-	if (metal_delta_direction_sampled == SpecularDeltaReflectionSampled::SPECULAR_PEAK_NOT_SAMPLED)
-		// The distribution isn't worth evaluating because it's specular but we the incident
-		// light direction wasn't sampled from a specular distribution
-		return 0.0f;
-
-	float pdf;
-
-#if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
-	if (regularized_roughness >= render_data.bsdfs_data.metallic_sample_cosine_weighted_roughness_threshold)
-		pdf = cosine_weighted_pdf(local_to_light_direction.z);
-	else
-		pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
-										 metal_delta_direction_sampled);
-#else  // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
-	pdf = microfacet_GGX_pdf_reflect(regularized_roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector,
-									 metal_delta_direction_sampled);
-#endif // #if PrincipledBSDFMetallicSampleCosineWeighted == KERNEL_OPTION_TRUE
-
-	return pdf;
-}
-
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
@@ -306,17 +234,6 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_eval(const MaterialType& mate
 	return lambertian_brdf_eval(material, local_view_direction.z, local_to_light_direction.z, pdf);
 #elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 	return oren_nayar_brdf_eval(material, local_view_direction, local_to_light_direction, pdf);
-#endif
-}
-
-template <typename MaterialType>
-HIPRT_DEVICE static float principled_diffuse_pdf(const MaterialType& material, const float3_t& local_view_direction, const float3_t& local_to_light_direction)
-{
-	// The diffuse lobe is a simple Oren Nayar lobe
-#if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-	return lambertian_brdf_pdf(local_to_light_direction.z);
-#elif PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-	return oren_nayar_brdf_pdf(local_to_light_direction);
 #endif
 }
 
@@ -473,24 +390,6 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_eval(const HIPRTRenderData& 
 															pdf, is_specular_delta_reflection_sampled, rng);
 
 	return specular;
-}
-
-template <typename MaterialType>
-HIPRT_DEVICE static float principled_specular_pdf(const HIPRTRenderData& render_data,
-												  BSDFContextT<MaterialType>& bsdf_context,
-												  float relative_ior,
-												  const float3_t& local_view_direction,
-												  const float3_t& local_to_light_direction,
-												  const float3_t& local_half_vector)
-{
-	float regularized_roughness = MicrofacetRegularization::regularize_reflection(
-		render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, bsdf_context.material.roughness,
-		bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-	SpecularDeltaReflectionSampled is_specular_delta_reflection_sampled =
-		bsdf_context.material.is_specular_delta_reflection_sampled(regularized_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
-
-	return microfacet_GGX_pdf_reflect(regularized_roughness, bsdf_context.material.anisotropy, local_view_direction, local_to_light_direction,
-									  local_half_vector, is_specular_delta_reflection_sampled);
 }
 
 template <typename MaterialType>
@@ -793,206 +692,6 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	return color;
 }
 
-template <typename MaterialType>
-HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_data,
-											   BSDFContextT<MaterialType>& bsdf_context,
-											   const float3_t& local_view_direction,
-											   const float3_t& local_to_light_direction)
-{
-	float pdf = 0.0f;
-
-	float NoV = local_view_direction.z;
-
-	float NoL = local_to_light_direction.z;
-	if (hippt::abs(NoL) < 1.0e-8f)
-		// Check to avoid dividing by 0 later on
-		return 0.0f;
-
-	// We're in the case of reflection if the view direction and the bounced ray (light direction) are in the same hemisphere
-	bool reflecting = NoL * NoV > 0;
-
-	// Relative eta = eta_t / eta_i
-	float eta_i = bsdf_context.volume_state.incident_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-					  ? 1.0f
-					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.incident_mat_index].get_ior();
-	float eta_t = bsdf_context.volume_state.outgoing_mat_index == NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-					  ? 1.0f
-					  : render_data.buffers.materials_buffer[bsdf_context.volume_state.outgoing_mat_index].get_ior();
-
-	float dispersion_abbe_number = 20.0f;
-	float dispersion_scale		 = 0.0f;
-
-	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
-	{
-		dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
-		dispersion_scale	   = bsdf_context.material.dispersion_scale;
-	}
-	eta_i = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_i, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
-	eta_t = compute_dispersion_ior(dispersion_abbe_number, dispersion_scale, eta_t, hippt::abs(bsdf_context.volume_state.sampled_wavelength));
-
-	float relative_eta = eta_t / eta_i;
-
-	// relative_eta can be 1 when refracting from a volume into another volume of the same IOR.
-	// This in conjunction with the view direction and the light direction being the negative of
-	// one another will lead the microfacet normal to be the null vector which then causes
-	// NaNs.
-	//
-	// Example:
-	// The view and light direction can be the negative of one another when looking straight at a
-	// flat window for example. The view direction is aligned with the normal of the window
-	// in this configuration whereas the refracting light direction (and it is very likely to refract
-	// in this configuration) is going to point exactly away from the view direction and the normal.
-	//
-	// We then have
-	//
-	// half_vector  = light_dir + relative_eta * view_dir
-	//              = light_dir + 1.0f * view_dir
-	//              = light_dir + view_dir = (0, 0, 0)
-	//
-	// Normalizing this null vector then leads to a NaNs because of the zero-length.
-	//
-	// We're settings relative_eta to 1.00001f to avoid this issue
-	if (hippt::abs(relative_eta - 1.0f) < 1.0e-5f)
-		relative_eta = 1.0f + 1.0e-5f;
-
-	bool thin_walled = false;
-	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
-		thin_walled = bsdf_context.material.thin_walled;
-	float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
-
-	float3_t local_half_vector;
-
-	if (scaled_roughness <= MaterialConstants::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE &&
-		PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
-	{
-		// Fast path for specular glass
-		//
-		// Note that we check for 'PrincipledBSDFDeltaDistributionEvaluationOptimization' because if we're not using the delta distribution
-		// optimizations, any incident light direction given to the BSDF is going to be evaluated
-		// and so the half vector won't necessarily be (0, 0, 1).
-		//
-		// Any incident light direction may also be given with the optimizations ON but
-		// with the optimizations ON, any direction that doesn't align with the perfect
-		// reflection direction will be rejected (and contribute 0) so this is not an issue
-		//
-		// If microfacet regularization is enabled, the smooth glass is going to be roughened so we cannot
-		// assume roughness 0.0f and we fall back to the classical half-vector computation below
-		local_half_vector = make_float3(0.0f, 0.0f, 1.0f);
-	}
-	else
-	{
-		// Computing the generalized (that takes refraction into account) half vector
-		if (reflecting)
-			local_half_vector = local_to_light_direction + local_view_direction;
-		else
-		{
-			if (thin_walled)
-				// Thin walled material refract without light bending (because both refractions interfaces are simulated in one layer of material)
-				// just refract straight through i.e. light_direction = -view_direction
-				// It can be as si
-				local_half_vector = local_to_light_direction * make_float3(1.0f, 1.0f, -1.0f) + local_view_direction;
-			else
-				// We need to take the relative_eta into account when refracting to compute
-				// the half vector (this is the "generalized" half vector)
-				local_half_vector = local_to_light_direction * relative_eta + local_view_direction;
-		}
-
-		local_half_vector = hippt::normalize(local_half_vector);
-	}
-
-	if (local_half_vector.z < 0.0f)
-		// Because the rest of the function we're going to compute here assume
-		// that the microfacet normal is in the same hemisphere as the surface
-		// normal, we're going to flip it if needed
-		local_half_vector = -local_half_vector;
-
-	float HoL = hippt::dot(local_to_light_direction, local_half_vector);
-	float HoV = hippt::dot(local_view_direction, local_half_vector);
-	if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
-		// Backfacing microfacets when the microfacet normal isn't in the same
-		// hemisphere as the view dir or light dir
-		return 0.0f;
-
-	float thin_film = 0.0f;
-	ColorRGB32F F_thin_film(0.0f);
-	ColorRGB32F F_no_thin_film(0.0f);
-
-	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
-	{
-		thin_film	= bsdf_context.material.thin_film;
-		F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
-
-		if (thin_film < 1.0f)
-			F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
-	}
-	else
-		F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
-
-	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
-	if (thin_walled && F.r < 1.0f && thin_film == 0.0f && scaled_roughness < 0.1f)
-		// If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
-		// Not doing this if thin-film is present because that would not be accurate at all. Thin-film
-		// effect require phase shift computations and that's expensive so we're just not doing it here
-		// instead
-		//
-		// Reference: Dielectric BSDF, PBR Book 4ed: https://pbr-book.org/4ed/Reflection_Models/Dielectric_BSDF
-		//
-		// If there is no thin-film, the fresnel reflectance is non-colored and is the same
-		// value for all RGB wavelengths. This means that f_reflect_proba is actually just the fresnel reflection factor
-		//
-		// This fresnel scaling only works at roughness 0 but still using below 0.1f for a close enough approximation
-		F += ColorRGB32F(hippt::square(1.0f - F.r) * F.r / (1.0f - hippt::square(F.r)));
-
-	float f_reflect_proba = F.luminance();
-
-	if (reflecting)
-	{
-		float regularized_roughness = scaled_roughness;
-		if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS &&
-			PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
-			regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
-				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
-		else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC &&
-				 PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-			regularized_roughness = MicrofacetRegularization::regularize_reflection(
-				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-				bsdf_context.accumulated_path_roughness, render_data.render_settings.sample_number);
-
-		SpecularDeltaReflectionSampled delta_glass_direction_sampled =
-			bsdf_context.material.is_specular_delta_reflection_sampled(scaled_roughness, bsdf_context.material.anisotropy, bsdf_context.incident_light_info);
-
-		pdf = microfacet_GGX_pdf_reflect(regularized_roughness, bsdf_context.material.anisotropy, local_view_direction, local_to_light_direction,
-										 local_half_vector, delta_glass_direction_sampled);
-
-		// Scaling the PDF by the probability of being here (reflection of the ray and not transmission)
-		pdf *= f_reflect_proba;
-	}
-	else
-	{
-		float regularized_roughness = scaled_roughness;
-		if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS &&
-			PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-			// If this if for MIS, we want to use the same roughness as for the BSDF sampling so that the MIS weights are correct
-			regularized_roughness = MicrofacetRegularization::regularize_mix_reflection_refraction(
-				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
-		else if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC &&
-				 PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
-			regularized_roughness = MicrofacetRegularization::regularize_refraction(
-				render_data.bsdfs_data.microfacet_regularization, bsdf_context.bsdf_regularization_mode, scaled_roughness,
-				bsdf_context.accumulated_path_roughness, eta_i, eta_t, render_data.render_settings.sample_number);
-
-		pdf = torrance_sparrow_GGX_pdf_refract(bsdf_context.material, regularized_roughness, relative_eta, local_view_direction, local_to_light_direction,
-											   local_half_vector, bsdf_context.incident_light_info);
-		// Taking refraction russian roulette probability into account
-		pdf *= 1.0f - f_reflect_proba;
-	}
-
-	return pdf;
-}
-
 /**
  * The sampled direction is returned in the local shading frame of the basis used for 'local_view_direction'
  */
@@ -1160,15 +859,6 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_transmission_eval(const HIPRT
 	diffuse_transmission_pdf = hippt::abs(local_to_light_direction.z * hippt::M_INV_PI);
 
 	return color;
-}
-
-HIPRT_DEVICE static float principled_diffuse_transmission_pdf(const float3_t& local_view_direction, float3_t local_to_light_direction)
-{
-	if (local_view_direction.z * local_to_light_direction.z > 0.0f)
-		// Both are in the same hemisphere, incorrect for a transmission only lobe
-		return 0.0f;
-
-	return hippt::abs(local_to_light_direction.z * hippt::M_INV_PI);
 }
 
 HIPRT_DEVICE static float3_t principled_diffuse_transmission_sample(float3_t surface_normal, Xorshift32Generator& random_number_generator)
@@ -1374,41 +1064,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& 
 	return ColorRGB32F(0.0f);
 }
 
-HIPRT_DEVICE static float internal_pdf_coat_layer(const HIPRTRenderData& render_data,
-												  const BSDFContext& bsdf_context,
-												  const float3_t& local_view_direction,
-												  const float3_t local_to_light_direction,
-												  const float3_t& local_half_vector,
-												  bool refracting,
-												  float coat_weight,
-												  float coat_proba)
-{
-	// '|| refracting' here is needed because if we have our coat
-	// lobe on top of the glass lobe, we want to still compute the portion
-	// of light that is left for the glass lobe after going through the coat lobe
-	// so that's why we get into to if() block that does the computation but
-	// we're only going to compute the absorption of the coat layer
-	float coat_ior = bsdf_context.material.coat_ior;
-
-	if (coat_weight > 0.0f && ((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting))
-	{
-		float coat_pdf = 0.0f;
-
-		ColorRGB32F contribution;
-
-		if (!refracting)
-		{
-			// The coat layer only contribtues for light direction in the same
-			// hemisphere as the view direction (so reflections only, not refractions)
-			coat_pdf = principled_coat_pdf(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector);
-		}
-
-		return coat_pdf * coat_proba;
-	}
-
-	return 0.0f;
-}
-
 HIPRT_DEVICE static ColorRGB32F internal_eval_sheen_layer(const HIPRTRenderData& render_data,
 														  const DeviceUnpackedPrincipledFullMaterial& material,
 														  const float3_t& local_view_direction,
@@ -1439,24 +1094,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_sheen_layer(const HIPRTRenderData&
 	}
 
 	return ColorRGB32F(0.0f);
-}
-
-HIPRT_DEVICE static float internal_pdf_sheen_layer(const HIPRTRenderData& render_data,
-												   const DeviceUnpackedPrincipledFullMaterial& material,
-												   const float3_t& local_view_direction,
-												   const float3_t& local_to_light_direction,
-												   bool refracting,
-												   float sheen_weight,
-												   float sheen_proba)
-{
-	if ((sheen_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting)
-	{
-		float sheen_pdf = principled_sheen_pdf(render_data, material, local_view_direction, local_to_light_direction);
-
-		return sheen_pdf * sheen_proba;
-	}
-
-	return 0.0f;
 }
 
 HIPRT_DEVICE static ColorRGB32F internal_eval_metal_layer(const HIPRTRenderData& render_data,
@@ -1491,28 +1128,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_metal_layer(const HIPRTRenderData&
 	}
 
 	return ColorRGB32F(0.0f);
-}
-
-HIPRT_DEVICE static float internal_pdf_metal_layer(const HIPRTRenderData& render_data,
-												   BSDFContext& bsdf_context,
-												   float roughness,
-												   float anisotropy,
-												   const float3_t& local_view_direction,
-												   const float3_t local_to_light_direction,
-												   const float3_t& local_half_vector,
-												   float incident_ior,
-												   float metal_weight,
-												   float metal_proba)
-{
-	if (metal_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
-	{
-		float metal_pdf =
-			principled_metallic_pdf(render_data, bsdf_context, roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector);
-
-		return metal_pdf * metal_proba;
-	}
-
-	return 0.0f;
 }
 
 HIPRT_DEVICE static ColorRGB32F internal_eval_retro_reflection_layer(const HIPRTRenderData& render_data,
@@ -1556,33 +1171,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_retro_reflection_layer(const HIPRT
 	return ColorRGB32F(0.0f);
 }
 
-HIPRT_DEVICE static float internal_pdf_retro_reflection_layer(const HIPRTRenderData& render_data,
-															  BSDFContext& bsdf_context,
-															  float roughness,
-															  float anisotropy,
-															  const float3_t& local_view_direction_,
-															  const float3_t local_to_light_direction,
-															  const float3_t& local_half_vector_,
-															  float incident_ior,
-															  float retro_reflection_weight,
-															  float retro_reflection_proba)
-{
-	// Following the "minimal retro reflection model" dsecribed in OpenPBR 2026, this is just a conductor lobe with a modified half vector computed from the
-	// reflected view direction
-	float3_t local_view_direction = reflect_ray(local_view_direction_, make_float3(0.0f, 0.0f, 1.0f));
-	float3_t local_half_vector	  = hippt::normalize(local_to_light_direction + local_view_direction);
-
-	if (retro_reflection_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
-	{
-		float metal_pdf =
-			principled_metallic_pdf(render_data, bsdf_context, roughness, anisotropy, local_view_direction, local_to_light_direction, local_half_vector);
-
-		return metal_pdf * retro_reflection_proba;
-	}
-
-	return 0.0f;
-}
-
 HIPRT_DEVICE static ColorRGB32F internal_eval_glass_layer(const HIPRTRenderData& render_data,
 														  BSDFContext& bsdf_context,
 														  const float3_t& local_view_direction,
@@ -1613,26 +1201,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_glass_layer(const HIPRTRenderData&
 	return ColorRGB32F(0.0f);
 }
 
-HIPRT_DEVICE static float internal_pdf_glass_layer(const HIPRTRenderData& render_data,
-												   BSDFContext& bsdf_context,
-												   const float3_t& local_view_direction,
-												   const float3_t local_to_light_direction,
-												   float glass_weight,
-												   float glass_proba)
-{
-	if (glass_weight > 0.0f)
-	{
-		float glass_pdf = principled_glass_pdf(render_data, bsdf_context, local_view_direction, local_to_light_direction);
-
-		// There is nothing below the glass layer so we don't have a layer_throughput absorption here
-		// ...
-
-		return glass_pdf * glass_proba;
-	}
-
-	return 0.0f;
-}
-
 HIPRT_DEVICE static ColorRGB32F internal_eval_diffuse_transmission_layer(const HIPRTRenderData& render_data,
 																		 const DeviceUnpackedPrincipledFullMaterial& material,
 																		 RayVolumeState& ray_volume_state,
@@ -1661,21 +1229,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_diffuse_transmission_layer(const H
 	}
 
 	return ColorRGB32F(0.0f);
-}
-
-HIPRT_DEVICE static float internal_pdf_diffuse_transmission_layer(const float3_t& local_view_direction,
-																  const float3_t local_to_light_direction,
-																  float diffuse_transmission_weight,
-																  float diffuse_transmission_proba)
-{
-	if (diffuse_transmission_weight > 0.0f && local_to_light_direction.z < 0.0f)
-	{
-		float diffuse_transmission_pdf = principled_diffuse_transmission_pdf(local_view_direction, local_to_light_direction);
-
-		return diffuse_transmission_pdf * diffuse_transmission_proba;
-	}
-
-	return 0.0f;
 }
 
 /**
@@ -1849,45 +1402,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_specular_layer(const HIPRTRenderDa
 }
 
 template <typename MaterialType>
-HIPRT_DEVICE static float internal_pdf_specular_layer(const HIPRTRenderData& render_data,
-													  BSDFContextT<MaterialType>& bsdf_context,
-													  const float3_t& local_view_direction,
-													  const float3_t local_to_light_direction,
-													  const float3_t& local_half_vector,
-													  const float3_t& shading_normal,
-													  float incident_medium_ior,
-													  float specular_weight,
-													  bool refracting,
-													  float specular_proba)
-{
-	// To even attempt the evaluation of the specular lobe, we need the specular weight to be non-zero
-	//
-	// We also need the view and light direction to be above the normal hemisphere because the specular layer
-	// is a BRDF: reflections only.
-	//
-	// However, we may still want to compute the layer throughput of the specular layer if we're given an
-	// incident light direction that comes from the diffuse transmission lobe: such a direction has to go through
-	// the specular layer first before going through the diffuse transmission lobe
-	// The microfacet BRDF will actually evaluate to 0 but the layer throughput will attenuate some light
-	//
-	// This applies to diffuse transmission but doesn't apply to glass though (for example) because the glass layer
-	// isn't "below" the specular layer, it's "adjacent" to it.
-	if (specular_weight > 0.0f &&
-		((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) ||
-		 (refracting && bsdf_context.incident_light_info == BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_TRANSMISSION_LOBE)))
-	{
-		float relative_ior = principled_specular_relative_ior(bsdf_context.material, incident_medium_ior);
-
-		float specular_pdf =
-			principled_specular_pdf(render_data, bsdf_context, relative_ior, local_view_direction, local_to_light_direction, local_half_vector);
-
-		return specular_pdf * specular_proba;
-	}
-
-	return 0.0f;
-}
-
-template <typename MaterialType>
 HIPRT_DEVICE static ColorRGB32F internal_eval_diffuse_layer(const HIPRTRenderData& render_data,
 															float incident_ior,
 															const MaterialType& material,
@@ -1914,25 +1428,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_diffuse_layer(const HIPRTRenderDat
 	}
 
 	return ColorRGB32F(0.0f);
-}
-
-template <typename MaterialType>
-HIPRT_DEVICE static float internal_pdf_diffuse_layer(const HIPRTRenderData& render_data,
-													 float incident_ior,
-													 const MaterialType& material,
-													 const float3_t& local_view_direction,
-													 const float3_t local_to_light_direction,
-													 float diffuse_weight,
-													 float diffuse_proba)
-{
-	if (diffuse_weight > 0.0f && local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f)
-	{
-		float diffuse_pdf = principled_diffuse_pdf(material, local_view_direction, local_to_light_direction);
-
-		return diffuse_pdf * diffuse_proba;
-	}
-
-	return 0.0f;
 }
 
 /**
@@ -1972,34 +1467,6 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_glossy_base(const HIPRTRenderData&
 	float glossy_base_energy_compensation =
 		get_principled_energy_compensation_glossy_base(render_data, bsdf_context.material, incident_medium_ior, local_view_direction.z);
 	return glossy_base_contribution / glossy_base_energy_compensation;
-}
-
-template <typename MaterialType>
-HIPRT_DEVICE static float internal_pdf_glossy_base(const HIPRTRenderData& render_data,
-												   BSDFContextT<MaterialType>& bsdf_context,
-												   const float3_t& local_view_direction,
-												   const float3_t local_to_light_direction,
-												   const float3_t& local_half_vector,
-												   const float3_t& local_view_direction_rotated,
-												   const float3_t local_to_light_direction_rotated,
-												   const float3_t& local_half_vector_rotated,
-												   const float3_t& shading_normal,
-												   float incident_medium_ior,
-												   float diffuse_weight,
-												   float specular_weight,
-												   bool refracting,
-												   float diffuse_proba_norm,
-												   float specular_proba_norm)
-{
-	float pdf = 0.0f;
-
-	// Evaluating the two components of the glossy base
-	pdf += internal_pdf_specular_layer(render_data, bsdf_context, local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated,
-									   shading_normal, incident_medium_ior, specular_weight, refracting, specular_proba_norm);
-	pdf += internal_pdf_diffuse_layer(render_data, incident_medium_ior, bsdf_context.material, local_view_direction, local_to_light_direction, diffuse_weight,
-									  diffuse_proba_norm);
-
-	return pdf;
 }
 
 /**
@@ -2325,84 +1792,6 @@ HIPRT_DEVICE HIPRT_INLINE static ColorRGB32F principled_bsdf_eval(const HIPRTRen
 	sanity_check</* CPUOnly */ true>(render_data, final_color, 0, 0);
 
 	return final_color;
-}
-
-HIPRT_DEVICE static float principled_bsdf_pdf(const HIPRTRenderData& render_data, BSDFContext& bsdf_context)
-{
-	float pdf = 0.0f;
-
-	// Only the glass lobe is considered when evaluating
-	// the BSDF from inside the object so we're going to use that
-	// 'outside_object' flag to nullify the other lobes if we're
-	// inside the object
-	//
-	// Note that we're always outside of thin materials, they have no volume interior
-	bool outside_object = !bsdf_context.volume_state.inside_material;
-	bool refracting		= hippt::dot(bsdf_context.shading_normal, bsdf_context.to_light_direction) < 0.0f && outside_object;
-
-	float3_t T, B;
-	build_ONB(bsdf_context.shading_normal, T, B);
-	float3_t local_view_direction	  = world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.view_direction);
-	float3_t local_to_light_direction = world_to_local_frame(T, B, bsdf_context.shading_normal, bsdf_context.to_light_direction);
-	float3_t local_half_vector		  = hippt::normalize(local_view_direction + local_to_light_direction);
-
-	// Rotated ONB for the anisotropic GGX evaluation (metallic/glass lobes for example)
-	float3_t TR, BR;
-	build_rotated_ONB(bsdf_context.shading_normal, TR, BR, bsdf_context.material.anisotropy_rotation * hippt::M_Pi);
-
-	float3_t local_view_direction_rotated	  = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.view_direction);
-	float3_t local_to_light_direction_rotated = world_to_local_frame(TR, BR, bsdf_context.shading_normal, bsdf_context.to_light_direction);
-	float3_t local_half_vector_rotated		  = hippt::normalize(local_view_direction_rotated + local_to_light_direction_rotated);
-
-	float incident_medium_ior = bsdf_context.volume_state.incident_mat_index == /* air */ NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX
-									? 1.0f
-									: render_data.buffers.materials_buffer[bsdf_context.volume_state.incident_mat_index].get_ior();
-
-	float coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight;
-	float specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight;
-	principled_bsdf_get_lobes_weights(bsdf_context.material, outside_object, coat_weight, sheen_weight, metal_1_weight, metal_2_weight, retro_reflection_weight,
-									  specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight);
-
-	float coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba;
-	float specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba;
-	principled_bsdf_get_lobes_sampling_proba(
-		render_data, bsdf_context.material, local_view_direction.z, incident_medium_ior, coat_weight, sheen_weight, metal_1_weight, metal_2_weight,
-		retro_reflection_weight, specular_weight, diffuse_weight, glass_weight, diffuse_transmission_weight,
-
-		coat_proba, sheen_proba, metal_1_proba, metal_2_proba, retro_reflection_proba, specular_proba, diffuse_proba, glass_proba, diffuse_transmission_proba);
-
-	// In the 'internal_eval_coat_layer' function calls below, we're passing
-	// 'weight * !refracting' so that lobes that do not allow refractions
-	// (which is pretty much all of them except glass) do no get evaluated
-	// (because their weight becomes 0)
-	pdf += internal_pdf_coat_layer(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, refracting, coat_weight,
-								   coat_proba);
-	pdf += internal_pdf_sheen_layer(render_data, bsdf_context.material, local_view_direction, local_to_light_direction, refracting, sheen_weight, sheen_proba);
-	pdf +=
-		internal_pdf_metal_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy, local_view_direction_rotated,
-								 local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior, metal_1_weight * !refracting, metal_1_proba);
-	pdf += internal_pdf_metal_layer(render_data, bsdf_context, bsdf_context.material.second_roughness, bsdf_context.material.anisotropy,
-									local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
-									metal_2_weight * !refracting, metal_2_proba);
-	pdf += internal_pdf_retro_reflection_layer(render_data, bsdf_context, bsdf_context.material.roughness, bsdf_context.material.anisotropy,
-											   local_view_direction_rotated, local_to_light_direction_rotated, local_half_vector_rotated, incident_medium_ior,
-											   retro_reflection_weight * !refracting, retro_reflection_proba);
-
-	// Careful here to evaluate the glass layer before the glossy
-	// base otherwise, layers_throughput is going to be modified
-	// by the specular layer evaluation (in the glossy base) to
-	// take the fresnel of the specular layer into account.
-	// But we don't want that for the glass layer.
-	// The glass layer isn't below the specular layer , it's "next to"
-	// the specular layer so we don't want the specular-layer-fresnel-attenuation
-	// there
-	pdf += internal_pdf_glass_layer(render_data, bsdf_context, local_view_direction_rotated, local_to_light_direction_rotated, glass_weight, glass_proba);
-	pdf += internal_pdf_glossy_base(render_data, bsdf_context, local_view_direction, local_to_light_direction, local_half_vector, local_view_direction_rotated,
-									local_to_light_direction_rotated, local_half_vector_rotated, bsdf_context.shading_normal, incident_medium_ior,
-									diffuse_weight * !refracting, specular_weight, refracting, diffuse_proba, specular_proba);
-	pdf += internal_pdf_diffuse_transmission_layer(local_view_direction, local_to_light_direction, diffuse_transmission_weight, diffuse_transmission_proba);
-
-	return pdf;
 }
 
 /**
