@@ -14,8 +14,14 @@ extern "C"
 {
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_WAVEFRONT_SHADE_PRIMARY_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
+
 GLOBAL_KERNEL_SIGNATURE(void)
-__launch_bounds__(64) ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(unsigned int bounce_count, unsigned int path_tree_index)
+#if KERNEL_MATERIAL_SPECIALIZATION != 0
+// Only keeping launch bounds for specialized shade primary and only removing it for the "All" material family Shade kernel
+__launch_bounds__(64)
+#endif // #if KERNEL_MATERIAL_SPECIALIZATION != 0
+	ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(unsigned int bounce_count, unsigned int path_tree_index)
+
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(HIPRTRenderData render_data,
