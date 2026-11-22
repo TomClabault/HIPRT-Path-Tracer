@@ -175,6 +175,12 @@ enum KernelMaterialSpecialization : unsigned int
 #define PathSamplingStrategyIsReSTIRPT (PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT || PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT_WAVEFRONT)
 
 /**
+ * Whether the path sampling strategy processes the paths one bounce at a time through the compacted queues of a wavefront render pass.
+ * Usable in #if directives and in code
+ */
+#define PathSamplingStrategyIsWavefront (PathSamplingStrategy == PATH_SAMPLING_BSDF_WAVEFRONT || PathSamplingStrategy == PATH_SAMPLING_RESTIR_PT_WAVEFRONT)
+
+/**
  * Same as PathSamplingStrategyIsReSTIRPT but for a path sampling strategy value only known at runtime
  * (the value of the PATH_SAMPLING_STRATEGY option stored in the GPUKernelCompilerOptions for example)
  */

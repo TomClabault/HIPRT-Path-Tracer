@@ -257,8 +257,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		packed_shading_normal.set_padding(mis_target_function_bsdf_approximation_pixel_flags);
 		render_data.g_buffer.shading_normals[pixel_index] = packed_shading_normal;
 
+#if PathSamplingStrategyIsWavefront
 		if (render_data.wavefront_data.material_family_routing_enabled)
 			primary_material_family = wavefront_classify_primary_material_family(packed_material);
+#endif // #if PathSamplingStrategyIsWavefront
 	}
 	else
 		// Special case when not hitting anything
@@ -278,10 +280,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 	render_data.g_buffer.first_hit_prim_index[pixel_index] = intersection_found ? closest_hit_info.primitive_index : -1;
 	render_data.aux_buffers.pixel_active[pixel_index]	   = true;
 
+#if PathSamplingStrategyIsWavefront
+	// Only a camera rays kernel compiled for a wavefront path sampling strategy queues the pixels: the render data
+	// is shared by the render graphs and still holds the wavefront data of the full render graph while the interactivity
+	// render graph (megakernel, no wavefront pass to consume and reset the queues) renders. Its frames would append to the
+	// queues on top of each other and overflow them
 	if (render_data.wavefront_data.material_family_routing_enabled)
 		// The wavefront primary shading passes consume the active pixels per material family. Queuing the pixel here
 		// avoids a separate classification pass that would read the G-buffer back
 		wavefront_enqueue_material_family(render_data, primary_material_family, pixel_index);
+#endif // #if PathSamplingStrategyIsWavefront
 
 	SSBN_update_screen_space_hash_grid(render_data, x, y, closest_hit_info.inter_point, closest_hit_info.geometric_normal);
 
