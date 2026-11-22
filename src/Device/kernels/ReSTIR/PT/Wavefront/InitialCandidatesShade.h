@@ -14,8 +14,7 @@ extern "C"
 {
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_WAVEFRONT_SHADE_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
-GLOBAL_KERNEL_SIGNATURE(void)
-__launch_bounds__(64) ReSTIR_PT_WavefrontInitialCandidatesShade(unsigned int bounce_count, unsigned int path_tree_index)
+GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PT_WavefrontInitialCandidatesShade(unsigned int bounce_count, unsigned int path_tree_index)
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline ReSTIR_PT_WavefrontInitialCandidatesShade(HIPRTRenderData render_data, unsigned int bounce_count, unsigned int path_tree_index, unsigned int queue_slot)
