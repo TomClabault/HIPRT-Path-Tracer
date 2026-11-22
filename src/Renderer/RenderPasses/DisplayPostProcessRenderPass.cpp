@@ -52,6 +52,17 @@ bool DisplayPostProcessRenderPass::launch_async(HIPRTRenderData& render_data, GP
 	display_render_data.display_post_process_settings.denoised_blend_noisy_sample_count = display_render_data.render_settings.sample_number;
 	display_render_data.display_post_process_settings.gmon_blend_noisy_sample_count		= display_render_data.render_settings.sample_number;
 
+	// GMoN may have recomputed its result earlier in this same sample (on the last sample of the render for example). The GMoN
+	// sample count read in pre_frame_render_update() would then be the one of the previous recomputation and the GMoN result,
+	// which holds more samples than that, would be displayed too bright
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
+	if (gmon_render_pass != nullptr)
+	{
+		display_render_data.display_post_process_settings.gmon_blend_factor = gmon_render_pass->get_gmon_data().gmon_blend_factor;
+		display_render_data.display_post_process_settings.gmon_blend_sample_count =
+			std::max(1, static_cast<int>(gmon_render_pass->get_last_recomputed_sample_count()));
+	}
+
 	return launch_kernel(display_render_data);
 }
 
