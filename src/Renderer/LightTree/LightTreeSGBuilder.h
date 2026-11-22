@@ -123,6 +123,7 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 		device_data_out.nodes_device[i].vmf.sharpness		  = m_nodes[i].vmf.sharpness;
 		device_data_out.nodes_device[i].gaussian_spatial_mean = m_nodes[i].spatial_mean;
 		device_data_out.nodes_device[i].spatial_lobe_count	  = m_build_options.spatial_lobe_count;
+
 		for (int lobe_index = 0; lobe_index < m_build_options.spatial_lobe_count; lobe_index++)
 		{
 			const LightTreeSGSpatialLobeBuild& lobe = m_nodes[i].spatial_lobes[lobe_index];
@@ -133,6 +134,7 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 			device_lobe.power				 = static_cast<float>(lobe.power / SG_integral(m_nodes[i].vmf.sharpness));
 
 			float radius_squared = 0.0f;
+
 			for (int corner_index = 0; corner_index < 8; corner_index++)
 			{
 				const float3_t corner =
@@ -199,7 +201,6 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 								   LightTreeSGBuildResult<DataContainer>& build_result)
 {
 	LightTreeSGBuilderDeviceData<DataContainer>& device_data = build_result.device_data;
-
 	if (device_data.nodes_device.size() == 0)
 	{
 		render_data.light_tree_sg.settings.effective_tree_cut_size		  = 0;
@@ -214,6 +215,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 
 	std::vector<unsigned int> converted_bit_trails(total_scene_triangle_count, 0xFFFFFFFF);
+
 	for (int i = 0; i < m_light_tree_ats_builder.get_bit_trails().size(); i++)
 		converted_bit_trails[emissive_triangles_primitive_indices[m_light_tree_ats_builder.get_triangle_indices()[i]]] =
 			m_light_tree_ats_builder.get_bit_trails()[i];
@@ -223,6 +225,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 		device_data.m_device_spatial_lobes_buffer				 = device_data.spatial_lobes_device;
 		device_data.m_device_tree_cut_node_indices_buffer		 = device_data.tree_cut_node_indices_device;
 		device_data.m_device_second_tree_cut_node_indices_buffer = device_data.second_tree_cut_node_indices_device;
+
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes =
 				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;
@@ -237,6 +240,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 		device_data.m_device_spatial_lobes_buffer				 = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
 		device_data.m_device_tree_cut_node_indices_buffer		 = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
 		device_data.m_device_second_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.second_tree_cut_node_indices_device);
+
 		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
 			device_data.nodes_device[node_index].spatial_lobes =
 				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;

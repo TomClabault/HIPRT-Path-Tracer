@@ -33,12 +33,14 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 	// GI bounces and this leads to way worse variance so we're disabling path guiding then
 
 	// TODO this one disabled because it's worse than without in some cases, not ideal
-	bool view_directional_gi  = false; // ray_payload.material.minimum_roughness() < 0.7f || ray_payload.accumulated_roughness_specular_path_spread();
+	bool view_directional_gi = false; // ray_payload.material.minimum_roughness() < 0.7f || ray_payload.accumulated_roughness_specular_path_spread();
+
 	bool disable_path_guiding = no_distribution || bad_material || view_directional_gi;
 	if (disable_path_guiding)
 		bsdf_probability = 1.0f;
 
 	bool path_guiding_sampled;
+
 	float random_value = random_number_generator();
 	if (random_value < bsdf_probability)
 	{
@@ -70,6 +72,7 @@ HIPRT_DEVICE void restir_pg_sample_bounce(HIPRTRenderData& render_data,
 	bsdf_pdf *= bsdf_probability;
 
 	float distribution_pdf = 0.0f;
+
 	if (bsdf_probability < 1.0f)
 	{
 		distribution_pdf = distribution.pdf(out_bounce_direction);

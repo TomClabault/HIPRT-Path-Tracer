@@ -26,27 +26,26 @@ struct Triangle
 		edge2 = m_c - m_a;
 
 		h = hippt::cross(ray.direction, edge2);
-		a = hippt::dot(edge1, h);
 
+		a = hippt::dot(edge1, h);
 		if (a > -EPSILON && a < EPSILON)
 			return false; // This ray is parallel to this triangle.
 
 		f = 1.0f / a;
 		s = ray.origin - m_a;
-		u = f * hippt::dot(s, h);
 
+		u = f * hippt::dot(s, h);
 		if (u < 0.0f || u > 1.0f)
 			return false;
 
 		q = hippt::cross(s, edge1);
-		v = f * hippt::dot(ray.direction, q);
 
+		v = f * hippt::dot(ray.direction, q);
 		if (v < 0.0f || u + v > 1.0f)
 			return false;
 
 		// At this stage we can compute t to find out where the intersection point is on the line.
 		float t = f * hippt::dot(edge2, q);
-
 		if (t > EPSILON) // ray intersection
 		{
 			hit_info.t		= t;

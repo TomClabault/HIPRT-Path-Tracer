@@ -32,6 +32,7 @@ bool GMoNRenderPass::pre_frame_render_update(float delta_time)
 	{
 		unsigned int number_of_sets =
 			m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT);
+
 		if (!m_gmon.buffers_allocated() || m_gmon.current_resolution.x != render_resolution.x || m_gmon.current_resolution.y != render_resolution.y)
 		{
 			// Resizing the buffers because the resolution has changed
@@ -104,7 +105,8 @@ bool GMoNRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompile
 	bool enough_samples_accumulated = (render_data.render_settings.sample_number + 1) % number_of_sets == 0;
 	bool sample_0					= render_data.render_settings.sample_number == 0;
 	bool last_sample_of_render		= render_data.render_settings.sample_number == (application_settings->max_sample_count - 1);
-	bool recomputation_necessary	= m_gmon.m_gmon_recomputation_requested || last_sample_of_render;
+
+	bool recomputation_necessary = m_gmon.m_gmon_recomputation_requested || last_sample_of_render;
 	if ((enough_samples_accumulated || sample_0) && recomputation_necessary)
 	{
 		// If we have rendered enough samples that one more sample has been accumulated in each of the
@@ -138,6 +140,7 @@ void GMoNRenderPass::post_sample_update_async(HIPRTRenderData& render_data, GPUK
 	{
 		// We're going to increment the counter that indicates in which sets of GMoN to accumulate
 		m_next_set_to_accumulate++;
+
 		if (m_next_set_to_accumulate ==
 			m_kernels[GMoNRenderPass::COMPUTE_GMON_KERNEL]->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::GMON_M_SETS_COUNT))
 			// Going back to 0 if we've reached the end of the sets, round robin style
@@ -186,7 +189,6 @@ void GMoNRenderPass::reset(bool reset_by_camera_movement)
 void GMoNRenderPass::update_render_data()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
 	if (m_gmon.sets.size() != 0)
 		render_data.buffers.gmon_estimator.sets = m_gmon.sets.get_device_pointer();
 	else

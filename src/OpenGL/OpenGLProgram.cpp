@@ -34,6 +34,7 @@ void OpenGLProgram::attach(const OpenGLShader& compiled_shader)
 		m_program = glCreateProgram();
 
 	glAttachShader(m_program, compiled_shader.get_shader());
+
 	if (compiled_shader.get_shader_type() == OpenGLShader::COMPUTE_SHADER)
 		m_is_compute = true;
 }

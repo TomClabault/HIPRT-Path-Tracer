@@ -38,6 +38,7 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 	unsigned int guiding_node_index = kd_tree.learning_to_cluster.training_samples_soa.cached_guiding_node_indices[sample_index];
 	unsigned int normal_face		= kd_tree.learning_to_cluster.training_samples_soa.cached_normal_faces[sample_index];
 	unsigned int set_index			= kd_tree.learning_to_cluster.training_samples_soa.cached_lightcut_set_indices[sample_index];
+
 	if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_node_index >= kd_tree.core.node_capacity ||
 		normal_face >= SurfaceNormalFace_Count || set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX ||
 		set_index >= kd_tree.learning_to_cluster.normal_lightcut_set_capacity)
@@ -52,6 +53,7 @@ IlluminationAwareKDTree_LearningToClusterInitializeShadingContexts(IlluminationA
 	kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index] = lightcut_index;
 
 	AtomicType<unsigned int>* context_state = kd_tree.learning_to_cluster.lightcut_representative_shading_context_states + lightcut_index;
+
 	unsigned int previous_state =
 		hippt::atomic_compare_exchange(context_state, IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_NO_CONTEXT,
 									   IlluminationAwareKDTreeLearningToClusterDevice::REPRESENTATIVE_SHADING_CONTEXT_STATE_WRITING);

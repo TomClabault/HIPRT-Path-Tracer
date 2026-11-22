@@ -85,17 +85,20 @@ namespace HIPPTOrochiUtils
 			f.seekg(0, std::ifstream::end);
 			size_t size = sizeFile = (size_t)f.tellg();
 			f.seekg(0, std::ifstream::beg);
+
 			if (includes)
 			{
 				sourceCode.clear();
 				std::string line;
 				char buf[512];
+
 				while (std::getline(f, line))
 				{
 					if (strstr(line.c_str(), "#include") != 0)
 					{
 						const char* a = strstr(line.c_str(), "<");
 						const char* b = strstr(line.c_str(), ">");
+
 						if (!a)
 						{
 							// If we couldn't find a "<", trying to find a '"'
@@ -113,7 +116,6 @@ namespace HIPPTOrochiUtils
 						if (!b)
 						{
 							b = strstr(a + 1, "\"");
-
 							if (!b)
 							{
 								HIPPT_OROCHI_LOG_ERROR("Unable to parse header name in line '%s'", line.c_str());
@@ -167,6 +169,7 @@ namespace HIPPTOrochiUtils
 		std::string kernel_source_code;
 
 		read_source_code(kernel_file_path, kernel_source_code);
+
 		if (kernel_source_code == "")
 			Debug::debugbreak();
 
@@ -177,6 +180,7 @@ namespace HIPPTOrochiUtils
 
 		std::vector<std::string> additional_include_directories_options;
 		additional_include_directories_options.reserve(additional_include_directories.size());
+
 		for (const std::string& additional_include_dir : additional_include_directories)
 		{
 			additional_include_directories_options.push_back("-I" + additional_include_dir);

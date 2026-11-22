@@ -43,7 +43,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 		return;
 
 	uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
-
 	if (!render_data.aux_buffers.pixel_active[pixel_index])
 		return;
 
@@ -54,6 +53,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 
 	HitInfo closest_hit_info;
 	closest_hit_info.primitive_index = render_data.g_buffer.first_hit_prim_index[pixel_index];
+
 	if (closest_hit_info.primitive_index == -1)
 	{
 		// Geometry miss, directly into the envmap
@@ -108,6 +108,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			first_hit_throughput = bsdf_first_hit * hippt::abs(hippt::dot(to_light_direction_visible_point, closest_hit_info.shading_normal));
 
 		ColorRGB32F secondary_hit_throughput = ColorRGB32F(1.0f);
+
 		if (!resampling_reservoir.sample.di_sample)
 		{
 			float3_t view_direction					 = hippt::normalize(closest_hit_info.inter_point - resampling_reservoir.sample.rc_vertex);
@@ -141,6 +142,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 
 	// Setting the 'camera_outgoing_radiance' into the ray color just for the call to 'sanity_check'
 	ray_payload.ray_color = camera_outgoing_radiance;
+
 	if (!sanity_check(render_data, ray_payload.ray_color, x, y))
 		return;
 

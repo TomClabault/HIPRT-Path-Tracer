@@ -227,6 +227,7 @@ void CPURenderer::setup_nee_plus_plus()
 	m_nee_plus_plus.num_rays_staging		= std::vector<AtomicType<unsigned int>>(1000000);
 	m_nee_plus_plus.unoccluded_rays_staging = std::vector<AtomicType<unsigned int>>(1000000);
 	m_nee_plus_plus.checksum_buffer			= std::vector<AtomicType<unsigned int>>(1000000);
+
 	for (AtomicType<unsigned int>& checksum : m_nee_plus_plus.checksum_buffer)
 		checksum.store(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
 
@@ -278,7 +279,6 @@ void CPURenderer::ReSTIR_PT_post_sample_update()
 #endif
 
 	unsigned int pixel_count = m_resolution.x * m_resolution.y;
-
 #pragma omp parallel for
 	for (int index = 0; index < pixel_count; index++)
 	{
@@ -295,6 +295,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 	m_render_data.world_settings.scene_max = m_scene_bounding_box.maxi;
 
 	m_gpu_packed_materials.resize(parsed_scene.materials.size());
+
 	for (int i = 0; i < parsed_scene.materials.size(); i++)
 		m_gpu_packed_materials[i] = parsed_scene.materials[i].pack_to_GPU();
 
@@ -315,6 +316,7 @@ void CPURenderer::set_scene(Scene& parsed_scene)
 
 	// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
 	m_material_opaque.resize(parsed_scene.materials.size());
+
 	for (int i = 0; i < parsed_scene.materials.size(); i++)
 		m_material_opaque[i] = parsed_scene.material_has_opaque_base_color_texture[i] && parsed_scene.materials[i].alpha_opacity == 1.0f;
 
@@ -641,7 +643,8 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 	unsigned int node_count						 = *kd_tree_device.core.node_count;
 
 #if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator) && DirectLightSamplingStrategy == LSS_BASE_LIGHT_TREE_SG
-	unsigned int lightcut_count		= *kd_tree_device.learning_to_cluster.lightcut_count;
+	unsigned int lightcut_count = *kd_tree_device.learning_to_cluster.lightcut_count;
+
 	unsigned int reset_thread_count = std::max(node_count, lightcut_count);
 	for (unsigned int reset_index = 0; reset_index < reset_thread_count; reset_index++)
 		IlluminationAwareKDTree_LearningToClusterResetBatchKDTreeAndLightcutStatistics(kd_tree_device, reset_index);
@@ -665,6 +668,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		std::vector<unsigned int>& initial_lightcut_node_indices =
 			m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_initial_lightcut_node_indices;
 		std::fill(initial_lightcut_node_indices.begin(), initial_lightcut_node_indices.end(), IlluminationAwareKDTreeNode::INVALID_NODE_INDEX);
+
 		if (envmap_cluster_enabled)
 			initial_lightcut_node_indices[0] = IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
 		std::copy_n(second_tree_cut_node_indices.begin(), effective_second_tree_cut_size, initial_lightcut_node_indices.begin() + envmap_slot_count);
@@ -673,6 +677,7 @@ void CPURenderer::pre_frame_render_update(int frame_number)
 		if (effective_initial_lightcut_size > 0)
 		{
 			LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
+
 			for (unsigned int slot = 0; slot < LearningToClusterMaximumLightCutSize; slot++)
 				IlluminationAwareKDTree_LearningToClusterInitializeRootLightcut(kd_tree_device, light_tree_sg, slot);
 		}
@@ -782,6 +787,7 @@ void CPURenderer::illumination_aware_kd_tree_reset()
 	m_illumination_aware_kd_tree_state.next_creation_tag				  = 0;
 
 	m_render_data.kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
+
 	unsigned int reset_count =
 		std::max(m_render_data.kd_tree_device.core.node_capacity,
 				 static_cast<unsigned int>(m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_learning_to_cluster_data.m_lightcut_data.size()));
@@ -795,15 +801,14 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 {
 #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS || DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
 	IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.to_device(m_render_data);
-
 	if (m_render_data.render_settings.sample_number <= kd_tree_device.core.user_settings.stop_refining_after_SPP - 1)
 	{
 		unsigned int sample_count = kd_tree_device.core.training_sample_count->load();
-
 		for (unsigned int sample_index = 0; sample_index < sample_count; sample_index++)
 			IlluminationAwareKDTree_CoreAccumulateBatchTrainingSamples(kd_tree_device, sample_index);
 
 		unsigned int node_count = *kd_tree_device.core.node_count;
+
 		for (unsigned int reduction_level = IlluminationAwareKDTreeMaximumLookaheadLevelCount; reduction_level > 0; reduction_level--)
 			for (unsigned int node_index = 0; node_index < node_count; node_index++)
 				IlluminationAwareKDTree_CoreReduceBatchStatisticsUpward(kd_tree_device, reduction_level, node_index);
@@ -835,7 +840,8 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 			*kd_tree_device.core.node_count_before_expansion = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-			const unsigned int creation_tag					= m_illumination_aware_kd_tree_state.next_creation_tag++;
+			const unsigned int creation_tag = m_illumination_aware_kd_tree_state.next_creation_tag++;
+
 			const unsigned int current_frontier_count_value = current_frontier_count->load();
 			for (unsigned int frontier_index = 0; frontier_index < current_frontier_count_value; frontier_index++)
 				IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(kd_tree_device, creation_tag, frontier_index);
@@ -850,6 +856,7 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 			const unsigned int next_frontier_count_value = next_frontier_count->load();
 			current_frontier							 = next_frontier;
 			current_frontier_count						 = next_frontier_count;
+
 			if (next_frontier_uses_first_buffer)
 			{
 				next_frontier		= m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.m_kd_tree_data.m_next_frontier.data();
@@ -897,14 +904,18 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 
 	unsigned int lightcut_count		= kd_tree_device.learning_to_cluster.lightcut_count->load();
 	LightTreeSGDevice light_tree_sg = m_render_data.light_tree_sg;
+
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterInitializeLightcutQ0(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
 	unsigned int reset_sample_counts = 1u;
+
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(kd_tree_device, reset_sample_counts, static_cast<int>(lightcut_index));
+
 	for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
 		IlluminationAwareKDTree_LearningToClusterReplayStatistics(kd_tree_device, light_tree_sg, static_cast<int>(sample_index));
 	IlluminationAwareKDTreeStatisticsUpdateMode statistics_update_mode = IlluminationAwareKDTreeStatisticsUpdateMode::UPDATE_ALL;
+
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, statistics_update_mode, static_cast<int>(lightcut_index));
 
@@ -918,23 +929,30 @@ void CPURenderer::illumination_aware_kd_tree_post_sample_update()
 			break;
 
 		reset_sample_counts = 1u;
+
 		for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 			IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(kd_tree_device, reset_sample_counts, static_cast<int>(lightcut_index));
+
 		for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
 			IlluminationAwareKDTree_LearningToClusterReplayStatistics(kd_tree_device, light_tree_sg, static_cast<int>(sample_index));
 
 		statistics_update_mode = IlluminationAwareKDTreeStatisticsUpdateMode::INITIALIZE_EMPTY_ONLY;
+
 		for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 			IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(kd_tree_device, statistics_update_mode, static_cast<int>(lightcut_index));
 	}
 
 	reset_sample_counts = 0u;
+
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(kd_tree_device, reset_sample_counts, static_cast<int>(lightcut_index));
+
 	for (unsigned int sample_index = 0; sample_index < lightcut_sample_count; sample_index++)
 		IlluminationAwareKDTree_LearningToClusterReplayQRewards(kd_tree_device, light_tree_sg, static_cast<int>(sample_index));
+
 	for (unsigned int lightcut_index = 0; lightcut_index < lightcut_count; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterQUpdates(kd_tree_device, static_cast<int>(lightcut_index));
+
 	for (unsigned int lightcut_index = 0; lightcut_index < kd_tree_device.learning_to_cluster.lightcut_capacity; lightcut_index++)
 		IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(kd_tree_device, light_tree_sg, static_cast<int>(lightcut_index));
 #endif																   // #if DirectLightNEEEstimator == LSS_NEURAL_MANY_LIGHTS
@@ -1041,6 +1059,7 @@ void CPURenderer::hierarchical_adaptive_sampling_pass()
 
 	unsigned int completed_sample_count = render_settings.sample_number + 1u;
 	unsigned int minimum_sample_count	= static_cast<unsigned int>(std::max(2, render_settings.adaptive_sampling_min_samples));
+
 	// Rebuilding periodically allows completed regions to become active again when their error estimate changes. Rebuilding too often is wasteful, but
 	// rebuilding too infrequently can cause the adaptive sampling to miss regions that have changed. A rebuild interval of 2% of the total sample count is a
 	// reasonable compromise.
@@ -1076,6 +1095,7 @@ void CPURenderer::hierarchical_adaptive_sampling_pass()
 
 		unsigned int maximum_thread_count = static_cast<unsigned int>(m_hierarchical_adaptive_sampling_nodes.size());
 		unsigned int thread_count		  = maximum_thread_count;
+
 		if (build_depth < 30u)
 		{
 			unsigned int maximum_nodes_through_depth = (1u << (build_depth + 1u)) - 1u;
@@ -1175,6 +1195,7 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 	AtomicType<unsigned int>* cell_confidence_sums = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CONFIDENCE_SUMS>().data();
 	AtomicType<unsigned int>* cell_global_offset_counter =
 		spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().data();
+
 	unsigned int num_cells = m_resolution.x * m_resolution.y;
 	for (int i = 0; i < num_cells; i++)
 	{
@@ -1183,6 +1204,7 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 
 	unsigned int* all_pixels_hashes	   = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_HASHES>().data();
 	unsigned int* pixels_index_in_cell = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().data();
+
 	for (int i = 0; i < num_cells; i++)
 	{
 		// First call to count important pixels first
@@ -1199,12 +1221,14 @@ void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservo
 
 	unsigned int* cell_offsets			= spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_OFFSETS>().data();
 	void* compute_offsets_launch_args[] = { &cell_pixels_counters, &cell_global_offset_counter, &cell_offsets, &num_cells };
+
 	for (int i = 0; i < num_cells; i++)
 	{
 		ReSTIR_PT_SPMIS_ComputeOffsets(cell_pixels_counters, cell_global_offset_counter, cell_offsets, num_cells, i);
 	}
 
 	unsigned int* pixel_indices_sorted = spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_PIXEL_INDICES_SORTED>().data();
+
 	for (int i = 0; i < num_cells; i++)
 	{
 		ReSTIR_PT_SPMIS_Sort(all_pixels_hashes, pixels_index_in_cell, cell_offsets, pixel_indices_sorted, num_cells, i);
@@ -1390,7 +1414,6 @@ void CPURenderer::tonemap(float gamma, float exposure)
 			int index = x + y * m_resolution.x;
 
 			ColorRGB32F hdr_color = framebuffer_data[index];
-
 			if (m_render_data.render_settings.accumulate)
 				// Scaling by sample count
 				hdr_color = hdr_color / float(m_render_data.render_settings.sample_number);

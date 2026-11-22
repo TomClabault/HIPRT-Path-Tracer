@@ -20,6 +20,7 @@ HIPRT_DEVICE unsigned int load_flag(const unsigned int* __restrict__ flags,
 {
 	unsigned int warp_id = global_tid >> 5;
 	unsigned int lane_id = global_tid & 31;
+
 	unsigned int flag;
 	if (evenly_spaced_segment_size > 0)
 		// If we have evenly spaced segments, we can calculate the flag without reading from memory by checking if the global thread ID is a multiple of the
@@ -29,7 +30,6 @@ HIPRT_DEVICE unsigned int load_flag(const unsigned int* __restrict__ flags,
 		// Otherwise, we read the flag from memory. Each unsigned int in 'flags' contains 32 flags for 32 consecutive threads, so we need to extract the
 		// relevant bit.
 		flag = (global_tid < input_size) ? flags[warp_id] & (1u << lane_id) : 0;
-
 	if (global_tid == 0)
 		flag = 1; // Ensure the very first element of the array is a head / segment start
 
@@ -52,6 +52,7 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 	unsigned int global_tid					  = bid * PARALLEL_REDUCTION_CHUNK_SIZE + tid;
 	InputDataType thread_input_value_original = (global_tid < input_size) ? input[global_tid] : 0;
 	TransformedDataType thread_input_value	  = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
+
 	if (segment_length > 0 && evenly_spaced_segment_size > 0)
 	{
 		unsigned int index_in_segment = global_tid % evenly_spaced_segment_size;
@@ -72,6 +73,7 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 		segment_id = (global_tid < input_size) ? segment_ids[global_tid] : 0;
 	else
 		segment_id = global_tid / evenly_spaced_segment_size;
+
 	if (global_tid < input_size)
 		hippt::atomic_fetch_add_gpu(&output[segment_id], ComputeDataTransforms::output_value_transform(thread_input_value, global_tid));
 
@@ -81,6 +83,7 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 
 	__shared__ DataType shared_mem_accumulations[PARALLEL_REDUCTION_CHUNK_SIZE];
 	__shared__ unsigned int first_segment_id;
+
 	if (tid == 0)
 		first_segment_id = segment_id_;
 	shared_mem_accumulations[tid] = 0;
@@ -95,8 +98,8 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 
 	bool end_of_segment		   = next_flag != 0;
 	bool last_element_of_block = (tid == PARALLEL_REDUCTION_CHUNK_SIZE - 1) || (global_tid == input_size - 1);
-	bool needs_to_accumulate   = end_of_segment || last_element_of_block;
 
+	bool needs_to_accumulate = end_of_segment || last_element_of_block;
 	if (needs_to_accumulate && global_tid < input_size)
 		hippt::atomic_fetch_add_gpu(&output[segment_id_],
 									ComputeDataTransforms::output_value_transform(shared_mem_accumulations[segment_id_ - first_segment_id], global_tid));
@@ -113,8 +116,8 @@ ParallelSegmentedReduction_Reduce(const InputDataType* __restrict__ input,
 
 		bool end_of_segment		   = next_flag != 0;
 		bool last_element_of_block = (tid == PARALLEL_REDUCTION_CHUNK_SIZE - 1) || (global_tid == input_size - 1);
-		bool needs_to_accumulate   = end_of_segment || last_element_of_block;
 
+		bool needs_to_accumulate = end_of_segment || last_element_of_block;
 		if (needs_to_accumulate)
 		{
 			unsigned int segment_id = (global_tid < input_size) ? segment_ids[global_tid] : 0;

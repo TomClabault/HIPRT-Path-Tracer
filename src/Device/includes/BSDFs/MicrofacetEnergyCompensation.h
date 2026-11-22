@@ -33,6 +33,7 @@ HIPRT_DEVICE static ColorRGB32F get_GGX_energy_compensation_conductors(const HIP
 {
 	bool smooth_enough			= material_roughness <= render_data.bsdfs_data.energy_compensation_roughness_threshold;
 	bool invalid_view_direction = local_view_direction.z < 0.0f;
+
 	if (!material_do_energy_compensation || smooth_enough || invalid_view_direction)
 		return ColorRGB32F(1.0f);
 
@@ -110,6 +111,7 @@ HIPRT_DEVICE HIPRT_NOINLINE static float GGX_glass_energy_compensation_get_corre
 
 	float lower_relative_eta_bound = 1.01f;
 	float lower_correction		   = 2.5f;
+
 	if (relative_eta > 1.01f && relative_eta <= 1.02f)
 	{
 		lower_relative_eta_bound = 1.01f;
@@ -356,6 +358,7 @@ HIPRT_DEVICE HIPRT_NOINLINE static float GGX_glass_energy_compensation_get_corre
 
 	float higher_relative_eta_bound = 1.01f;
 	float higher_correction			= 2.5f;
+
 	if (relative_eta <= 1.01f)
 	{
 		higher_relative_eta_bound = 1.01f;
@@ -650,6 +653,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 
 	float thin_film	 = 0.0f;
 	bool thin_walled = false;
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		thin_film	= material.thin_film;
@@ -667,7 +671,8 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 	if (thin_film < 1.0f)
 	{
 		float relative_eta_for_correction = inside_object ? 1.0f / relative_eta : relative_eta;
-		float exponent_correction		  = 2.5f;
+
+		float exponent_correction = 2.5f;
 		if (!thin_walled)
 			exponent_correction = GGX_glass_energy_compensation_get_correction_exponent(custom_roughness, relative_eta_for_correction);
 
@@ -685,6 +690,7 @@ HIPRT_DEVICE static float get_GGX_energy_compensation_glass(const HIPRTRenderDat
 		float F0_remapped = hippt::sqrt(hippt::sqrt(F0));
 
 		float3_t uvw = make_float3(view_direction_tex_fetch, custom_roughness, F0_remapped);
+
 		if (thin_walled)
 		{
 			void* texture = render_data.bsdfs_data.GGX_thin_glass_directional_albedo;

@@ -102,6 +102,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 			int confidence = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_index_j].confidence;
 			denom += target_function_at_j * confidence;
+
 			if (j == current_neighbor_index)
 				nume = target_function_at_j * confidence;
 		}
@@ -179,7 +180,6 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MI
 							center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 							neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
 							render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 							// and has been rejected), the target function is set to 0
@@ -311,6 +311,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_MI
 				float denom_mc = target_function_center_sample_at_neighbor * neighbors_confidence_sum +
 								 target_function_center_sample_at_center * center_reservoir_confidence;
 				float confidence_multiplier = reservoir_resampled_confidence / (center_reservoir_confidence + neighbors_confidence_sum);
+
 				if (denom_mc != 0.0f)
 					mc += nume_mc / denom_mc * confidence_multiplier;
 			}
@@ -401,7 +402,6 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_R
 							center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 							neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
 							render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 							// and has been rejected), the target function is set to 0
@@ -521,7 +521,6 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_
 							center_pixel_reservoir_sample.rc_vertex, center_pixel_reservoir_sample.rc_vertex_geometric_normal.unpack(),
 							neighbor_pixel_surface.shading_point, center_pixel_surface.shading_point,
 							render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-
 						if (jacobian == 0.0f)
 							// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 							// and has been rejected), the target function is set to 0
@@ -536,6 +535,7 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC_
 				float difference_function_mc =
 					symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center,
 																	render_data.render_settings.restir_pt_settings.symmetric_ratio_mis_weights_beta_exponent);
+
 				if (target_function_center_sample_at_center <= target_function_center_sample_at_neighbor)
 				{
 					nume_mc	 = difference_function_mc * reservoir_resampled_confidence;

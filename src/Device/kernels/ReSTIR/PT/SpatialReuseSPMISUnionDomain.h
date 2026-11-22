@@ -69,6 +69,7 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	// For every neighbor slot, the selected pixel and its selection "probability" P (1 / unbiased contribution weight of the two-stage selection)
 	unsigned int selected_pixel_indices[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS];
 	float selection_probabilities[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_NEIGHBORS];
+
 	int selected_slot_count = 0;
 	if (domain.non_zero_count > 0)
 		// One pool of visibility candidates for the pixel
@@ -108,6 +109,7 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 		float resampling_target_function_at_center = ReSTIR_PT_resampling_target_function_bsdf_approximation(neighbor_reservoir.sample, mis_target_at_center);
 
 		float mis_weight = 0.0f;
+
 		if (resampling_target_function_at_center > 0.0f && shift_mapping_jacobian != 0.0f)
 		{
 			// Own term of the neighbor's sample at the neighbor in the measure of the center pixel, from its target function in its own measure (the Jacobian

@@ -20,6 +20,7 @@ HIPRT_DEVICE bool intersectFunc(uint32_t geomType, uint32_t rayType, const hiprt
 {
 	const uint32_t index			  = tableHeader.numGeomTypes * rayType + geomType;
 	[[maybe_unused]] const void* data = tableHeader.funcDataSets[index].intersectFuncData;
+
 	switch (index)
 	{
 	default:
@@ -34,6 +35,7 @@ HIPRT_DEVICE bool filterFunc(
 {
 	const uint32_t index			  = tableHeader.numGeomTypes * rayType + geomType;
 	[[maybe_unused]] const void* data = tableHeader.funcDataSets[index].filterFuncData;
+
 	switch (index)
 	{
 	case 0:

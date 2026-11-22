@@ -144,6 +144,7 @@ struct NestedDielectricsInteriorStack
 
 		// Parity of the material we're inserting in the stack
 		bool odd_parity = true;
+
 		// Index in the stack of the previous material that is the same as
 		// the one we're trying to insert in the stack.
 		int previous_same_mat_index;
@@ -202,6 +203,7 @@ struct NestedDielectricsInteriorStack
 	HIPRT_HOST_DEVICE void pop(const bool inside_material)
 	{
 		int stack_top_mat_index = stack_entries[stack_position].get_material_index();
+
 		if (stack_position > 0)
 			// Checking that we have room to pop.
 			// For a very small stack (size of 2) that overflown

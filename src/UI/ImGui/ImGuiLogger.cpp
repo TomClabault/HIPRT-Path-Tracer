@@ -64,8 +64,10 @@ void ImGuiLogger::draw(const char* title, bool* p_open)
 	{
 		if (clear_button)
 			clear();
+
 		if (copy)
 			ImGui::LogToClipboard();
+
 		if (m_log_lines.size() == 0)
 		{
 			ImGui::EndChild();
@@ -75,6 +77,7 @@ void ImGuiLogger::draw(const char* title, bool* p_open)
 		}
 
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
 		if (m_text_filter.IsActive())
 		{
 			// In this example we don't use the clipper when Filter is enabled.
@@ -90,7 +93,6 @@ void ImGuiLogger::draw(const char* title, bool* p_open)
 
 				const char* line_start = str_view->data();
 				const char* line_end   = line_start + str_view->length();
-
 				if (m_text_filter.PassFilter(line_start, line_end))
 				{
 					ImGui::PushStyleColor(ImGuiCol_Text, ImGuiLogger::get_severity_color(line->severity));
@@ -116,6 +118,7 @@ void ImGuiLogger::draw(const char* title, bool* p_open)
 			// it possible (and would be recommended if you want to search through tens of thousands of entries).
 			ImGuiListClipper clipper;
 			clipper.Begin(m_total_number_of_lines);
+
 			while (clipper.Step())
 			{
 				for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
@@ -303,6 +306,7 @@ void ImGuiLogger::compute_actual_lines(std::shared_ptr<ImGuiLoggerLine> logger_l
 	actual_lines.clear();
 
 	int previous_line_feed_pos = 0;
+
 	for (int character_pos = 0; character_pos < string_length; character_pos++)
 	{
 		if (logger_line->string[character_pos] == '\n')
@@ -326,6 +330,7 @@ std::pair<std::shared_ptr<ImGuiLoggerLine>, std::string_view*> ImGuiLogger::get_
 		return find->second;
 
 	int total = 0;
+
 	for (int actual_line_index = 0; actual_line_index < m_actual_lines.size(); actual_line_index++)
 	{
 		std::vector<std::string_view>& actual_lines = m_actual_lines[actual_line_index];

@@ -21,8 +21,10 @@ struct IlluminationAwareKDTreeDevice
 	{
 		if (out_guiding_node_index != nullptr)
 			*out_guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+
 		if (out_normal_face != nullptr)
 			*out_normal_face = 0u;
+
 		if (out_set_index != nullptr)
 			*out_set_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
 
@@ -33,16 +35,19 @@ struct IlluminationAwareKDTreeDevice
 		unsigned int guiding_node_index = core.find_guiding_cell(context.position);
 		if (guiding_node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || guiding_node_index >= core.node_capacity)
 			return IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+
 		if (out_guiding_node_index != nullptr)
 			*out_guiding_node_index = guiding_node_index;
 
 		unsigned int normal_face = illumination_aware_kd_tree_classify_surface_normal_face(context.shading_normal);
+
 		if (out_normal_face != nullptr)
 			*out_normal_face = normal_face;
 
 		unsigned int set_index = core.nodes[guiding_node_index].lightcut_normal_set_index;
 		if (set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || set_index >= learning_to_cluster.normal_lightcut_set_capacity)
 			return IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+
 		if (out_set_index != nullptr)
 			*out_set_index = set_index;
 

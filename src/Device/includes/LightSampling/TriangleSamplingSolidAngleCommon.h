@@ -60,8 +60,8 @@ HIPRT_DEVICE float3_t map_direction_to_triangle_point(float3_t sampled_solid_ang
 		return make_float3(0.0f, 0.0f, 0.0f);
 	}
 	float3_t v0_rel = vertex_A - shading_point;
-	float denom		= hippt::dot(sampled_solid_angle_direction, triangle_normal);
 
+	float denom = hippt::dot(sampled_solid_angle_direction, triangle_normal);
 	if (hippt::abs(denom) < 1e-8f)
 	{
 		// Nearly parallel

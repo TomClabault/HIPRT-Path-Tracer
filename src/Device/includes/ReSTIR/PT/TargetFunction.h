@@ -79,6 +79,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
+
 	if (sample.is_envmap_path())
 	{
 		// For envmap path, the direction is stored in the 'rc_vertex' value
@@ -90,6 +91,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		// Not an envmap path, the direction is the difference between the current shading
 		// point and the reconnection point
 		incident_light_direction = sample.rc_vertex - surface.shading_point;
+
 		distance_to_sample_point = hippt::length(incident_light_direction);
 		if (distance_to_sample_point <= 1.0e-6f)
 			// To avoid numerical instabilities
@@ -114,6 +116,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function(const HIPRTRenderData
 		visibility_ray.direction = incident_light_direction;
 
 		Xorshift32Generator random_number_generator_alpha_test(sample.visible_to_sample_point_alpha_test_random_seed);
+
 		bool sample_point_occluded =
 			evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface.primitive_index, random_number_generator_alpha_test);
 		if (sample_point_occluded)
@@ -159,6 +162,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 {
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
+
 	if (sample.is_envmap_path())
 	{
 		// For envmap path, the direction is stored in the 'rc_vertex' value
@@ -170,6 +174,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 		// Not an envmap path, the direction is the difference between the current shading
 		// point and the reconnection point
 		incident_light_direction = sample.rc_vertex - surface_shading_point;
+
 		distance_to_sample_point = hippt::length(incident_light_direction);
 		if (distance_to_sample_point <= 1.0e-6f)
 			// To avoid numerical instabilities
@@ -186,19 +191,20 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 	// The padding byte of the packed shading normal holds the flags of the pixel for the MIS target function BSDF approximation
 	Octahedral24BitNormalPadded32b surface_packed_shading_normal = render_data.g_buffer.shading_normals[surface_pixel_index];
 	float3_t surface_shading_normal								 = surface_packed_shading_normal.unpack();
-	float cosine_term											 = hippt::dot(incident_light_direction, surface_shading_normal);
+
+	float cosine_term = hippt::dot(incident_light_direction, surface_shading_normal);
 	if (cosine_term <= 0.0f && !bsdf_incident_light_info_transmission_lobe(sample.incident_light_info_at_visible_point))
 		return 0.0f;
 
 	int surface_primitive_index = render_data.g_buffer.first_hit_prim_index[surface_pixel_index];
 
 	float approximation_value = 0.0f;
+
 	if constexpr (misTargetFunctionBSDFApproximation)
 	{
 		int decision =
 			ReSTIR_PT_MIS_target_function_bsdf_approximation_decision(render_data, sample, surface_packed_shading_normal.get_padding(), surface_shading_point,
 																	  surface_shading_normal, incident_light_direction, cosine_term);
-
 		if (decision == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH)
 			approximation_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_cheap_path_value(
 				render_data, sample, surface_pixel_index, surface_shading_point, surface_shading_normal, incident_light_direction, cosine_term);
@@ -233,6 +239,7 @@ HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTR
 		visibility_ray.direction = incident_light_direction;
 
 		Xorshift32Generator random_number_generator_alpha_test(sample.visible_to_sample_point_alpha_test_random_seed);
+
 		bool sample_point_occluded =
 			evaluate_shadow_ray_occluded(render_data, visibility_ray, distance_to_sample_point, surface_primitive_index, random_number_generator_alpha_test);
 		if (sample_point_occluded)

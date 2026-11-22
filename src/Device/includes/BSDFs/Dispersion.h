@@ -860,6 +860,7 @@ static void write_wavelength_to_RGB_data_to_file()
 	std::ofstream G("wavelength_to_rgb_G_" + std::to_string(nb_samples) + ".csv");
 	std::ofstream B("wavelength_to_rgb_B_" + std::to_string(nb_samples) + ".csv");
 	float Y_sum = 0.0f;
+
 	for (int i = 0; i < nb_samples; i++)
 	{
 		float wavelength = MIN_SAMPLE_WAVELENGTH + i * (MAX_SAMPLE_WAVELENGTH - MIN_SAMPLE_WAVELENGTH) / static_cast<float>(nb_samples);

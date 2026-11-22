@@ -15,6 +15,7 @@ HIPRT_DEVICE void wavefront_update_shadow_training(HIPRTRenderData& render_data,
 	if ((flags & WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER) != 0)
 	{
 		WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
+
 		if (visible)
 		{
 			if (sidecar.spatial_training_sample_index < render_data.kd_tree_device.core.training_sample_capacity)
@@ -34,6 +35,7 @@ HIPRT_DEVICE void wavefront_update_shadow_training(HIPRTRenderData& render_data,
 	if ((flags & WAVEFRONT_SHADOW_UPDATE_NISML) != 0)
 	{
 		WavefrontNISMLShadowSidecar& sidecar = render_data.wavefront_data.nisml_shadow_sidecars[queue_slot];
+
 		if (visible)
 		{
 			sidecar.spatial_training_sample.spatial_radiance_weight = sidecar.spatial_radiance_weight_if_visible;
@@ -82,6 +84,7 @@ HIPRT_DEVICE void wavefront_trace_shadow_queue(HIPRTRenderData& render_data, uns
 		unsigned int path_work_count = wavefront_data.path_remaining_shadow_work_counts[path_slot];
 		if (path_work_count == 0)
 			continue;
+
 		if (path_work_count > work_items_per_path)
 			path_work_count = work_items_per_path;
 
@@ -101,6 +104,7 @@ HIPRT_DEVICE void wavefront_trace_shadow_queue(HIPRTRenderData& render_data, uns
 			shadow_ray.direction = work.direction;
 
 			bool occluded = false;
+
 			if ((work.flags & WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS) != 0)
 			{
 				NEEPlusPlusContext nee_plus_plus_context;

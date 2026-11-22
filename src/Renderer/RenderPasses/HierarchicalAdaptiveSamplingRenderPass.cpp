@@ -56,6 +56,7 @@ bool HierarchicalAdaptiveSamplingRenderPass::pre_render_compilation_check(std::s
 		return false;
 
 	bool updated = false;
+
 	for (std::map<std::string, std::shared_ptr<GPUKernel>>::value_type& name_to_kernel : m_kernels)
 	{
 		if (name_to_kernel.second->has_been_compiled())
@@ -83,6 +84,7 @@ void HierarchicalAdaptiveSamplingRenderPass::recompile(std::shared_ptr<HIPRTOroc
 bool HierarchicalAdaptiveSamplingRenderPass::pre_frame_render_update(float delta_time)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_data().render_settings;
+
 	if (!is_render_pass_used(*m_compiler_options))
 	{
 		bool had_buffers = m_error.size() != 0;
@@ -97,8 +99,8 @@ bool HierarchicalAdaptiveSamplingRenderPass::pre_frame_render_update(float delta
 	unsigned int maximum_useful_node_count = pixel_count > 0 ? pixel_count * 2u - 1u : 1u;
 	unsigned int node_capacity			   = std::min(requested_node_capacity, maximum_useful_node_count);
 	unsigned int maximum_depth			   = static_cast<unsigned int>(std::max(1, render_settings.hierarchical_adaptive_sampling_max_depth));
-	unsigned int build_command_count	   = maximum_depth * 2u + 4u;
 
+	unsigned int build_command_count = maximum_depth * 2u + 4u;
 	if (m_build_depths_host_pinned.size() != build_command_count)
 	{
 		m_build_depths_host_pinned.resize_host_pinned_mem(build_command_count);
@@ -175,6 +177,7 @@ bool HierarchicalAdaptiveSamplingRenderPass::launch_async(HIPRTRenderData& rende
 
 	unsigned int completed_sample_count = render_data.render_settings.sample_number + 1u;
 	unsigned int minimum_sample_count	= static_cast<unsigned int>(std::max(2, render_data.render_settings.adaptive_sampling_min_samples));
+
 	// Rebuilding periodically allows completed regions to become active again when their error estimate changes. Rebuilding too often is wasteful, but
 	// rebuilding too infrequently can cause the adaptive sampling to miss regions that have changed. A rebuild interval of 2% of the total sample count is a
 	// reasonable compromise.
@@ -200,15 +203,18 @@ bool HierarchicalAdaptiveSamplingRenderPass::launch_async(HIPRTRenderData& rende
 	unsigned int maximum_depth		 = static_cast<unsigned int>(std::max(1, render_data.render_settings.hierarchical_adaptive_sampling_max_depth));
 	unsigned int build_command_count = maximum_depth * 2u + 4u;
 	unsigned int* build_depths		 = m_build_depths_host_pinned.get_host_pinned_pointer();
+
 	for (unsigned int command_index = 0; command_index < build_command_count; command_index++)
 	{
 		unsigned int build_depth  = build_depths[command_index];
 		unsigned int thread_count = 1u;
 		void* launch_args[]		  = { &build_depth };
+
 		if (build_depth <= maximum_depth)
 		{
 			unsigned int maximum_thread_count = static_cast<unsigned int>(m_nodes.size());
 			thread_count					  = maximum_thread_count;
+
 			if (build_depth < 30u)
 			{
 				unsigned int maximum_nodes_through_depth = (1u << (build_depth + 1u)) - 1u;

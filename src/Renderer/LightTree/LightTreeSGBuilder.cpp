@@ -22,6 +22,7 @@ void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_trian
 
 	auto start = std::chrono::high_resolution_clock::now();
 	m_nodes.resize(m_light_tree_ats_builder.get_nodes().size());
+
 	if (m_nodes.empty())
 	{
 		m_tree_cut_node_indices.clear();
@@ -82,6 +83,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 	LightTreeSGNode& sg_node = m_nodes[node_index];
 	sg_node.triangle_count	 = ats_node.triangle_count;
+
 	if (ats_node.triangle_count == 0)
 		// Inner node
 		sg_node.left_child_index = ats_node.left_child_index;
@@ -101,6 +103,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		float left_weight = 1.0f, right_weight = 1.0f;
 		if (left_node.total_power == 0.0f)
 			left_weight = 0.0f;
+
 		if (right_node.total_power == 0.0f)
 			right_weight = 0.0f;
 
@@ -124,20 +127,24 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 
 		LightTreeSGSpatialLobeBuild lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES * 2];
 		int lobe_count = 0;
+
 		for (int lobe_index = 0; lobe_index < LIGHT_TREE_SG_MAX_SPATIAL_LOBES; lobe_index++)
 		{
 			if (left_node.spatial_lobes[lobe_index].power > 0.0)
 				lobes[lobe_count++] = left_node.spatial_lobes[lobe_index];
+
 			if (right_node.spatial_lobes[lobe_index].power > 0.0)
 				lobes[lobe_count++] = right_node.spatial_lobes[lobe_index];
 		}
 
 		LightTreeSGLobeReduction reduction = light_tree_sg_reduce_lobes(lobes, lobe_count, m_build_options.spatial_lobe_count);
+
 		for (int lobe_index = 0; lobe_index < LIGHT_TREE_SG_MAX_SPATIAL_LOBES; lobe_index++)
 			sg_node.spatial_lobes[lobe_index] = reduction.lobes[lobe_index];
 		sg_node.spatial_mean = light_tree_sg_lobes_mean(sg_node.spatial_lobes, m_build_options.spatial_lobe_count);
 
 		sg_node.total_emitter_count = left_node.total_emitter_count + right_node.total_emitter_count;
+
 		if (sg_node.total_emitter_count > 0)
 		{
 			sg_node.energy_average = (left_node.total_emitter_count * left_node.energy_average + right_node.total_emitter_count * right_node.energy_average) /
@@ -170,6 +177,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		// Leaf node, compute data necessary for building the spherical gaussian
 		sg_node.mean_axis	= make_float3(0.0f, 0.0f, 0.0f);
 		sg_node.total_power = 0.0f;
+
 		for (int lobe_index = 0; lobe_index < LIGHT_TREE_SG_MAX_SPATIAL_LOBES; lobe_index++)
 			sg_node.spatial_lobes[lobe_index] = LightTreeSGSpatialLobeBuild();
 
@@ -180,6 +188,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		double sum_energy			= 0.0;
 		double sum_energy_squared	= 0.0;
 		unsigned int triangle_count = ats_node.triangle_count;
+
 		for (int i = 0; i < ats_node.triangle_count; i++)
 		{
 			unsigned int linear_emissive_triangle_index = ats_node.first_triangle_index + i;
@@ -238,6 +247,7 @@ void LightTreeSGBuilder::compute_node_spherical_gaussian(unsigned int node_index
 		sg_node.spatial_lobes[0].variance = variance;
 
 		float bounding_sphere_radius = 0.0f;
+
 		for (int i = 0; i < ats_node.triangle_count; i++)
 		{
 			unsigned int linear_emissive_triangle_index = ats_node.first_triangle_index + i;
@@ -352,7 +362,6 @@ LightTreeSGBuilder::LightTreeSGLobeReduction LightTreeSGBuilder::light_tree_sg_r
 				const double merge_cost = combined_power > 0.0 ? working_lobes[first_index].power * working_lobes[second_index].power / combined_power *
 																	 hippt::length2(working_lobes[first_index].mean - working_lobes[second_index].mean)
 															   : 0.0;
-
 				if (merge_cost < lowest_merge_cost)
 				{
 					lowest_merge_cost  = merge_cost;

@@ -195,6 +195,7 @@ public:
 			}
 
 			std::unordered_set<std::string> dependencies_already_joined;
+
 			for (const std::string& dependency : dependencies_to_wait_for)
 			{
 				if (dependencies_already_joined.find(dependency) == dependencies_already_joined.end())

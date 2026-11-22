@@ -160,6 +160,7 @@ void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_da
 	m_size = element_count;
 
 	m_input_data_pointer = device_data_pointer;
+
 	if (device_flags_pointer)
 		m_flags_data_pointer = device_flags_pointer;
 }
@@ -389,6 +390,7 @@ void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_t
 	OROCHI_CHECK_ERROR(oroEventCreate(&scan_end));
 
 	bool exclusive_scan = scanner.get_exclusive_scan();
+
 	for (int i = 0; i < 10; i++)
 	{
 		engine_uint.seed(i);
@@ -432,6 +434,7 @@ void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_t
 		std::vector<OutputDataType> expected_output(test_size);
 
 		auto start = std::chrono::high_resolution_clock::now();
+
 		for (size_t j = 0; j < test_size; j++)
 		{
 			if (flags[j / (sizeof(unsigned int) * 8)] & (1u << (j % (sizeof(unsigned int) * 8))))
@@ -457,6 +460,7 @@ void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_t
 		scanner.upload_input_data(untransformed_input, flags);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
+
 		unsigned int repeats = 5;
 		for (int j = 0; j < repeats; j++)
 		{

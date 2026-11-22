@@ -49,6 +49,7 @@ namespace
 		size_t point_count			   = std::min(x_values.size(), y_values.size());
 
 		ImPlot::PushPlotClipRect();
+
 		for (size_t point_index = 1; point_index < point_count; point_index++)
 		{
 			ImVec2 segment_start = ImPlot::PlotToPixels((double)x_values.at(point_index - 1), (double)y_values.at(point_index - 1));
@@ -60,8 +61,9 @@ namespace
 				continue;
 			}
 
-			float direction_x	 = segment_end.x - segment_start.x;
-			float direction_y	 = segment_end.y - segment_start.y;
+			float direction_x = segment_end.x - segment_start.x;
+			float direction_y = segment_end.y - segment_start.y;
+
 			float segment_length = std::sqrt(direction_x * direction_x + direction_y * direction_y);
 			if (segment_length <= 0.0f)
 				continue;
@@ -79,6 +81,7 @@ namespace
 					plot_draw_list->AddLine(piece_start, piece_end, color, line_weight);
 
 				segment_offset += piece_length;
+
 				remaining_pattern_length -= piece_length;
 				if (remaining_pattern_length <= 0.0001f)
 				{
@@ -119,7 +122,8 @@ namespace
 			const char* label = plot.Items.GetLegendLabel(legend_indices.at(legend_index));
 			float label_width = ImGui::CalcTextSize(label, nullptr, true).x;
 			float top_left_x  = plot.Items.Legend.Rect.Min.x + ImPlot::GetStyle().LegendInnerPadding.x;
-			float top_left_y  = plot.Items.Legend.Rect.Min.y + ImPlot::GetStyle().LegendInnerPadding.y;
+
+			float top_left_y = plot.Items.Legend.Rect.Min.y + ImPlot::GetStyle().LegendInnerPadding.y;
 			if (vertical)
 				top_left_y += display_index * (text_height + ImPlot::GetStyle().LegendSpacing.y);
 			else
@@ -140,7 +144,8 @@ namespace
 				float line_y			 = (icon_bounds.Min.y + icon_bounds.Max.y) * 0.5f;
 				float dash_length		 = 3.0f;
 				float gap_length		 = 2.0f;
-				float line_start		 = icon_bounds.Min.x;
+
+				float line_start = icon_bounds.Min.x;
 				while (line_start < icon_bounds.Max.x)
 				{
 					float line_end = std::min(line_start + dash_length, icon_bounds.Max.x);
@@ -161,6 +166,7 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 {
 	if (plotSize.x < 0)
 		plotSize.x = (float)m_plot_width;
+
 	if (plotSize.y < 0)
 		plotSize.y = (float)m_plot_height;
 
@@ -204,6 +210,7 @@ void ImGuiConvergenceGraphWidget::draw(ImVec2 plotSize)
 				transparent_legend_color.w		= 0.0f;
 				ImPlot::SetNextLineStyle(transparent_legend_color, m_line_weight);
 				ImPlot::PlotDummy(m_recorded_legends.at(i).c_str());
+
 				ImPlotItem* dashed_legend_item = plot->Items.GetItem(m_recorded_legends.at(i).c_str());
 				if (dashed_legend_item != nullptr)
 				{

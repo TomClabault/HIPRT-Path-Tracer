@@ -77,6 +77,7 @@ constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABL
 {
 	NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT> offsets;
 	unsigned int offset = 0;
+
 	for (unsigned int level = 0; level < NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT; level++)
 	{
 		offsets.values[level]	= offset;
@@ -93,6 +94,7 @@ static constexpr NISMLPositionLearnableDenseGridConstexprValues<NISML_POSITION_L
 constexpr unsigned int nisml_position_learnable_dense_grid_total_parameter_count()
 {
 	unsigned int total_parameter_count = 0;
+
 	for (unsigned int level = 0; level < NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_COUNT; level++)
 	{
 		unsigned int resolution = NISML_POSITION_LEARNABLE_DENSE_GRID_LEVEL_RESOLUTIONS[level];

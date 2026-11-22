@@ -72,11 +72,12 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	nee_plus_plus_context.envmap		 = true;
 	nee_plus_plus_context.point_on_light = sampled_direction;
 	nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
+
 	if (ray_payload.bounce == 0)
 		restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+
 	bool shadow_ray_occluded =
 		evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
-
 	if (!shadow_ray_occluded)
 	{
 		spatial_training_sample.spatial_radiance_weight = (envmap_emission / solid_angle_pdf).max_component();
@@ -129,6 +130,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+
 	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
 		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
@@ -168,6 +170,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																ray_payload.material, triangle_sample.emissive_triangle_global_index, random_number_generator);
 	light_sample.area_measure_pdf *= triangle_sample.triangle_probability();
+
 	if (!(light_sample.area_measure_pdf > 0.0f))
 	{
 		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
@@ -181,7 +184,8 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 	spatial_training_sample.cached_guiding_node_index  = triangle_sample.guiding_node_index;
 
 	float3_t shadow_direction = light_sample.point_on_light - closest_hit_info.inter_point;
-	float distance_to_light	  = hippt::length(shadow_direction);
+
+	float distance_to_light = hippt::length(shadow_direction);
 	if (!(distance_to_light > 0.0f))
 	{
 		render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
@@ -206,9 +210,9 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 
 		if (ray_payload.bounce == 0)
 			restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+
 		shadow_ray_occluded = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 																nee_plus_plus_context, random_number_generator);
-
 		if (!shadow_ray_occluded)
 		{
 			float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
@@ -277,11 +281,13 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 	// material that cannot do light sampling, the PDFs return before reading the lightcut
 	unsigned int lightcut_index		= IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX;
 	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	bool has_light_to_sample		= learning_to_cluster_has_light_to_sample(render_data);
+
+	bool has_light_to_sample = learning_to_cluster_has_light_to_sample(render_data);
 	if (has_light_to_sample && ray_payload.material.can_do_light_sampling())
 	{
 		IlluminationAwareKDTreeSGShadingContext shading_context =
 			build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+
 		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
 			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
@@ -328,7 +334,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 		return;
 
 	uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
-
 	if (!render_data.aux_buffers.pixel_active[pixel_index])
 		// Pixel isn't active because of adaptive sampling or render resolution scaling
 		return;
@@ -349,6 +354,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 	ReSTIRPTInitialCandidatesReservoir restir_pt_initial_reservoir(render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer,
 																   pixel_index);
+
 	for (int candidate = 0; candidate < ReSTIR_PT_InitialPathTreesCount; candidate++)
 	{
 		HitInfo closest_hit_info;
@@ -414,9 +420,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 				{
 					if (bounce == 1)
 						restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+
 					intersection_found =
 						path_tracing_find_indirect_bounce_intersection(render_data, ray, ray_payload, closest_hit_info, random_number_generator);
-
 					if (intersection_found)
 					{
 						// We're checking for intersection found here because otherwise this would add envmap contribution but the envmap contribution on miss
@@ -449,10 +455,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info;
+
 					pending_throughput =
 						ReSTIR_PT_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, random_number_generator,
 															   incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
-
 					if (pending_throughput == ReSTIR_PT_invalid_throughput)
 					{
 						// Bad BSDF sample (under the surface), killed by russian roulette, ...

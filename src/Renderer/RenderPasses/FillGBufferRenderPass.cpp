@@ -51,6 +51,7 @@ void FillGBufferRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi
 void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
 	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
+
 	if (mis_target_function_bsdf_approximation_lobe_records_needed())
 		m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.resize(new_width * new_height);
 
@@ -86,7 +87,6 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 		// If at least one buffer has a size of 0, we assume that this means that the whole G-buffer is deallocated
 		// and so we're going to have to reallocate it
 		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.first_hit_prim_index.size() == 0;
-
 		if (prev_frame_g_buffer_needs_resize)
 		{
 			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
@@ -182,6 +182,7 @@ void FillGBufferRenderPass::resize_g_buffer_ray_volume_states()
 	m_renderer->synchronize_all_kernels();
 
 	m_g_buffer.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
+
 	if (m_renderer->get_render_data().render_settings.use_prev_frame_g_buffer())
 		m_g_buffer_prev_frame.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
 

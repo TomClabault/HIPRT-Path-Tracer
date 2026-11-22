@@ -19,6 +19,7 @@ IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(Illuminati
 {
 #ifdef __KERNELCC__
 	unsigned int slot = threadIdx.x;
+
 	for (unsigned int lightcut_index = blockIdx.x;; lightcut_index += gridDim.x)
 	{
 		unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
@@ -29,7 +30,8 @@ IlluminationAwareKDTree_LearningToClusterResetBatchLightcutStatistics(Illuminati
 			continue;
 
 		IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
-		bool preserve_batch_statistics							  = reset_sample_counts == 0u && lightcut_data.batch_statistics_valid_for_q != 0u;
+
+		bool preserve_batch_statistics = reset_sample_counts == 0u && lightcut_data.batch_statistics_valid_for_q != 0u;
 		if (preserve_batch_statistics)
 			continue;
 

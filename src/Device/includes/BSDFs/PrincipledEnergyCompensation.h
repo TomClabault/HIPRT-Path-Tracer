@@ -26,6 +26,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	// layer because the specular weight is low, then we don't need energy compensation)
 	bool no_specular_layer		= material.specular < 1.0e-3f;
 	bool invalid_view_direction = NoV < 0.0f;
+
 	if (energy_compensation_disabled || roughness_low_enough || no_specular_layer || invalid_view_direction)
 		return 1.0f;
 
@@ -35,7 +36,8 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	int3_t texture_dims = make_int3(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_COS_THETA_O, GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_ROUGHNESS,
 									GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
 
-	float ior		   = material.ior;
+	float ior = material.ior;
+
 	float relative_ior = principled_specular_relative_ior(material, incident_medium_ior);
 	if (hippt::abs(relative_ior - 1.0f) < 1.0e-3f)
 		// If the relative ior is very close to 1.0f,
@@ -59,6 +61,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_glossy_base(const H
 	// If material.specular == 0, then we only have the diffuse lobe and so we
 	// need no energy compensation at all and so we just divide by 1 to basically do nothing
 	ms_compensation = hippt::lerp(1.0f, multiple_scattering_compensation, material.specular);
+
 	// Multi scatter compensation is not tabulated to take thin film interference into account.
 	// That's because thin film interference completely modifies the fresnel term and the
 	// tabulated multi scatter compensation only accounts for the usual dielectric fresnel
@@ -97,6 +100,7 @@ HIPRT_DEVICE static float get_principled_energy_compensation_clearcoat_lobe(cons
 	// If we don't have a clearcoat, let's not compensate energy
 	bool no_coat_layer			= material.coat < 1.0e-3f;
 	bool invalid_view_direction = NoV < 0.0f;
+
 	if (energy_compensation_disabled || no_coat_layer || invalid_view_direction)
 		return 1.0f;
 

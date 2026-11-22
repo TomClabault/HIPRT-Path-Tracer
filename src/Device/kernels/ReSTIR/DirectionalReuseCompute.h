@@ -45,7 +45,6 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 		return;
 
 	uint32_t center_pixel_index = x + y * render_data.render_settings.render_resolution.x;
-
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index])
 		// Pixel isn't active because of adaptive sampling or render resolution scaling
 		return;
@@ -67,6 +66,7 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 	int best_radius_index = 0;
 	// Each long long int in there contains, in each bit, whether or not the direction for that radius is reusable or not
 	unsigned long long int valid_samples_per_radius[NB_RADIUS] = { 0 };
+
 	for (int radius_index = 0; radius_index < NB_RADIUS; radius_index++)
 	{
 		float current_radius = spatial_pass_settings.minimum_per_pixel_reuse_radius +
@@ -75,6 +75,7 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 
 		// Now sampling a bunch of neighbors *on* that radius, exactly at that radius distance from the center (i.e. *not* within the disk of that radius)
 		float area_at_current_radius = 0.0f;
+
 		for (int sample_index = 0; sample_index < NB_SAMPLES_PER_RADIUS; sample_index++)
 		{
 			if (radius_index > 0)
@@ -87,7 +88,8 @@ inline ReSTIR_PT_Directional_Reuse_Compute(HIPRTRenderData render_data,
 			float y_circle = current_radius * hippt::intrin_sinf(theta);
 
 			int2_t neighbor_offset_in_disk = make_int2(static_cast<int>(roundf(x_circle)), static_cast<int>(roundf(y_circle)));
-			int2_t neighbor_pixel_coords   = make_int2(x, y) + neighbor_offset_in_disk;
+
+			int2_t neighbor_pixel_coords = make_int2(x, y) + neighbor_offset_in_disk;
 			if (neighbor_pixel_coords.x < 0 || neighbor_pixel_coords.x >= render_data.render_settings.render_resolution.x || neighbor_pixel_coords.y < 0 ||
 				neighbor_pixel_coords.y >= render_data.render_settings.render_resolution.y)
 				// Rejecting the sample if it's outside of the viewport

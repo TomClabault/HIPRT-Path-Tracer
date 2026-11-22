@@ -60,6 +60,7 @@ HIPRT_DEVICE inline void compute_nisml_position_learnable_dense_grid_interpolati
 	{
 		float scaled_coordinate		 = coordinates[dimension] * static_cast<float>(resolution - 1u);
 		lower_coordinates[dimension] = static_cast<unsigned int>(floorf(scaled_coordinate));
+
 		if (lower_coordinates[dimension] >= resolution - 1u)
 			lower_coordinates[dimension] = resolution - 2u;
 
@@ -135,6 +136,7 @@ HIPRT_DEVICE inline void accumulate_nisml_position_grid_input_gradients(const NI
 		for (unsigned int feature = 0; feature < NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT; feature++)
 		{
 			float feature_gradient = position_feature_gradients[level * NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURE_COUNT + feature];
+
 			for (unsigned int corner = 0; corner < 8; corner++)
 				hippt::atomic_fetch_add(&grid.gradient_features[interpolation.corner_indices[corner] + feature],
 										feature_gradient * interpolation.corner_weights[corner]);

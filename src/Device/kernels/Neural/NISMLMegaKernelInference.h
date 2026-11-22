@@ -30,12 +30,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelInference(HIPRTRenderData re
 #endif // #ifdef __KERNELCC__
 
 	unsigned int query_count = hippt::atomic_fetch_add(render_data.nisml_mega_kernel.query_count, 0u);
-	bool valid_query		 = query_index < query_count;
-	NISQuery query			 = {};
+
+	bool valid_query = query_index < query_count;
+	NISQuery query	 = {};
 	if (valid_query)
 		query = render_data.nisml_mega_kernel.queries[query_index];
 
 	__shared__ fp16 activations_buffer[NeuralImportanceSamplingMLP::ACTIVATION_WIDTH * 2][NeuralImportanceSamplingMLP::BLOCK_SIZE];
+
 	if (valid_query)
 		load_nisml_input_wmma(render_data.nisml.position_learnable_dense_grid, render_data.world_settings.scene_min, render_data.world_settings.scene_max,
 							  query.position, query.outgoing_direction, query.normal, &activations_buffer[0][0], threadIdx.x);
@@ -50,6 +52,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelInference(HIPRTRenderData re
 		return;
 
 	unsigned int output_activation_offset = (NeuralImportanceSamplingMLP::LAYER_COUNT - 1) & 1 ? NeuralImportanceSamplingMLP::ACTIVATION_WIDTH : 0;
+
 	// WMMA stores the output as [cluster][query lane], so every query needs its complete residual vector.
 	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 		render_data.nisml_mega_kernel.residuals[query_index * render_data.nisml_mega_kernel.residual_stride + cluster_index] =

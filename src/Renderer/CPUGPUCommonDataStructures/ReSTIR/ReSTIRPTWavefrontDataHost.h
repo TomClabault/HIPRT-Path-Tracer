@@ -57,6 +57,7 @@ struct ReSTIRPTWavefrontDataHost
 	ReSTIRPTWavefrontDataDevice to_device()
 	{
 		ReSTIRPTWavefrontDataDevice restir_pt_wavefront_data_device;
+
 		if (path_capacity() == 0)
 			return restir_pt_wavefront_data_device;
 

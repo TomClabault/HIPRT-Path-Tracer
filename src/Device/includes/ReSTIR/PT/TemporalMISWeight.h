@@ -100,6 +100,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 
 		// Evaluating the sample that we're resampling at the neighor locations (using the neighbors surfaces)
 		float target_function_at_temporal_neighbor = 0.0f;
+
 		if (temporal_neighbor_reservoir_confidence != 0)
 		{
 			// Only computing the target function if we do have a temporal neighbor
@@ -129,7 +130,6 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_GBH>
 			nume = target_function_at_center * center_reservoir_confidence;
 
 		denom = target_function_at_temporal_neighbor * temporal_confidence + target_function_at_center * center_reservoir_confidence;
-
 		if (denom == 0.0f)
 			return 0.0f;
 		else
@@ -187,7 +187,6 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_M
 						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-
 					if (jacobian == 0.0f)
 						// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 						// and has been rejected), the target function is set to 0
@@ -280,7 +279,6 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_PAIRWISE_M
 						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-
 					if (jacobian == 0.0f)
 						// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 						// and has been rejected), the target function is set to 0
@@ -379,7 +377,6 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_SYMMETRIC_
 						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-
 					if (jacobian == 0.0f)
 						// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 						// and has been rejected), the target function is set to 0
@@ -491,7 +488,6 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC
 						initial_candidates_reservoir.sample.rc_vertex, initial_candidates_reservoir.sample.rc_vertex_geometric_normal.unpack(),
 						temporal_neighbor_surface.shading_point, center_pixel_surface.shading_point,
 						render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
-
 					if (jacobian == 0.0f)
 						// Clamping at 0.0f so that if the jacobian returned is -1.0f (meaning that the jacobian doesn't match the threshold
 						// and has been rejected), the target function is set to 0
@@ -506,6 +502,7 @@ struct ReSTIRPTTemporalResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_ASYMMETRIC
 			float difference_function_mc =
 				symmetric_ratio_MIS_weights_difference_function(target_function_center_sample_at_neighbor, target_function_center_sample_at_center,
 																render_data.render_settings.restir_pt_settings.symmetric_ratio_mis_weights_beta_exponent);
+
 			if (target_function_center_sample_at_center <= target_function_center_sample_at_neighbor)
 			{
 				nume_mc	 = difference_function_mc * temporal_neighbor_confidence;

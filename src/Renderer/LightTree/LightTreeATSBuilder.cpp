@@ -48,10 +48,12 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 		float3_t v2 = get_triangle_vertex(i, 2, triangles_data);
 
 		float3_t triangle_normal = hippt::cross(v1 - v0, v2 - v0);
-		float normal_length		 = hippt::length(triangle_normal);
-		float triangle_area		 = 0.0f;
+
+		float normal_length = hippt::length(triangle_normal);
+		float triangle_area = 0.0f;
 		if (normal_length > TriangleSamplingNormalLengthRejectionThreshold)
 			triangle_area = normal_length * 0.5f;
+
 		if (normal_length > 0.0f)
 			triangle_normal /= normal_length;
 
@@ -68,6 +70,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	}
 
 	unsigned int valid_triangle_count = 0;
+
 	for (unsigned int emissive_triangle_index = 0; emissive_triangle_index < emissive_triangles_primitive_indices.size(); emissive_triangle_index++)
 	{
 		if (m_prefetched_triangles[emissive_triangle_index].area == 0.0f)
@@ -79,6 +82,7 @@ void LightTreeATSBuilder::build_light_tree(const std::vector<int>& emissive_tria
 	m_triangle_indices.resize(valid_triangle_count);
 	m_bit_trails.resize(valid_triangle_count, 0u);
 	m_nodes.resize(valid_triangle_count == 0 ? 0 : valid_triangle_count * 2 - 1);
+
 	if (valid_triangle_count == 0)
 	{
 		auto stop = std::chrono::high_resolution_clock::now();
@@ -118,6 +122,7 @@ void LightTreeATSBuilder::update_node_bounds(unsigned int node_index, const Ligh
 	double sum_energy				  = 0.0f;
 	double sum_energy_squared		  = 0.0f;
 	unsigned int valid_triangle_count = 0;
+
 	for (unsigned int first = node.first_triangle_index, i = 0; i < node.triangle_count; i++)
 	{
 		int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(first + i);
@@ -158,8 +163,8 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 
 	int split_axis;
 	float split_position;
-	float split_cost = compute_split_position(node, split_axis, split_position, triangles_data, m_build_options.build_split_method);
 
+	float split_cost = compute_split_position(node, split_axis, split_position, triangles_data, m_build_options.build_split_method);
 	if (m_build_options.stop_splitting_if_cost_not_worth_it || split_cost == 0.0f)
 	{
 		if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAH)
@@ -185,7 +190,8 @@ void LightTreeATSBuilder::subdivide_node(unsigned int node_index, const LightTre
 	}
 
 	int right_node_start = partition_node_primitives(node_index, split_axis, split_position);
-	int left_count		 = right_node_start - node.first_triangle_index;
+
+	int left_count = right_node_start - node.first_triangle_index;
 	if (left_count == 0 ||				   // Zero triangles on the left
 		left_count == node.triangle_count) // Zero triangles on the right
 	{
@@ -299,6 +305,7 @@ float LightTreeATSBuilder::compute_split_position(
 			// Computing the bounds of the bins
 			// TODO bin 3 axis at the same time
 			float scale = m_build_options.bin_count / hippt::idx(prims_bounds.maxi - prims_bounds.mini, axis_index);
+
 			for (unsigned int first = node.first_triangle_index, i = 0; i < node.triangle_count; i++)
 			{
 				int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(first + i);
@@ -324,6 +331,7 @@ float LightTreeATSBuilder::compute_split_position(
 			LightTreeATSNodeOrientationData left_orientation_data, right_orientation_data;
 			float left_power = 0.0f, right_power = 0.0f;
 			int left_tri_count_sum = 0, right_tri_count_sum = 0;
+
 			for (int i = 0; i < m_build_options.bin_count - 1; i++)
 			{
 				left_tri_count_sum += m_bins_temp_buffer[i].tri_count;
@@ -348,6 +356,7 @@ float LightTreeATSBuilder::compute_split_position(
 			}
 
 			float scale_sah = hippt::idx(prims_bounds.maxi - prims_bounds.mini, axis_index) / m_build_options.bin_count;
+
 			for (int split_plane_index = 0; split_plane_index < m_build_options.bin_count; split_plane_index++)
 			{
 				if (m_left_bins_info_temp_buffer[split_plane_index].tri_count == 0 || m_right_bins_info_temp_buffer[split_plane_index].tri_count == 0)
@@ -356,6 +365,7 @@ float LightTreeATSBuilder::compute_split_position(
 				float candidate_split_position = hippt::idx(prims_bounds.mini, axis_index) + (split_plane_index + 1) * scale_sah;
 
 				float cost = 1.0e30f;
+
 				if (m_build_options.cost_function == LIGHT_TREE_BUILD_COST_FUNCTION_SAOH)
 				{
 					cost = 0.0f;
@@ -418,6 +428,7 @@ float LightTreeATSBuilder::compute_sah_cost(const LightTreeATSNode& node,
 	unsigned int triangle_count_right = 0;
 
 	unsigned int first_triangle_index = node.first_triangle_index;
+
 	for (int triangle_index = 0; triangle_index < node.triangle_count; triangle_index++)
 	{
 		int emissive_triangle_index = bvh_triangle_index_to_emissive_triangle_index(first_triangle_index + triangle_index);
@@ -446,11 +457,9 @@ int LightTreeATSBuilder::partition_node_primitives(unsigned int node_index, int 
 
 	int start = node.first_triangle_index;
 	int end	  = start + node.triangle_count - 1;
-
 	while (start <= end)
 	{
 		int centroid_index = bvh_triangle_index_to_emissive_triangle_index(start);
-
 		if (hippt::idx(m_prefetched_triangles[centroid_index].centroid, axis) < split_position)
 			start++;
 		else

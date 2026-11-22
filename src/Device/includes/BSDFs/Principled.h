@@ -163,6 +163,7 @@ HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const MaterialType& 
 
 	ColorRGB32F F_metal =
 		adobe_f82_tint_fresnel(material.base_color, material.metallic_F82, material.metallic_F90, material.metallic_F90_falloff_exponent, HoL);
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		ColorRGB32F F_thin_film = thin_film_fresnel(material, incident_ior, HoL);
@@ -342,6 +343,7 @@ HIPRT_DEVICE HIPRT_FORCEINLINE static ColorRGB32F principled_specular_fresnel(co
 	// We're lerping between the two based on material.thin_film
 	float material_thin_film = 0.0f;
 	ColorRGB32F F_specular;
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		material_thin_film = material.thin_film;
@@ -384,6 +386,7 @@ HIPRT_DEVICE static float principled_specular_relative_ior(const MaterialType& m
 {
 	float coat_weight = 0.0f;
 	float coat_ior	  = material.ior;
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		coat_weight = material.coat;
@@ -398,7 +401,8 @@ HIPRT_DEVICE static float principled_specular_relative_ior(const MaterialType& m
 	// so the "proper" IOR to use here is actually the lerp between the medium and the coat
 	// IOR depending on the coat factor
 	float incident_layer_ior = hippt::lerp(incident_medium_ior, coat_ior, coat_weight);
-	float relative_ior		 = material.ior / incident_layer_ior;
+
+	float relative_ior = material.ior / incident_layer_ior;
 	if (relative_ior < 1.0f)
 		// If the coat IOR (which we're coming from) is greater than the IOR
 		// of the base layer (which is the specular layer with IOR material.ior)
@@ -455,6 +459,7 @@ HIPRT_DEVICE static ColorRGB32F principled_specular_eval(const HIPRTRenderData& 
 	// for the specular layer is handled for the glossy based (specular + diffuse lobe)
 	// as a whole, not just in the specular layer
 	ColorRGB32F F = principled_specular_fresnel(bsdf_context.material, relative_ior, hippt::dot(local_to_light_direction, local_half_vector));
+
 	// No energy compensation on the specular layer because energy compensation is done on the whole diffuse + specular
 	// not just specular.
 	ColorRGB32F specular;
@@ -513,6 +518,7 @@ HIPRT_DEVICE static ColorRGB32F principled_beer_absorption(const HIPRTRenderData
 		absorption_color = ColorRGB32F(1.0f);
 	else
 		absorption_color = render_data.buffers.materials_buffer[ray_volume_state.incident_mat_index].get_absorption_color();
+
 	if (!absorption_color.is_white())
 	{
 		// Capping the distance to avoid numerical issues at 0 distance
@@ -541,8 +547,8 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	pdf = 0.0f;
 
 	float NoV = local_view_direction.z;
-	float NoL = local_to_light_direction.z;
 
+	float NoL = local_to_light_direction.z;
 	if (hippt::abs(NoL) < 1.0e-8f)
 		// Check to avoid dividing by 0 later on
 		return ColorRGB32F(0.0f);
@@ -560,6 +566,7 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 
 	float dispersion_abbe_number = 20.0f;
 	float dispersion_scale		 = 0.0f;
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
@@ -599,6 +606,7 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
 
 	float3_t local_half_vector;
+
 	if (scaled_roughness <= MaterialConstants::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE &&
 		PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
 	{
@@ -645,7 +653,6 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 
 	float HoL = hippt::dot(local_to_light_direction, local_half_vector);
 	float HoV = hippt::dot(local_view_direction, local_half_vector);
-
 	if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
 		// Backfacing microfacets when the microfacet normal isn't in the same
 		// hemisphere as the view dir or light dir
@@ -654,17 +661,19 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	float thin_film = 0.0f;
 	ColorRGB32F F_thin_film(0.0f);
 	ColorRGB32F F_no_thin_film(0.0f);
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		thin_film	= bsdf_context.material.thin_film;
 		F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
+
 		if (thin_film < 1.0f)
 			F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 	}
 	else
 		F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
-	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
+	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 	if (thin_walled && F.r < 1.0f && thin_film == 0.0f && scaled_roughness < 0.1f)
 		// If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
 		// Not doing this if thin-film is present because that would not be accurate at all. Thin-film
@@ -682,9 +691,11 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 	float f_reflect_proba = F.luminance();
 
 	ColorRGB32F color;
+
 	if (reflecting)
 	{
 		float regularized_roughness = scaled_roughness;
+
 		if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS &&
 			PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 		{
@@ -749,9 +760,9 @@ HIPRT_DEVICE static ColorRGB32F principled_glass_eval(const HIPRTRenderData& ren
 		float compensation_term =
 			get_GGX_energy_compensation_glass(render_data, bsdf_context.material, regularized_roughness, bsdf_context.volume_state.inside_material, eta_t,
 											  eta_i, relative_eta, local_view_direction.z);
+
 		// [Turquin, 2019] Eq. 18 for dielectric microfacet energy compensation
 		color /= compensation_term;
-
 		if (thin_walled)
 			// Thin materials use the base color squared to represent both the entry and the exit
 			// simultaneously
@@ -791,8 +802,8 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 	float pdf = 0.0f;
 
 	float NoV = local_view_direction.z;
-	float NoL = local_to_light_direction.z;
 
+	float NoL = local_to_light_direction.z;
 	if (hippt::abs(NoL) < 1.0e-8f)
 		// Check to avoid dividing by 0 later on
 		return 0.0f;
@@ -810,6 +821,7 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 
 	float dispersion_abbe_number = 20.0f;
 	float dispersion_scale		 = 0.0f;
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
@@ -849,6 +861,7 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 	float scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
 
 	float3_t local_half_vector;
+
 	if (scaled_roughness <= MaterialConstants::ROUGHNESS_CLAMP && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE &&
 		PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_FALSE)
 	{
@@ -895,7 +908,6 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 
 	float HoL = hippt::dot(local_to_light_direction, local_half_vector);
 	float HoV = hippt::dot(local_view_direction, local_half_vector);
-
 	if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
 		// Backfacing microfacets when the microfacet normal isn't in the same
 		// hemisphere as the view dir or light dir
@@ -904,17 +916,19 @@ HIPRT_DEVICE static float principled_glass_pdf(const HIPRTRenderData& render_dat
 	float thin_film = 0.0f;
 	ColorRGB32F F_thin_film(0.0f);
 	ColorRGB32F F_no_thin_film(0.0f);
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		thin_film	= bsdf_context.material.thin_film;
 		F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
+
 		if (thin_film < 1.0f)
 			F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 	}
 	else
 		F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
-	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
+	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 	if (thin_walled && F.r < 1.0f && thin_film == 0.0f && scaled_roughness < 0.1f)
 		// If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
 		// Not doing this if thin-film is present because that would not be accurate at all. Thin-film
@@ -997,6 +1011,7 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 
 	float dispersion_abbe_number = 20.0f;
 	float dispersion_scale		 = 0.0f;
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		dispersion_abbe_number = bsdf_context.material.dispersion_abbe_number;
@@ -1014,8 +1029,8 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 	bool thin_walled = false;
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 		thin_walled = bsdf_context.material.thin_walled;
-	float thin_walled_scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
 
+	float thin_walled_scaled_roughness = MaterialUtils::get_thin_walled_roughness(thin_walled, bsdf_context.material.roughness, relative_eta);
 	if (bsdf_context.bsdf_regularization_mode == MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS &&
 		PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
 		// Because we do not know if advance if we're going to reflecct or refract, we do not know
@@ -1034,17 +1049,19 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 	float thin_film = 0.0f;
 	ColorRGB32F F_thin_film(0.0f);
 	ColorRGB32F F_no_thin_film(0.0f);
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		thin_film	= bsdf_context.material.thin_film;
 		F_thin_film = thin_film_fresnel(bsdf_context.material, eta_i, HoV);
+
 		if (thin_film < 1.0f)
 			F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
 	}
 	else
 		F_no_thin_film = ColorRGB32F(full_fresnel_dielectric(HoV, relative_eta));
-	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 
+	ColorRGB32F F = hippt::lerp(F_no_thin_film, F_thin_film, thin_film);
 	if (thin_walled && F.r < 1.0f && thin_film == 0.0f && thin_walled_scaled_roughness < 0.1f)
 		// If this is not total reflection, adjusting the fresnel term to account for inter-reflections within the thin interface
 		// Not doing this if thin-film is present because that would not be accurate at all. Thin-film
@@ -1064,6 +1081,7 @@ HIPRT_DEVICE static float3_t principled_glass_sample(const HIPRTRenderData& rend
 	float rand_1 = random_number_generator();
 
 	float3_t sampled_direction;
+
 	if (rand_1 < f_reflect_proba)
 	{
 		// Reflection
@@ -1120,6 +1138,7 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_transmission_eval(const HIPRT
 		return ColorRGB32F(0.0f);
 
 	ColorRGB32F color = material.base_color * hippt::M_INV_PI;
+
 	if (ray_volume_state.incident_mat_index != NestedDielectricsInteriorStack::MAX_MATERIAL_INDEX)
 	{
 		// If we're not coming from the air, this means that we were in a volume and we're currently
@@ -1131,6 +1150,7 @@ HIPRT_DEVICE static ColorRGB32F principled_diffuse_transmission_eval(const HIPRT
 		{
 			// We changed volume so we're resetting the distance
 			ray_volume_state.distance_in_volume = 0.0f;
+
 			if (ray_volume_state.inside_material)
 				// We refracting out of a volume so we're poping the stack
 				ray_volume_state.interior_stack.pop(ray_volume_state.inside_material);
@@ -1252,10 +1272,12 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_coat_layer(const HIPRTRenderData& 
 	// so that's why we get into to if() block that does the computation but
 	// we're only going to compute the absorption of the coat layer
 	float coat_ior = bsdf_context.material.coat_ior;
+
 	if (coat_weight > 0.0f && ((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting))
 	{
 		float coat_pdf = 0.0f;
 		ColorRGB32F contribution;
+
 		if (!refracting)
 		{
 			// The coat layer only contribtues for light direction in the same
@@ -1367,11 +1389,13 @@ HIPRT_DEVICE static float internal_pdf_coat_layer(const HIPRTRenderData& render_
 	// so that's why we get into to if() block that does the computation but
 	// we're only going to compute the absorption of the coat layer
 	float coat_ior = bsdf_context.material.coat_ior;
+
 	if (coat_weight > 0.0f && ((local_view_direction.z > 0.0f && local_to_light_direction.z > 0.0f) || refracting))
 	{
 		float coat_pdf = 0.0f;
 
 		ColorRGB32F contribution;
+
 		if (!refracting)
 		{
 			// The coat layer only contribtues for light direction in the same
@@ -1777,6 +1801,7 @@ HIPRT_DEVICE static ColorRGB32F internal_eval_specular_layer(const HIPRTRenderDa
 		// We need the hippt::abs() here because we may be evaluating the fresnel terms with light directions/view
 		// directions that are below the surface because we're evaluating the specular lobe for a refracted direction
 		ColorRGB32F light_dir_fresnel = principled_specular_fresnel(bsdf_context.material, relative_ior, hippt::abs(local_to_light_direction.z));
+
 		// If we have a diffuse transmission lobe below the specular instead of the diffuse lobe, then we cannot
 		// have TIR in between the diffuse lobe and the specular lobe (inside the specular layer) because the diffuse
 		// transmission lobe is a BTDF only, it doesn't reflect any light --> no TIR

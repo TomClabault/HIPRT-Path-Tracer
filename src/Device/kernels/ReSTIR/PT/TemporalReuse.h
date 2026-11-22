@@ -47,7 +47,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 		return;
 
 	uint32_t center_pixel_index = (x + y * render_data.render_settings.render_resolution.x);
-
 	if (!render_data.aux_buffers.pixel_active[center_pixel_index] || render_data.g_buffer.first_hit_prim_index[center_pixel_index] == -1)
 	{
 		// Pixel inactive because of adaptive sampling, returning
@@ -75,6 +74,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 
 	// Surface data of the center pixel
 	ReSTIRPTSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, random_number_generator);
+
 	int temporal_neighbor_pixel_index =
 		find_temporal_neighbor_index(render_data, center_pixel_surface.shading_point, get_normal_for_rejection_heuristic(render_data, center_pixel_surface),
 									 center_pixel_index, random_number_generator)
@@ -124,6 +124,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 	int selected_sample = -1;
 	ReSTIRPTReservoir initial_candidates_reservoir =
 		render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer[center_pixel_index];
+
 	if (temporal_neighbor_reservoir.confidence > 0)
 	{
 		float target_function_at_center = 0.0f;
@@ -142,6 +143,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_TemporalReuse(HIPRTRenderData ren
 				ReSTIR_PT_evaluate_target_function<true>(render_data, temporal_neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
 
 		float shift_mapping_jacobian = 1.0f;
+
 		if (temporal_neighbor_reservoir.UCW > 0.0f && !temporal_neighbor_reservoir.sample.is_envmap_path())
 		{
 			// Only attempting the shift if the neighbor reservoir is valid

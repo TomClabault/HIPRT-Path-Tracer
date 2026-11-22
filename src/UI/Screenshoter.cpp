@@ -97,10 +97,10 @@ void Screenshoter::write_to_png(std::string filepath)
 
 Image8Bit Screenshoter::get_image(bool flip_y)
 {
-	int width					 = m_renderer->m_render_resolution.x;
-	int height					 = m_renderer->m_render_resolution.y;
-	DisplayViewType display_view = m_render_window->get_display_view_system()->get_current_display_view_type();
+	int width  = m_renderer->m_render_resolution.x;
+	int height = m_renderer->m_render_resolution.y;
 
+	DisplayViewType display_view = m_render_window->get_display_view_system()->get_current_display_view_type();
 	if (display_view == DisplayViewType::DEFAULT || display_view == DisplayViewType::GMON_BLEND || display_view == DisplayViewType::DENOISED_BLEND ||
 		display_view == DisplayViewType::DISPLAY_DENOISER_ALBEDO || display_view == DisplayViewType::DISPLAY_DENOISER_NORMALS ||
 		display_view == DisplayViewType::WHITE_FURNACE_THRESHOLD)
@@ -131,6 +131,7 @@ Image8Bit Screenshoter::get_image(bool flip_y)
 	glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, mapped_data.data());
 
 	Image8Bit image(mapped_data, width, height, 4);
+
 	if (flip_y)
 		image.flip_vertically();
 
@@ -152,6 +153,7 @@ Image8Bit Screenshoter::get_final_output_image(bool flip_y)
 	final_framebuffer->unmap();
 
 	std::vector<unsigned char> image_data(static_cast<size_t>(width) * static_cast<size_t>(height) * 4);
+
 	for (size_t pixel_index = 0; pixel_index < final_colors.size(); pixel_index++)
 	{
 		ColorRGB32F final_color = final_colors[pixel_index];
@@ -166,6 +168,7 @@ Image8Bit Screenshoter::get_final_output_image(bool flip_y)
 	}
 
 	Image8Bit image(image_data, width, height, 4);
+
 	if (flip_y)
 		image.flip_vertically();
 

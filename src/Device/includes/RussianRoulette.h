@@ -40,7 +40,6 @@ HIPRT_DEVICE bool do_russian_roulette(const HIPRTRenderSettings& render_settings
 
 		// Clamping anything above one back to 1
 		survive_probability = hippt::min(survive_probability, 1.0f);
-
 		if (random_number_generator() > survive_probability)
 			// Kill the ray
 			return false;

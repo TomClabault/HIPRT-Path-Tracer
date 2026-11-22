@@ -47,6 +47,7 @@ bool NISMLRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCt
 		return false;
 
 	bool updated = false;
+
 	for (auto& name_to_kernel : m_kernels)
 	{
 		if (name_to_kernel.second->has_been_compiled())
@@ -78,6 +79,7 @@ bool NISMLRenderPass::pre_frame_render_update(float delta_time)
 bool NISMLRenderPass::pre_render_update()
 {
 	bool render_data_needs_update = false;
+
 	if (m_mlp.maximum_size() == 0)
 	{
 		m_mlp.resize(NISMLDataHost<OrochiBuffer>::NISML_TRAINING_BATCH_SIZE);
@@ -104,6 +106,7 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 	if (!is_render_pass_used(compiler_options))
 
 		return false;
+
 	if (!render_data.nisml.learning_enabled || m_training_record_percentage <= 0.0f)
 
 		return true;
@@ -122,7 +125,6 @@ bool NISMLRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompil
 																 m_renderer->get_main_stream());
 
 	unsigned int training_sample_count = m_mlp.m_mlp_data.template download_buffer<MLPDataHostBuffers::MLP_LAST_TRAINING_SAMPLE_COUNT>()[0];
-
 	if (training_sample_count > 0)
 	{
 		unsigned int adam_step		 = m_adam_step;

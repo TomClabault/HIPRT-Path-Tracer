@@ -35,6 +35,7 @@ ParallelPrefixScan_BlockScan(const unsigned int* const __restrict__ input,
 	temp_smem[input_2_index + CONFLICT_FREE_OFFSET(input_2_index)] = input[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + input_2_index];
 
 	int offset = 1;
+
 	for (int d = size >> 1; d > 0; d >>= 1)
 	{
 		__syncthreads();
@@ -86,6 +87,7 @@ ParallelPrefixScan_BlockScan(const unsigned int* const __restrict__ input,
 
 	if (blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid < size)
 		output_blocks[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 0] = temp_smem[2 * tid + 0 + CONFLICT_FREE_OFFSET(2 * tid + 0)];
+
 	if (blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 1 < size)
 		output_blocks[blockIdx.x * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + 2 * tid + 1] = temp_smem[2 * tid + 1 + CONFLICT_FREE_OFFSET(2 * tid + 1)];
 }

@@ -73,8 +73,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 
 	int neighbors_confidence_sum_int	= 0;
 	unsigned int reuse_cell_pixel_count = 0;
-	unsigned int reuse_cell_index		= spmis_get_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface,
-																	 neighbors_confidence_sum_int, reuse_cell_pixel_count, random_number_generator);
+
+	unsigned int reuse_cell_index = spmis_get_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface,
+															   neighbors_confidence_sum_int, reuse_cell_pixel_count, random_number_generator);
 	if (reuse_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 	{
 		// Can happen if we completely fail to resolve hash collision and the pixel couldn't find a hash cell index. No spatial reuse in this case then
@@ -95,15 +96,16 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 	ReSTIRPTSpatialResamplingMISWeight<ReSTIR_PT_MISWeightsType> mis_weight_function;
 
 	int center_pixel_reservoir_confidence = input_reservoir_buffer[center_pixel_index].confidence;
+
 	if (render_data.render_settings.restir_pt_settings.spmis_settings.cell_non_zero_reservoir_counters[reuse_cell_index] > 0)
 	{
 		// Resampling only the neighbors, canonical resampling is further below
 		for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 		{
 			float neighbor_selection_probability = 1.0f;
-			unsigned int neighbor_pixel_index	 = get_spmis_spatial_neighbor_pixel_index(render_data, center_pixel_surface, reuse_cell_index,
-																						  neighbor_selection_probability, random_number_generator);
 
+			unsigned int neighbor_pixel_index = get_spmis_spatial_neighbor_pixel_index(render_data, center_pixel_surface, reuse_cell_index,
+																					   neighbor_selection_probability, random_number_generator);
 			if (neighbor_pixel_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 				continue;
 
@@ -144,6 +146,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMIS(HIPRTRenderData
 		const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
 		float mis_weight = 0.0f;
+
 		for (int i = 0; i < spmis_settings.canonical_weight_estimation_count; i++)
 		{
 			unsigned int cell_start_index		 = spmis_settings.cell_offsets[reuse_cell_index];

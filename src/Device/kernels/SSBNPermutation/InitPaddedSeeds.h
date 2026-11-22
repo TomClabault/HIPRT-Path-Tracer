@@ -16,7 +16,6 @@ SSBNPermutationInitPaddedSeeds(int resolution_x, int resolution_y, int padded_re
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
 
 	bool thread_valid = x < resolution_x && y < resolution_y;
-
 	if (!thread_valid)
 	{
 		// Thread is in the padded area of the seeds buffer, we need to fill in the padded area with "proper" seeds mirrored at the edge of the valid area

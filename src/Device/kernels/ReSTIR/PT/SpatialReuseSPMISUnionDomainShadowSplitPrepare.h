@@ -23,7 +23,6 @@
 HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_map_identity()
 {
 	unsigned int duplicate_map = 0;
-
 	for (unsigned int pick = 0; pick < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE; pick++)
 		duplicate_map |= pick << (pick * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_PICK_SOURCE_BITS);
 
@@ -61,7 +60,8 @@ HIPRT_DEVICE bool spmis_union_domain_shadow_split_stage2_needs_ray(const ReSTIRP
 		incident_light_direction = sample.rc_vertex;
 	else
 	{
-		incident_light_direction	   = sample.rc_vertex - surface.shading_point;
+		incident_light_direction = sample.rc_vertex - surface.shading_point;
+
 		float distance_to_sample_point = hippt::length(incident_light_direction);
 		if (distance_to_sample_point <= 1.0e-6f)
 			return false;
@@ -162,6 +162,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 				// An earlier pick of the same pool pixel with a ray bit is the same query. The first pick of a pool pixel has a ray bit, the later ones
 				// are its duplicates
 				int source_pick = pick;
+
 				for (int earlier_pick = 0; earlier_pick < pick; earlier_pick++)
 				{
 					bool earlier_pick_ray = (prepare_flags >> earlier_pick) & 1u;
@@ -232,6 +233,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 
 				// An earlier probe of the same domain pixel with a ray bit is the same query
 				int source_probe = probe;
+
 				if (probe < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DEDUPLICATED_CANONICAL_PROBES)
 				{
 					for (int earlier_probe = 0; earlier_probe < probe; earlier_probe++)

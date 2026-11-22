@@ -114,6 +114,7 @@ struct IlluminationAwareKDTreeLearningToClusterLightcutSet
 		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
 		{
 			face_lightcuts[normal_face].shared_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+
 			for (unsigned int per_mesh_id_lightcut_slot = 0; per_mesh_id_lightcut_slot < PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
 			{
 				face_lightcuts[normal_face].per_mesh_id_lightcuts[per_mesh_id_lightcut_slot].mesh_id = INVALID_MESH_ID;
@@ -177,6 +178,7 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 			return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
 		IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& face = normal_lightcut_sets[set_index].face_lightcuts[normal_face];
+
 		for (unsigned int per_mesh_id_lightcut_slot = 0;
 			 per_mesh_id_lightcut_slot < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
 		{

@@ -30,7 +30,6 @@ HIPRT_DEVICE void accumulate_NEE_plus_plus(
 		for (int i = 0; i < DirectLightSampleCount<NEEPlusPlusGridPrepopulateLightSamplingStrategy>(); i++)
 		{
 			LightSamplePointInformation& light_sample = light_samples[i];
-
 			if (light_sample.area_measure_pdf <= 0.0f)
 				// Can happen for very small triangles
 				continue;
@@ -84,6 +83,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 	// Direction to the center of the pixel
 	float x_ray_point_direction = (x + 0.5f);
 	float y_ray_point_direction = (y + 0.5f);
+
 	if (render_data.current_camera.do_jittering)
 	{
 		// Jitter randomly around the center
@@ -95,9 +95,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 	RayPayload ray_payload;
 
 	HitInfo closest_hit_info;
+
 	bool intersection_found =
 		trace_main_path_ray(render_data, ray, ray_payload, closest_hit_info, /* camera ray = no previous primitive hit */ -1, random_number_generator);
-
 	if (!intersection_found)
 		return;
 
@@ -116,6 +116,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NEEPlusPlus_Grid_Prepopulate(HIPRTRenderDat
 																						   // so that we know what the BSDF sampled
 
 				NEEDeferredMISContext nee_deferred_MIS_context;
+
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
 																					   random_number_generator, sampled_light_info, nee_deferred_MIS_context);
 				if (!valid_indirect_bounce)

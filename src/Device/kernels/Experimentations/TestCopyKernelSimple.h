@@ -35,8 +35,8 @@ GLOBAL_KERNEL_SIGNATURE(void) TestCopyKernelSimple(TestCopyKernelSimpleInputData
 	const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
 #endif
 	uint32_t offset = 13;
-	uint32_t index	= x + offset;
 
+	uint32_t index = x + offset;
 	if (index >= buffer_size)
 
 		return;

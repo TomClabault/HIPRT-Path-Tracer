@@ -60,11 +60,13 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData&
 
 		// w = w0 + (1 - V) x correction
 		unsigned int slot_entry_index = slot * pixel_count + center_pixel_index;
-		float weight				  = shadow_split_buffers.neighbor_weights[slot_entry_index];
+
+		float weight = shadow_split_buffers.neighbor_weights[slot_entry_index];
 		if ((companion_occluded_mask >> slot) & 1u)
 			weight += shadow_split_buffers.neighbor_weight_corrections[slot_entry_index];
 
 		float acceptance_uniform = random_number_generator();
+
 		if (!(weight > 0.0f))
 			continue;
 
@@ -77,6 +79,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData&
 	{
 		float weight			 = shadow_split_buffers.canonical_weights[center_pixel_index];
 		float acceptance_uniform = random_number_generator();
+
 		if (weight > 0.0f)
 		{
 			weight_sum += weight;
@@ -86,6 +89,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData&
 	}
 
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
+
 	if (selected_candidate == canonical_candidate)
 	{
 		// The canonical sample with the resampling target function its resampling weight was computed with

@@ -53,6 +53,7 @@ void PerformanceMetricsComputer::add_value(const std::string& key, double new_va
 	// Where are we going to insert the next value in the m_values vector
 	unsigned int next_index = m_data_indices[key];
 	m_data_indices[key]		= m_data_indices[key] + 1;
+
 	if (m_data_indices[key] == m_window_size)
 		m_data_indices[key] = 0;
 
@@ -93,6 +94,7 @@ void PerformanceMetricsComputer::add_value(const std::string& key, double new_va
 	m_values_sum_of_squares[key] += new_value * new_value;
 
 	auto& multiset = m_min_max_data.find(key)->second;
+
 	if (at_capacity)
 	{
 		auto position = multiset.find(removed_value);
@@ -109,7 +111,8 @@ double PerformanceMetricsComputer::get_current_value(const std::string& key)
 
 	// m_data_indices[key] is the index of the value that we're going to insert next
 	// but we want the index of the value last inserted so we -1 that value
-	int current_index  = m_data_indices[key];
+	int current_index = m_data_indices[key];
+
 	int previous_index = current_index - 1;
 	if (previous_index == -1)
 		previous_index = m_values_count[key] - 1;
@@ -214,7 +217,6 @@ void PerformanceMetricsComputer::recompute_data(int new_size)
 	for (auto pair_kv : m_values)
 	{
 		const std::string& key = pair_kv.first;
-
 		if (m_values_count[key] < new_size)
 		{
 			// There wasn't enough values so resizing the vector didn't remove any value,
@@ -230,6 +232,7 @@ void PerformanceMetricsComputer::recompute_data(int new_size)
 		m_min_max_data[key].clear();
 
 		std::vector<double>& values = pair_kv.second;
+
 		for (int i = 0; i < new_size; i++)
 		{
 			double value = values[i];

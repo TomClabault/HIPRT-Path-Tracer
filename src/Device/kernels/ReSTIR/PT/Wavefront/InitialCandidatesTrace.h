@@ -34,6 +34,7 @@ inline ReSTIR_PT_WavefrontInitialCandidatesTrace(HIPRTRenderData render_data, un
 	unsigned int input_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[1], 0u);
 	if (input_count > render_data.wavefront_data.path_capacity)
 		input_count = render_data.wavefront_data.path_capacity;
+
 	if (queue_slot >= input_count)
 		return;
 

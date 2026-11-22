@@ -186,7 +186,8 @@ HIPRT_DEVICE ColorRGB32F sample_triangle_emission_at_point(const HIPRTRenderData
 		render_data.buffers.materials_buffer[render_data.buffers.material_indices[global_triangle_index]].get_base_color_texture_index();
 
 	ColorRGBA32F rgba_emission = sample_texture_rgba(render_data.buffers.material_textures, texcoords, emissive_texture_index, false);
-	ColorRGBA32F base_color	   = ColorRGBA32F(1.0f);
+
+	ColorRGBA32F base_color = ColorRGBA32F(1.0f);
 	if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
 		base_color = sample_texture_rgba(render_data.buffers.material_textures, texcoords, base_color_texture_index, false);
 

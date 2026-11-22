@@ -20,7 +20,6 @@ struct PrincipledMaterialClassificationInputs
 HIPRT_DEVICE inline KernelMaterialSpecialization classify_principled_material(const PrincipledMaterialClassificationInputs& inputs, bool outside_object)
 {
 	const PrincipledLobeUserWeights& user_weights = inputs.lobe_user_weights;
-
 	if (user_weights.coat != 0.0f || user_weights.sheen != 0.0f || user_weights.diffuse_transmission != 0.0f || inputs.thin_film_strength != 0.0f ||
 		inputs.dispersion_scale != 0.0f || user_weights.second_roughness_weight != 0.0f || user_weights.retro_reflection != 0.0f || inputs.thin_walled ||
 		inputs.enforce_strong_energy_conservation)
@@ -40,6 +39,7 @@ HIPRT_DEVICE inline KernelMaterialSpecialization classify_principled_material(co
 		return KernelMaterialSpecializationSingleMetallic;
 
 	unsigned int specular_diffuse_support = PrincipledLobeSupportSpecular | PrincipledLobeSupportDiffuse;
+
 	if (outside_object && user_weights.metallic == 0.0f && user_weights.specular_transmission == 0.0f && user_weights.specular > 0.0f &&
 		support_mask == specular_diffuse_support)
 		return KernelMaterialSpecializationSpecularDiffuse;

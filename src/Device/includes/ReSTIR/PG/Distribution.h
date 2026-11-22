@@ -31,7 +31,6 @@ struct ReSTIRPGDistribution
 	HIPRT_DEVICE float pdf(float3_t direction) const
 	{
 		float pdf = 0.0f;
-
 		for (int i = 0; i < ReSTIRPGDistributionComponentCount; ++i)
 			pdf += distribution_components[i].weight * distribution_components[i].vmf.density_evaluation(direction);
 

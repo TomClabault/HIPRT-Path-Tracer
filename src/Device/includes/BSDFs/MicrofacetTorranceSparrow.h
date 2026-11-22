@@ -131,7 +131,6 @@ HIPRT_DEVICE ColorRGB32F torrance_sparrow_GGX_eval_reflect_single(const HIPRTRen
 	// jacobian determinant of that reflection operator is the (4.0f * HoV) in the
 	// denominator
 	out_pdf = Dvisible / (4.0f * hippt::dot(local_view_direction, local_halfway_vector));
-
 	if (out_pdf == 0.0f)
 		return ColorRGB32F(0.0f);
 	else
@@ -356,6 +355,7 @@ HIPRT_DEVICE static ColorRGB32F torrance_sparrow_GGX_eval_refract(const Material
 	float HoV = hippt::dot(local_view_direction, local_halfway_vector);
 
 	ColorRGB32F color;
+
 	if (MaterialUtils::is_perfectly_smooth(roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
 	{
 		// Fast path for specular glass
@@ -428,6 +428,7 @@ HIPRT_DEVICE static float torrance_sparrow_GGX_pdf_refract(const MaterialType& m
 	float HoV = hippt::dot(local_view_direction, local_halfway_vector);
 
 	ColorRGB32F color;
+
 	if (MaterialUtils::is_perfectly_smooth(roughness) && PrincipledBSDFDeltaDistributionEvaluationOptimization == KERNEL_OPTION_TRUE)
 	{
 		// Fast path for specular glass

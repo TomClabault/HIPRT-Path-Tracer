@@ -89,7 +89,6 @@ HIPRT_DEVICE static bool sanity_check(const HIPRTRenderData& render_data, ColorR
 
 	valid &= !check_for_negative_color(in_out_color, x, y, render_data.render_settings.sample_number);
 	valid &= !check_for_nan(in_out_color, x, y, render_data.render_settings.sample_number);
-
 	if (!valid)
 	{
 #ifndef __KERNELCC__

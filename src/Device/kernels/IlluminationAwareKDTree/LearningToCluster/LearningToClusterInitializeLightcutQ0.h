@@ -66,12 +66,14 @@ IlluminationAwareKDTree_LearningToClusterInitializeLightcutQ0(IlluminationAwareK
 #ifdef __KERNELCC__
 	unsigned int lightcut_index = blockIdx.x;
 	unsigned int slot			= threadIdx.x;
+
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #else  // #ifdef __KERNELCC__
 	unsigned int lightcut_index = static_cast<unsigned int>(x);
 	unsigned int slot			= 0u;
+
 	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 #endif // #ifdef __KERNELCC__

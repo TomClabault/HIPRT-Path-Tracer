@@ -63,16 +63,21 @@ struct IlluminationAwareKDTreeNISMLDataHost
 		{
 			for (GenericAtomicType<unsigned int, DataContainer>& hash_key : m_hash_keys)
 				hash_key.store(HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
+
 			for (GenericAtomicType<unsigned int, DataContainer>& entry_state : m_hash_entry_states)
 				entry_state.store(ILLUMINATION_AWARE_KD_TREE_NISML_HASH_ENTRY_EMPTY);
 			m_hash_occupied_entry_count[0].store(0u);
+
 			for (GenericAtomicType<unsigned int, DataContainer>& sample_count : m_representative_sample_counts)
 				sample_count.store(0u);
+
 			for (GenericAtomicType<unsigned int, DataContainer>& occupied_count : m_representative_occupied_counts)
 				occupied_count.store(0u);
 			std::fill(m_representative_valid.begin(), m_representative_valid.end(), 0u);
+
 			for (GenericAtomicType<unsigned int, DataContainer>& write_lock : m_representative_write_locks)
 				write_lock.store(0u);
+
 			for (GenericAtomicType<unsigned char, DataContainer>& dirty : m_representative_dirty)
 				dirty.store(0u);
 			std::fill(m_cache_ready.begin(), m_cache_ready.end(), 0u);

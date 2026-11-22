@@ -141,6 +141,7 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 												   unsigned int output_index  = 0)
 {
 	unsigned int cluster_count = hippt::min(neural_light_sampling.cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
+
 	for (unsigned int cluster_index = 0; cluster_index < NISML_MAX_CLUSTER_COUNT; cluster_index++)
 		log_baseline_weights[cluster_index * output_stride + output_index] = -INFINITY;
 
@@ -173,6 +174,7 @@ HIPRT_DEVICE void build_nisml_log_baseline_weights(const HIPRTRenderData& render
 #endif
 
 	constexpr unsigned int invalid_node_index = 0xFFFFFFFF;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		unsigned int node_index = neural_light_sampling.cluster_node_indices[cluster_index];
@@ -198,6 +200,7 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 	cluster_count = hippt::min(cluster_count, static_cast<unsigned int>(NISML_MAX_CLUSTER_COUNT));
 
 	float maximum_combined_logit = -INFINITY;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		unsigned int output_value_index = cluster_index * output_stride + output_index;
@@ -213,6 +216,7 @@ HIPRT_DEVICE bool evaluate_nisml_softmax(float* in_out_log_baseline_weights_prob
 		return false;
 
 	float exponential_denominator = 0.0f;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		unsigned int output_value_index = cluster_index * output_stride + output_index;
@@ -261,9 +265,9 @@ HIPRT_DEVICE LightSampleInformation sample_light_inside_nis_cluster(const HIPRTR
 																	Xorshift32Generator& random_number_generator)
 {
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+
 	LightSubtreeSample sampled_subtree = sample_light_tree_subtree(nodes, cluster_node_index, shading_point, view_direction, shading_normal, spec_data,
 																   specular, alpha_x, alpha_y, random_number_generator);
-
 	if (!(sampled_subtree.conditional_leaf_probability > 0.0f))
 		return LightSampleInformation();
 
@@ -288,7 +292,6 @@ HIPRT_DEVICE unsigned int sample_nisml_cluster(const NISMLDevice& neural_light_s
 {
 	unsigned int cluster_count							 = neural_light_sampling.cluster_count;
 	float* cluster_log_baseline_weights_or_probabilities = neural_light_sampling.cluster_log_baseline_weights;
-
 	if (!evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, cluster_count))
 	{
 		out_cluster_probability = 0.0f;
@@ -298,6 +301,7 @@ HIPRT_DEVICE unsigned int sample_nisml_cluster(const NISMLDevice& neural_light_s
 
 	float random_value			 = rng();
 	float cumulative_probability = 0.0f;
+
 	for (unsigned int cluster_index = 0u; cluster_index < cluster_count; cluster_index++)
 	{
 		cumulative_probability += cluster_log_baseline_weights_or_probabilities[cluster_index];
@@ -328,7 +332,6 @@ HIPRT_DEVICE float evaluate_nisml_cluster_probability(const NISMLDevice& neural_
 {
 	unsigned int cluster_count							 = neural_light_sampling.cluster_count;
 	float* cluster_log_baseline_weights_or_probabilities = neural_light_sampling.cluster_log_baseline_weights;
-
 	if (target_cluster_index >= cluster_count || !evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, cluster_count))
 		return 0.0f;
 
@@ -387,8 +390,8 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights_fr
 	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
 
 	unsigned int invalid_node_index = 0xFFFFFFFF;
-	unsigned int cluster_count		= neural_light_sampling.cluster_count;
 
+	unsigned int cluster_count = neural_light_sampling.cluster_count;
 	if (cluster_count == 0 || cluster_count > NISML_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr || neural_light_sampling.cluster_node_indices == nullptr)
 		return sampled_light;
 
@@ -404,8 +407,9 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights_fr
 
 	// TODO stop these shenanigans and just pass cluster_log_baseline_weights down
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
-	float cluster_probability						   = 0.0f;
-	unsigned int selected_cluster_position			   = sample_nisml_cluster(neural_light_sampling, residuals, random_number_generator, cluster_probability);
+
+	float cluster_probability			   = 0.0f;
+	unsigned int selected_cluster_position = sample_nisml_cluster(neural_light_sampling, residuals, random_number_generator, cluster_probability);
 	if (selected_cluster_position >= cluster_count || !(cluster_probability > 0.0f))
 		return sampled_light;
 
@@ -424,6 +428,7 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights_fr
 	sampled_light.cluster_probability			 = cluster_probability;
 	sampled_light.conditional_light_probability	 = conditional_sample.pdf;
 	sampled_light.emissive_triangle_pdf			 = cluster_probability * conditional_sample.pdf;
+
 	if (!(sampled_light.emissive_triangle_pdf > 0.0f))
 		return NISMLLightSample();
 
@@ -443,8 +448,8 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 	const LightTreeSGDevice& light_tree = render_data.light_tree_sg;
 
 	unsigned int invalid_node_index = 0xFFFFFFFF;
-	unsigned int cluster_count		= neural_light_sampling.cluster_count;
 
+	unsigned int cluster_count = neural_light_sampling.cluster_count;
 	if (cluster_count == 0 || cluster_count > NISML_MAX_CLUSTER_COUNT || light_tree.nodes == nullptr || neural_light_sampling.cluster_node_indices == nullptr)
 		return sampled_light;
 
@@ -465,7 +470,8 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 
 	// TODO stop these shenanigans and just pass cluster_log_baseline_weights down
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
-	float cluster_probability						   = 0.0f;
+
+	float cluster_probability			   = 0.0f;
 	unsigned int selected_cluster_position = infer_and_sample_nisml_cluster(neural_light_sampling, random_number_generator, shading_point, view_direction,
 																			shading_normal, render_data, cluster_probability);
 	if (selected_cluster_position >= cluster_count || !(cluster_probability > 0.0f))
@@ -486,6 +492,7 @@ HIPRT_DEVICE NISMLLightSample sample_one_emissive_triangle_neural_many_lights(co
 	sampled_light.cluster_probability			 = cluster_probability;
 	sampled_light.conditional_light_probability	 = conditional_sample.pdf;
 	sampled_light.emissive_triangle_pdf			 = cluster_probability * conditional_sample.pdf;
+
 	if (!(sampled_light.emissive_triangle_pdf > 0.0f))
 		return NISMLLightSample();
 
@@ -534,6 +541,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 									 cluster_log_baseline_weights);
 
 	neural_light_sampling.cluster_log_baseline_weights = cluster_log_baseline_weights;
+
 	float cluster_probability =
 		infer_nisml_cluster_probability(neural_light_sampling, target_cluster_index, shading_point, view_direction, shading_normal, render_data);
 	if (!(cluster_probability > 0.0f))
@@ -547,6 +555,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 	unsigned int current_depth		= neural_light_sampling.cluster_node_depths[target_cluster_index];
 
 	float conditional_triangle_probability = 1.0f;
+
 	while (light_tree.nodes[current_node_index].triangle_count == 0)
 	{
 		if (current_depth >= sizeof(unsigned int) * 8)
@@ -558,11 +567,13 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_nis(const HIPRTRenderData& render_da
 																 sg_specular_weight, alpha_x, alpha_y);
 		float right_importance	 = light_tree_sg_node_importance(light_tree.nodes[right_index], spec_data, shading_point, view_direction, shading_normal,
 																 sg_specular_weight, alpha_x, alpha_y);
-		float importance_sum	 = left_importance + right_importance;
+
+		float importance_sum = left_importance + right_importance;
 		if (!(importance_sum > 0.0f))
 			return 0.0f;
 
 		float left_probability = left_importance / importance_sum;
+
 		if ((bit_trail & (1u << current_depth)) == 0)
 		{
 			conditional_triangle_probability *= left_probability;

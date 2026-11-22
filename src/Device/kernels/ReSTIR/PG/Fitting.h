@@ -52,6 +52,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 
 	// Keeping the sum to normalize weights at the end
 	float component_weights_sum = 0.0f;
+
 	for (int component_index = 0; component_index < ReSTIRPGDistributionComponentCount; component_index++)
 	{
 		float3_t directions_sum =
@@ -60,7 +61,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		float directions_sum_length = hippt::length(directions_sum);
 		float responsibility_weights_sum =
 			sufficient_statistics_soa.responsibility_weights_sum[component_index * restir_pg_settings.hash_grid_total_number_of_cells + hash_grid_cell_index];
-
 		if (responsibility_weights_sum <= 1e-25f || directions_sum_length <= 1e-25f)
 			continue;
 
@@ -76,6 +76,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 		float new_vmf_sharpness = hippt::clamp(1.0e-2f, 1.0e4f, (3.0f * rpriork - hippt::pow_3(rpriork)) / (1.0f - hippt::square(rpriork)));
 
 		constexpr float prior = 1.0e-2f;
+
 		float new_mixture_component_weight =
 			(responsibility_weights_sum + prior) / (sum_responsibilities_weight_sum + prior * ReSTIRPGDistributionComponentCount);
 		if constexpr (ReSTIRPGDistributionComponentCount == 1)
@@ -104,6 +105,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Fitting(HIPRTRenderData render_da
 	for (int component_index = 0; component_index < ReSTIRPGDistributionComponentCount; component_index++)
 		total_weights += updated_distribution.distribution_components[component_index].weight;
 	float inv_total_weights = 1.0f / total_weights;
+
 	for (int component_index = 0; component_index < ReSTIRPGDistributionComponentCount; component_index++)
 		updated_distribution.distribution_components[component_index].weight *= inv_total_weights;
 

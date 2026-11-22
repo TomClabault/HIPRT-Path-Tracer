@@ -26,7 +26,6 @@ HIPRT_HOST_DEVICE inline unsigned int illumination_aware_kd_tree_classify_surfac
 	float absolute_x = hippt::abs(shading_normal.x);
 	float absolute_y = hippt::abs(shading_normal.y);
 	float absolute_z = hippt::abs(shading_normal.z);
-
 	if (absolute_x >= absolute_y && absolute_x >= absolute_z)
 		return shading_normal.x >= 0.0f ? SurfaceNormalFace_PositiveX : SurfaceNormalFace_NegativeX;
 

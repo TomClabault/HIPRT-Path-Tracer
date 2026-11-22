@@ -37,6 +37,7 @@ bool GPUKernelCompilerWorker::initialize_worker_context(int device_index, hiprtC
 	hiprtContextCreationInput context_input = { nullptr, -1, hiprtDeviceAMD };
 	context_input.ctxt						= oroGetRawCtx(orochi_context_out);
 	context_input.device					= oroGetRawDevice(orochi_device);
+
 	if (std::string(device_properties.name).find("NVIDIA") != std::string::npos)
 		context_input.deviceType = hiprtDeviceNVIDIA;
 
@@ -53,6 +54,7 @@ void GPUKernelCompilerWorker::destroy_worker_context(hiprtContext hiprt_context,
 {
 	if (hiprt_context != nullptr)
 		hiprtDestroyContext(hiprt_context);
+
 	if (orochi_context != nullptr)
 		oroCtxDestroy(orochi_context);
 }
@@ -110,6 +112,7 @@ bool GPUKernelCompilerWorker::compile_in_worker(const GPUKernelCompilerWindowPro
 		   request.use_compiler_cache, request.has_function_name_sets ? function_name_sets.data() : nullptr, request.additional_cache_key, nullptr, false);
 
 	GPUKernelCompilerWorker::destroy_worker_context(hiprt_context, orochi_context);
+
 	if (compile_status != hiprtSuccess)
 	{
 		std::cout << "Unable to compile kernel '" << request.kernel_function_name << "' in the worker process." << std::endl;

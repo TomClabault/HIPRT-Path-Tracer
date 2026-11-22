@@ -76,12 +76,14 @@ HIPRT_DEVICE float evaluate_ltc(const HIPRTRenderData& render_data,
 	vertex_B_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_B_local, material, ltc_lobe);
 	vertex_C_local = ltc_transform_shading_to_cosine(render_data, NoV, vertex_C_local, material, ltc_lobe);
 
-	float3_t vertices_local_space[4]  = { vertex_A_local, vertex_C_local, vertex_B_local };
+	float3_t vertices_local_space[4] = { vertex_A_local, vertex_C_local, vertex_B_local };
+
 	unsigned int clipped_vertex_count = clip_polygon(3, vertices_local_space);
 	if (clipped_vertex_count == 0)
 		return 0.0f;
 
 	float ltc_amplitude;
+
 	if (ltc_lobe == LTCLobe::SPECULAR_LOBE || ltc_lobe == LTCLobe::COAT_LOBE)
 	{
 		// This here approximates the amplitude of the specular BRDF, fresnel term included,

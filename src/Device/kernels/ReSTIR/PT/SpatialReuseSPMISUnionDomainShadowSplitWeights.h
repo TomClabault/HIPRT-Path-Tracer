@@ -55,6 +55,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 		// Stage 2 of spmis_union_domain_select_neighbors(): the visible picks in pick order, min(N, n_vis) of them chosen uniformly without replacement
 		int visible_picks[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
 		int visible_pick_count = 0;
+
 		for (int pick = 0; pick < pool_size; pick++)
 			if ((visible_mask >> pick) & 1u)
 				visible_picks[visible_pick_count++] = pick;
@@ -91,9 +92,9 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			if (neighbor_reservoir.UCW > 0.0f)
 				mis_target_at_center = ReSTIR_PT_evaluate_target_function_at_pixel<false, true>(
 					render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_shading_point, random_number_generator);
+
 			float resampling_target_function_at_center =
 				ReSTIR_PT_resampling_target_function_bsdf_approximation(neighbor_reservoir.sample, mis_target_at_center);
-
 			if (!(resampling_target_function_at_center > 0.0f && shift_mapping_jacobian != 0.0f))
 				// Zero MIS weight in the single kernel: zero resampling weight, never selected
 				continue;
@@ -166,6 +167,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			hippt::min(canonical_group_count * RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE, RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES);
 
 		float probe_target_functions[RESTIR_PT_SPMIS_UNION_DOMAIN_USTAT_MAX_PROBES];
+
 		for (int probe = 0; probe < probe_count; probe++)
 		{
 			bool probe_visible			  = (visible_mask >> (RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT + probe)) & 1u;

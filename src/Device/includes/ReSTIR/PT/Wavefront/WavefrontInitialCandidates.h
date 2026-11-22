@@ -99,11 +99,12 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_add_learning_to_cluster_envmap_light_candi
 	nee_plus_plus_context.envmap		 = true;
 	nee_plus_plus_context.point_on_light = sampled_direction;
 	nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
+
 	if (ray_payload.bounce == 0)
 		restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+
 	bool shadow_ray_occluded =
 		evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context, random_number_generator);
-
 	if (!shadow_ray_occluded)
 	{
 		spatial_training_sample.spatial_radiance_weight = (envmap_emission / solid_angle_pdf).max_component();
@@ -157,6 +158,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_add_learning_to_cluster_light_candidate(HI
 
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+
 	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
 		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
@@ -196,6 +198,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_add_learning_to_cluster_light_candidate(HI
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																ray_payload.material, triangle_sample.emissive_triangle_global_index, random_number_generator);
 	light_sample.area_measure_pdf *= triangle_sample.triangle_probability();
+
 	if (!(light_sample.area_measure_pdf > 0.0f))
 	{
 		render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
@@ -209,7 +212,8 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_add_learning_to_cluster_light_candidate(HI
 	spatial_training_sample.cached_guiding_node_index  = triangle_sample.guiding_node_index;
 
 	float3_t shadow_direction = light_sample.point_on_light - closest_hit_info.inter_point;
-	float distance_to_light	  = hippt::length(shadow_direction);
+
+	float distance_to_light = hippt::length(shadow_direction);
 	if (!(distance_to_light > 0.0f))
 	{
 		render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
@@ -234,9 +238,9 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_add_learning_to_cluster_light_candidate(HI
 
 		if (ray_payload.bounce == 0)
 			restir_pt_initial_sample.visible_to_sample_point_alpha_test_random_seed = random_number_generator.m_state.seed;
+
 		shadow_ray_occluded = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 																nee_plus_plus_context, random_number_generator);
-
 		if (!shadow_ray_occluded)
 		{
 			float solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
@@ -306,11 +310,13 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_stream_NEE(HIPRTRenderData& render_data,
 	// material that cannot do light sampling, the PDFs return before reading the lightcut
 	unsigned int lightcut_index		= IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX;
 	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
-	bool has_light_to_sample		= learning_to_cluster_has_light_to_sample(render_data);
+
+	bool has_light_to_sample = learning_to_cluster_has_light_to_sample(render_data);
 	if (has_light_to_sample && ray_payload.material.can_do_light_sampling())
 	{
 		IlluminationAwareKDTreeSGShadingContext shading_context =
 			build_light_clustering_shading_context(closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, ray_payload.material);
+
 		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
 			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
@@ -510,6 +516,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_do_deferred_NEE_MIS(HIPRTRenderData& rende
 	{
 		float envmap_pdf_solid_angle;
 		ColorRGB32F envmap_emission;
+
 		// The white furnace mode replaces the envmap with the uniform sky, as path_tracing_miss_gather_envmap() does
 		if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode)
 		{
@@ -521,6 +528,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_do_deferred_NEE_MIS(HIPRTRenderData& rende
 			envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);
 
 		float nee_mis_weight;
+
 		if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
 		{
 			// The envmap is a cluster of the lightcuts: the learning-to-cluster light candidate of the previous vertex samples it
@@ -546,6 +554,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_do_deferred_NEE_MIS(HIPRTRenderData& rende
 		return;
 
 	float nee_mis_weight = 1.0f;
+
 	if (render_data.buffers.emissive_triangles_count > 0)
 	{
 		float light_sampler_solid_angle_pdf = ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(render_data, nee_deferred_MIS_context, light_hit_info);
@@ -812,6 +821,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 		wavefront_load_nee_deferred_mis_context(render_data, pixel_index, nee_deferred_MIS_context);
 
 		int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+
 		bool classification_cache_loaded =
 			wavefront_load_current_material_classification(render_data, pixel_index, resolved_user_controls, classification_inputs);
 		if (!classification_cache_loaded)
@@ -941,6 +951,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_complete_path(HIPRTRenderData& render_data
 	wavefront_load_nee_deferred_mis_context(render_data, pixel_index, nee_deferred_MIS_context);
 
 	ColorRGB32F hit_emission = ColorRGB32F(0.0f);
+
 	if (intersection_found)
 	{
 		int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];

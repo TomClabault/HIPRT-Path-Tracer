@@ -49,6 +49,7 @@ IlluminationAwareKDTree_CoreReduceBatchStatisticsUpward(IlluminationAwareKDTreeD
 	// A node is reduced only when it is exactly reduction_level edges below a guiding cell.
 	// This gives the host one globally ordered pass per level without requiring a depth field in every node.
 	unsigned int ancestor_index = node_index;
+
 	for (unsigned int distance = 0; distance < reduction_level; distance++)
 	{
 		if (kd_tree_device.core.nodes[ancestor_index].flags & IlluminationAwareKDTreeNodeFlag_Guiding)

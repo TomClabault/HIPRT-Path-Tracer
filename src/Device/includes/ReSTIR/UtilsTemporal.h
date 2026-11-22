@@ -49,6 +49,7 @@ HIPRT_DEVICE int3_t find_temporal_neighbor_index(const HIPRTRenderData& render_d
 	// We're going to randomly look for an acceptable neighbor around the back-projected pixel location to find
 	// in a given radius
 	int temporal_neighbor_index = -1;
+
 	for (int i = 0; i < temporal_pass_settings.max_neighbor_search_count + 1; i++)
 	{
 		float2_t offset = make_float2(0.0f, 0.0f);

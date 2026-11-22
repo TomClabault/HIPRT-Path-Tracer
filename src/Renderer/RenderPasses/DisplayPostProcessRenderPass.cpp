@@ -85,7 +85,8 @@ void DisplayPostProcessRenderPass::update_display_post_process_settings()
 	post_process_settings.gmon_blend_factor				= 0.0f;
 	post_process_settings.gmon_blend_noisy_sample_count = std::max(1, static_cast<int>(m_renderer->get_render_settings().sample_number));
 	post_process_settings.gmon_blend_sample_count		= 1;
-	std::shared_ptr<GMoNRenderPass> gmon_render_pass	= m_renderer->get_gmon_render_pass();
+
+	std::shared_ptr<GMoNRenderPass> gmon_render_pass = m_renderer->get_gmon_render_pass();
 	if (gmon_render_pass != nullptr)
 	{
 		post_process_settings.gmon_blend_factor		  = gmon_render_pass->get_gmon_data().gmon_blend_factor;

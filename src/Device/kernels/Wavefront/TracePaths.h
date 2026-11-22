@@ -28,6 +28,7 @@ inline WavefrontTracePaths(HIPRTRenderData render_data, unsigned int queue_slot)
 	unsigned int input_count = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[1], 0u);
 	if (input_count > render_data.wavefront_data.path_capacity)
 		input_count = render_data.wavefront_data.path_capacity;
+
 	if (queue_slot >= input_count)
 		return;
 
@@ -47,6 +48,7 @@ inline WavefrontTracePaths(HIPRTRenderData render_data, unsigned int queue_slot)
 								 random_number_generator.m_state.seed);
 
 	bool terminal_path = (render_data.wavefront_data.path_state_flags[pixel_index] & WAVEFRONT_PATH_STATE_TERMINAL) != 0;
+
 	if (!terminal_path && intersection_found && render_data.wavefront_data.trace_classifies_material_families)
 		// The hit is still in registers: classifying it here avoids a separate classification pass reloading the trace results.
 		// The path goes straight to the queue of its material family, queue 0 is not used in that case

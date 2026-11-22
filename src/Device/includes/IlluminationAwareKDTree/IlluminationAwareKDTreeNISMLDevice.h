@@ -49,6 +49,7 @@ struct IlluminationAwareKDTreeNISMLDevice
 		}
 
 		unsigned int representative_index = get_nisml_representative_index(cache_index, replacement_index);
+
 		if (is_replacement)
 		{
 			if (hippt::atomic_compare_exchange(&nisml_representative_write_locks[representative_index], 0u, 1u) != 0u)

@@ -185,6 +185,7 @@ HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedPrincipled
 
 	// Reflectance term for m>0 (pairs of diracs)
 	float Cm = Rs - T121p;
+
 	for (int m = 1; m <= 2; ++m)
 	{
 		Cm *= r123p;
@@ -200,6 +201,7 @@ HIPRT_DEVICE static ColorRGB32F thin_film_fresnel(const DeviceUnpackedPrincipled
 
 	// Reflectance term for m>0 (pairs of diracs)
 	Cm = Rs - T121s;
+
 	for (int m = 1; m <= 2; ++m)
 	{
 		Cm *= r123s;

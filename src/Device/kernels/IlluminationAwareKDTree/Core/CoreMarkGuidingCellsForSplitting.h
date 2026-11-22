@@ -49,6 +49,7 @@ IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting(IlluminationAwareKDTree
 								   subdivision_mode == IlluminationAwareKDTreeSubdivisionMode::FULL_MODEL;
 	VMF guiding_direction_model{};
 	bool guiding_direction_model_initialized = false;
+
 	if (evaluate_mean_direction && kd_tree_device.core.history_signatures[guiding_node_index].valid_observation_count <
 									   static_cast<float>(kd_tree_device.core.user_settings.minimum_sample_count_for_splitting))
 		evaluate_mean_direction = false;
@@ -59,6 +60,7 @@ IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting(IlluminationAwareKDTree
 	stack[stack_size++]		= guiding_node.left_child_index + 1u;
 
 	bool needs_split = false;
+
 	while (stack_size > 0)
 	{
 		unsigned int lookahead_node_index = stack[--stack_size];
@@ -88,6 +90,7 @@ IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting(IlluminationAwareKDTree
 		}
 
 		bool split_mean_direction = false;
+
 		if (evaluate_mean_direction)
 		{
 			if (!guiding_direction_model_initialized)
@@ -116,6 +119,7 @@ IlluminationAwareKDTree_CoreMarkGuidingCellsForSplitting(IlluminationAwareKDTree
 	}
 
 	kd_tree_device.core.needs_split[guiding_list_index] = needs_split;
+
 	if (needs_split)
 		*kd_tree_device.any_cell_needs_split = 1;
 }

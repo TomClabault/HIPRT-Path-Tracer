@@ -37,6 +37,7 @@ IlluminationAwareKDTree_LearningToClusterReplayStatistics(IlluminationAwareKDTre
 	// The lightcut index was resolved by InitializeShadingContexts and remains valid while refinement changes the cut contents.
 	unsigned int lightcut_index = kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index];
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+
 	if (lightcut_index == invalid_lightcut_index || lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 

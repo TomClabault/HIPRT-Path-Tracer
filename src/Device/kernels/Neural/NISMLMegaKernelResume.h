@@ -27,7 +27,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 	if (x >= render_data.render_settings.render_resolution.x || y >= render_data.render_settings.render_resolution.y)
 		return;
 
-	unsigned int pixel_index			= x + y * render_data.render_settings.render_resolution.x;
+	unsigned int pixel_index = x + y * render_data.render_settings.render_resolution.x;
+
 	NISMLMegaKernelPathState path_state = render_data.nisml_mega_kernel.path_states[pixel_index];
 	if (path_state == NISMLMegaKernelPathState::FINISHED || path_state == NISMLMegaKernelPathState::UNINITIALIZED)
 		return;
@@ -42,6 +43,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 	NEEDeferredMISContext nee_deferred_MIS_context;
 
 	NISResult nis_result;
+
 	if (path_state == NISMLMegaKernelPathState::WAITING_FOR_NIS)
 	{
 		NISQuery query	 = render_data.nisml_mega_kernel.queries[render_data.nisml_mega_kernel.path_data[pixel_index].query_index];
@@ -98,10 +100,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelResume(HIPRTRenderData rende
 	}
 
 	BSDFIncidentLightInfo sampled_light_info = BSDFIncidentLightInfo::NO_INFO; // This variable is never used, this is just for debugging on the CPU
-																			   // so that we know what the BSDF sampled
+
+	// so that we know what the BSDF sampled
 	bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
 																		   random_number_generator, sampled_light_info, nee_deferred_MIS_context);
-
 	if (!valid_indirect_bounce)
 	{
 		nisml_megakernel_finalize_path_with_context(render_data, pixel_index, x, y, ray_payload, ray, closest_hit_info, random_number_generator,

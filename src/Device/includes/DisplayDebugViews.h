@@ -14,7 +14,8 @@
 HIPRT_DEVICE ColorRGB32F display_view_gmon_blend(const HIPRTRenderData& render_data, unsigned int pixel_index)
 {
 	ColorRGB32F noisy_color = render_data.buffers.accumulated_ray_colors[pixel_index];
-	ColorRGB32F gmon_color	= noisy_color;
+
+	ColorRGB32F gmon_color = noisy_color;
 	if (render_data.buffers.gmon_estimator.result_framebuffer != nullptr)
 		gmon_color = render_data.buffers.gmon_estimator.result_framebuffer[pixel_index];
 

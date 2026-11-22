@@ -48,6 +48,7 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 								  float& out_specular_proba)
 {
 	float coat_weight = 0.0f;
+
 	if (material.coat_roughness <= render_data.bsdfs_data.ltcs_data.specular_ltc_maximum_roughness && material.coat > 0.0f)
 	{
 		float coat_reflected_radiance_triangle_ltc = evaluate_ltc(render_data, vertex_A_worldspace, vertex_B_worldspace, vertex_C_worldspace, shading_point,
@@ -76,7 +77,6 @@ HIPRT_DEVICE void ltc_lobe_probas(const HIPRTRenderData& render_data,
 	float diffuse_weight = get_ltc_base_color_luminance(material) *
 						   (1.0f - average_fresnel_fit(hippt::dot(view_direction, shading_normal), material.roughness, material.ior)) *
 						   diffuse_radiance_triangle_ltc;
-
 	if (coat_weight + metallic_weight + specular_weight + diffuse_weight == 0.0f)
 		// All lobes have 0 weight, this is the perfect only-diffuse-lobe case
 		diffuse_weight = 1.0f;
@@ -136,7 +136,6 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabiliti
 	cdf[2] = cdf[1] + lobe_probabilities.specular_proba;
 
 	float random_number = rng();
-
 	if (random_number < cdf[0])
 		return LTCLobe::COAT_LOBE;
 	else if (random_number < cdf[1])

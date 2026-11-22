@@ -42,6 +42,7 @@ HIPRT_DEVICE void spmis_compute_cell_variance(unsigned short int* cell_pixels_co
 	unsigned int index		 = cell_offset + threadIdx.x;
 
 	float contribution = 0.0f;
+
 	if (threadIdx.x < total_count)
 	{
 		unsigned int pixel_index	= pixel_indices_sorted[index];
@@ -93,7 +94,8 @@ inline ReSTIR_PT_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell
 	// CPU path: iterate over all alive cells
 	for (int i = 0; i < cell_alive_count; i++)
 	{
-		unsigned int cell_index	 = cell_alive_list[i];
+		unsigned int cell_index = cell_alive_list[i];
+
 		unsigned int total_count = cell_pixels_counters[cell_index];
 		if (total_count < PER_CELL_VARIANCE_MIN_PIXEL_COUNT)
 		{

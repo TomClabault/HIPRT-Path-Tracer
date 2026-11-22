@@ -49,11 +49,12 @@ HIPRT_DEVICE unsigned int clip_polygon(unsigned int vertex_count, float3_t v[MAX
 {
 	// The vertex count after clipping
 	unsigned int vc;
+
 	// Encode the whole configuration into a single integer
 	unsigned int bit_mask = vertex_count;
-
 	for (unsigned int i = 0; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING - 1; ++i)
 		bit_mask |= (v[i].z > 0.0f && (i < MIN_POLYGON_VERTEX_COUNT_BEFORE_CLIPPING || i < vertex_count)) ? (1 << (i + 3)) : 0;
+
 	// This code has been generated automatically to handle all possible cases
 	// with a single conditional jump and no unnecessary instructions
 	switch (bit_mask)

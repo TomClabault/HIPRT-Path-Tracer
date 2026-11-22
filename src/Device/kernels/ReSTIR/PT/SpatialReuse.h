@@ -77,7 +77,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 								  neighbor_heuristics_cache);
 
 	int reused_neighbors_count = render_data.render_settings.restir_pt_settings.spatial_pass.reuse_neighbor_count;
-	int start_index			   = 0;
+
+	int start_index = 0;
 	if (valid_neighbors_confidence_sum == 0)
 		// No valid neighbor to resample from, skip to the initial candidate right away
 		start_index = reused_neighbors_count;
@@ -92,6 +93,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 #endif // #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS || ReSTIR_PT_MISWeightsType ==
 	   // RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE
 	Xorshift32Generator spatial_neighbors_rng(render_data.render_settings.restir_pt_settings.spatial_pass.spatial_neighbors_rng_seed);
+
 	// Resampling the neighbors. Using neighbors + 1 here so that
 	// we can use the last iteration of the loop to resample ourselves (the center pixel)
 	//
@@ -119,6 +121,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 		ReSTIRPTReservoir neighbor_reservoir = input_reservoir_buffer[neighbor_pixel_index];
 
 		float shift_mapping_jacobian = 1.0f;
+
 		if (neighbor_reservoir.UCW > 0.0f && !is_center_pixel && !neighbor_reservoir.sample.is_envmap_path())
 		{
 			// Only attempting the shift if the neighbor reservoir is valid
@@ -132,6 +135,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 		}
 
 		float target_function_at_center = 0.0f;
+
 		if (neighbor_reservoir.UCW > 0.0f)
 		{
 			if (is_center_pixel)

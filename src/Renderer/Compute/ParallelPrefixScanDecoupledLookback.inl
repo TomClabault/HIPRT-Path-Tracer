@@ -152,6 +152,7 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 	m_size = element_count;
 
 	m_input_data_pointer = input_buffer_pointer;
+
 	if (output_buffer_pointer)
 		m_output_data_pointer = output_buffer_pointer;
 	else
@@ -376,6 +377,7 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 
 		auto start																					  = std::chrono::high_resolution_clock::now();
 		std::conditional_t<std::is_same_v<OutputDataType, float>, double, OutputDataType> running_sum = 0;
+
 		for (size_t j = 0; j < test_size; j++)
 		{
 			if (exclusive_scan)
@@ -399,6 +401,7 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 		scanner.upload_input_data(input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
+
 		unsigned int repeats = 5;
 		for (int j = 0; j < repeats; j++)
 		{

@@ -46,8 +46,8 @@ HIPRT_DEVICE static float full_fresnel_dielectric(float cos_theta_i, float relat
 
 	// Computing cos_theta_t
 	float sin_theta_i2 = 1.0f - cos_theta_i * cos_theta_i;
-	float sin_theta_t2 = sin_theta_i2 / (relative_eta * relative_eta);
 
+	float sin_theta_t2 = sin_theta_i2 / (relative_eta * relative_eta);
 	if (sin_theta_t2 >= 1.0f)
 		// Total internal reflection, 0% refraction, all reflection
 		return 1.0f;

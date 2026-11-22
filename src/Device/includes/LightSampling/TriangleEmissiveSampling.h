@@ -162,7 +162,6 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<samplingStrategy>()> sample
 																						   Xorshift32Generator& random_number_generator)
 {
 	LightSampleArray<DirectLightSampleCount<samplingStrategy>()> light_samples;
-
 	if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
 		light_samples[0] = sample_one_light_uniform(render_data, shading_point, view_direction, shading_normal, ray_payload.material, random_number_generator);
 	else if constexpr (samplingStrategy == LSS_BASE_POWER)
@@ -248,7 +247,6 @@ HIPRT_DEVICE LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> s
 																										 Xorshift32Generator& random_number_generator)
 {
 	LightSamplePointArray<DirectLightSampleCount<samplingStrategy>()> light_point_samples;
-
 	if constexpr (samplingStrategy == LSS_BASE_UNIFORM)
 		light_point_samples[0] =
 			sample_one_point_on_light_uniform(render_data, shading_point, view_direction, shading_normal, proposal_state, random_number_generator);

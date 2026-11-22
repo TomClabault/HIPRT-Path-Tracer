@@ -35,23 +35,30 @@ enum PrincipledLobeSupportBits : unsigned int
 HIPRT_DEVICE inline unsigned int get_principled_lobe_support_mask(const PrincipledLobeWeights& weights)
 {
 	unsigned int support_mask = 0u;
-
 	if (weights.coat > 0.0f)
 		support_mask |= PrincipledLobeSupportCoat;
+
 	if (weights.sheen > 0.0f)
 		support_mask |= PrincipledLobeSupportSheen;
+
 	if (weights.metallic_first > 0.0f)
 		support_mask |= PrincipledLobeSupportMetallicFirst;
+
 	if (weights.metallic_second > 0.0f)
 		support_mask |= PrincipledLobeSupportMetallicSecond;
+
 	if (weights.retro_reflection > 0.0f)
 		support_mask |= PrincipledLobeSupportRetroReflection;
+
 	if (weights.specular > 0.0f)
 		support_mask |= PrincipledLobeSupportSpecular;
+
 	if (weights.diffuse > 0.0f)
 		support_mask |= PrincipledLobeSupportDiffuse;
+
 	if (weights.glass > 0.0f)
 		support_mask |= PrincipledLobeSupportGlass;
+
 	if (weights.diffuse_transmission > 0.0f)
 		support_mask |= PrincipledLobeSupportDiffuseTransmission;
 

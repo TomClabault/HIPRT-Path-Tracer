@@ -42,10 +42,12 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes[pixel_index]			  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixel_hashes_checksums[pixel_index] = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 		render_data.render_settings.restir_pt_settings.spmis_settings.all_pixels_index_in_cell[pixel_index]	  = 0;
+
 		for (unsigned int cache_slot = 0; cache_slot < RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE; cache_slot++)
 			render_data.render_settings.restir_pt_settings.spmis_settings
 				.all_pixels_reuse_cell_pixel_index[pixel_index * RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE + cache_slot] =
 				HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+
 		if (render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.domain_cache != nullptr)
 			// The union domain cache is emptied with the reuse cell cache. Its buffer is only allocated while the union domain reuse is used. An undefined
 			// cell count marks an empty cache
@@ -108,9 +110,11 @@ HIPRT_DEVICE void rescale_samples_for_display(HIPRTRenderData& render_data, uint
 	float float_sample_number = static_cast<float>(render_data.render_settings.sample_number);
 	render_data.buffers.accumulated_ray_colors[pixel_index] =
 		render_data.buffers.accumulated_ray_colors[pixel_index] / float_sample_number * (render_data.render_settings.sample_number + 1);
+
 	if (render_data.buffers.gmon_estimator.sets != nullptr)
 	{
 		int2_t res = render_data.render_settings.render_resolution;
+
 		// GMoN is enabled, we're also going to scale the GMoN samples for the same reason
 		for (int set_index = 0; set_index < GMoNMSetsCount; set_index++)
 			// TODO this is slow
@@ -174,6 +178,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
 	bool sampling_needed = true;
 	bool pixel_converged = false;
+
 	if (render_data.render_settings.use_hierarchical_adaptive_sampling())
 	{
 		// The hierarchy pass writes the mask for the next sample. Always sample once after reset so
@@ -212,6 +217,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 	// Direction to the center of the pixel
 	float x_ray_point_direction = (x + 0.5f);
 	float y_ray_point_direction = (y + 0.5f);
+
 	if (render_data.current_camera.do_jittering)
 	{
 		// Jitter randomly around the center
@@ -228,6 +234,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 
 	// Misses are shaded by the generic material family
 	unsigned int primary_material_family = static_cast<unsigned int>(KernelMaterialSpecializationAll);
+
 	if (intersection_found)
 	{
 		render_data.g_buffer.geometric_normals[pixel_index].pack(closest_hit_info.geometric_normal);
@@ -239,7 +246,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline CameraRays(HIPRTRenderData render_data, int
 		// The flags of the MIS target function BSDF approximation of ReSTIR PT in the padding byte of the shading normal (0 when the approximation is not
 		// used), computed from the values the target function reads back from the G-buffer (unpacked normal and material, view direction from the camera
 		// position and the hit point)
-		Octahedral24BitNormalPadded32b packed_shading_normal			 = Octahedral24BitNormalPadded32b::pack_static(closest_hit_info.shading_normal);
+		Octahedral24BitNormalPadded32b packed_shading_normal = Octahedral24BitNormalPadded32b::pack_static(closest_hit_info.shading_normal);
+
 		unsigned char mis_target_function_bsdf_approximation_pixel_flags = 0;
 		if (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))
 			mis_target_function_bsdf_approximation_pixel_flags =

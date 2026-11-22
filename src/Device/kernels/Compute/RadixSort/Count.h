@@ -29,6 +29,7 @@ RadixSort_Count(unsigned int* __restrict__ keys,
 				bool ascending_order)
 {
 	__shared__ unsigned int per_block_histogram[RADIX_SORT_RADIX_SIZE];
+
 	if (threadIdx.x < RADIX_SORT_RADIX_SIZE)
 		per_block_histogram[threadIdx.x] = 0;
 	__syncthreads();

@@ -36,8 +36,8 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 	stbi_set_flip_vertically_on_load_thread(flipY);
 
 	int width, height, read_channels;
-	unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
+	unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
@@ -46,6 +46,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 	}
 
 	Image8Bit output_image(width, height, output_channels);
+
 #pragma omp parallel for
 	for (int y = 0; y < height; y++)
 	{
@@ -56,6 +57,7 @@ Image8Bit Image8Bit::read_image(const std::string& filepath, int output_channels
 			for (int i = 0; i < output_channels; i++)
 			{
 				output_image[index * output_channels + i] = pixels[index * output_channels + i];
+
 				if (i == 3 && output_channels == 4 && read_channels < 4)
 					output_image[index * output_channels + i] = 255; // If the image has no alpha channel, we set it to 255 (fully opaque)
 			}
@@ -72,8 +74,8 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
 	stbi_set_flip_vertically_on_load(flipY);
 
 	int width, height, read_channels;
-	float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
+	float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
@@ -82,6 +84,7 @@ Image8Bit Image8Bit::read_image_hdr(const std::string& filepath, int output_chan
 	}
 
 	std::vector<unsigned char> converted_data(width * height * output_channels);
+
 #pragma omp parallel for
 	for (int y = 0; y < height; y++)
 	{
@@ -108,6 +111,7 @@ bool Image8Bit::write_image_png(const std::string_view filename, const bool flip
 		return false;
 
 	std::vector<unsigned char> tmp(width * height * channels);
+
 	for (unsigned i = 0; i < width * height; i++)
 		for (int j = 0; j < channels; j++)
 			tmp[i * channels + j] = hippt::clamp(static_cast<unsigned char>(0), static_cast<unsigned char>(255), m_pixel_data[i * channels + j]);
@@ -124,6 +128,7 @@ bool Image8Bit::write_image_hdr(const std::string_view filename, const bool flip
 		return false;
 
 	std::vector<float> tmp(width * height * channels);
+
 	for (unsigned i = 0; i < width * height; i++)
 		for (int j = 0; j < channels; j++)
 			tmp[i * channels + j] = m_pixel_data[i * channels + j] / 255.0f;
@@ -143,6 +148,7 @@ void Image8Bit::flip_vertically()
 		{
 			int input_index	 = (x + y * width) * channels;
 			int output_index = (x + (height - 1 - y) * width) * channels;
+
 			for (int i = 0; i < channels; i++)
 				flipped_data[output_index + i] = m_pixel_data[input_index + i];
 		}
@@ -167,6 +173,7 @@ float Image8Bit::luminance_of_pixel(int x, int y) const
 	// luminance computation but not alpha
 	float luminance	 = 0.0f;
 	float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
+
 	for (int i = 0; i < hippt::min(channels, 3); i++)
 		luminance += m_pixel_data[start_pixel + i] * weights[i];
 
@@ -257,6 +264,7 @@ std::vector<float> Image8Bit::compute_cdf() const
 	out_cdf[0] = 0.0f;
 
 	float max_radiance = 0.0f;
+
 	for (int y = 0; y < height; y++)
 	{
 		for (int x = 0; x < width; x++)
@@ -364,6 +372,7 @@ Image32Bit::Image32Bit(Image8Bit image, int channels)
 		for (int x = 0; x < image.width; x++)
 		{
 			int index = x + y * image.width;
+
 			for (int i = 0; i < output_channels; i++)
 				m_pixel_data[index * output_channels + i] = static_cast<float>(image[index * input_channels + i]) / 255.0f;
 		}
@@ -379,8 +388,8 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
 	stbi_set_flip_vertically_on_load(flipY);
 
 	int width, height, read_channels;
-	unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
+	unsigned char* pixels = stbi_load(filepath.c_str(), &width, &height, &read_channels, output_channels);
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
@@ -389,6 +398,7 @@ Image32Bit Image32Bit::read_image(const std::string& filepath, int output_channe
 	}
 
 	Image32Bit output_image(width, height, output_channels);
+
 #pragma omp parallel for
 	for (int y = 0; y < height; y++)
 	{
@@ -411,8 +421,8 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
 	stbi_set_flip_vertically_on_load_thread(flipY);
 
 	int width, height, read_channels;
-	float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 
+	float* pixels = stbi_loadf(filepath.c_str(), &width, &height, &read_channels, output_channels);
 	if (!pixels)
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Error reading image %s: %s", filepath.c_str(), stbi_failure_reason());
@@ -421,6 +431,7 @@ Image32Bit Image32Bit::read_image_hdr(const std::string& filepath, int output_ch
 	}
 
 	std::vector<float> converted_data(width * height * output_channels);
+
 #pragma omp parallel for
 	for (int y = 0; y < height; y++)
 	{
@@ -446,7 +457,6 @@ Image32Bit Image32Bit::read_image_exr(const std::string& filepath, bool flipY)
 	const char* err = nullptr;
 
 	int ret = LoadEXR(&out, &width, &height, filepath.c_str(), &err);
-
 	if (ret != TINYEXR_SUCCESS)
 	{
 		if (err)
@@ -516,6 +526,7 @@ bool Image32Bit::write_image_hdr(const char* filename, const bool flipY) const
 		return false;
 
 	std::vector<float> tmp(width * height * channels);
+
 	for (unsigned i = 0; i < width * height; i++)
 		for (int j = 0; j < channels; j++)
 			tmp[i * channels + j] = m_pixel_data[i * channels + j];
@@ -585,6 +596,7 @@ float Image32Bit::luminance_of_pixel(int x, int y) const
 	// luminance computation but not alpha
 	float luminance	 = 0.0f;
 	float weights[3] = { 0.3086f, 0.6094f, 0.0820f };
+
 	for (int i = 0; i < hippt::min(channels, 3); i++)
 		luminance += m_pixel_data[start_pixel + i] * weights[i];
 
@@ -644,6 +656,7 @@ ColorRGBA32F Image32Bit::sample_rgba32f(float2_t uv) const
 	int y = (v * (height - 1));
 
 	ColorRGBA32F out_color;
+
 	switch (sampling_mode)
 	{
 	case ImageSamplingMode::SAMPLING_MODE_NEAREST:
@@ -739,6 +752,7 @@ void Image32Bit::compute_alias_table(std::vector<float>& out_probas, std::vector
 	float luminance_sum = 0.0f;
 
 	std::vector<float> texel_luminance(width * height);
+
 	for (int y = 0; y < height; y++)
 	{
 		for (int x = 0; x < width; x++)
@@ -775,10 +789,10 @@ float Image32Bit::compute_solid_angle_mean_luminance() const
 	for (int y = 0; y < height; y++)
 	{
 		// The polar angle at the center of the row. The sine is symmetric around the equator so the vertical orientation of the image does not matter
-		double theta		 = (static_cast<double>(y) + 0.5) / static_cast<double>(height) * static_cast<double>(hippt::M_Pi);
-		double sin_theta	 = std::sin(theta);
-		double row_luminance = 0.0;
+		double theta	 = (static_cast<double>(y) + 0.5) / static_cast<double>(height) * static_cast<double>(hippt::M_Pi);
+		double sin_theta = std::sin(theta);
 
+		double row_luminance = 0.0;
 		for (int x = 0; x < width; x++)
 			row_luminance += luminance_of_pixel(x, y);
 

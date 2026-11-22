@@ -41,7 +41,6 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 	unsigned int block_offset  = index < size ? per_block_count_table_prefix_scanned[radix * num_blocks + blockIdx.x] : 0;
 
 	__shared__ short int digit_count_per_warp[warp_count][RADIX_SORT_RADIX_SIZE];
-
 	for (int i = lane_index; i < RADIX_SORT_RADIX_SIZE; i += warp_size)
 		digit_count_per_warp[warp_index][i] = 0;
 	__syncthreads();
@@ -53,6 +52,7 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 					 // (prefix scan)
 
 	__shared__ short int digit_count_per_warp_prefix_summed[warp_count][RADIX_SORT_RADIX_SIZE];
+
 	for (int digit = warp_index; digit < RADIX_SORT_RADIX_SIZE; digit += warp_count)
 	{
 		int my_digit_count			= digit_count_per_warp[lane_index][digit];
@@ -67,12 +67,14 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 
 	// And now computing the intra-warp offset by summing the counts of the previous threads with the same radix in the same warp
 	unsigned int intra_warp_offset = 0;
+
 	for (int l = 0; l < warp_size; l++)
 	{
 		// For each lane, ask the other threads in the warp (ballot) if they have the same value and count how many of them are before us (mask_lane_lt + popc)
 		unsigned int radix_lane		 = hippt::warp_shfl(radix, l);
 		unsigned int same_radix_mask = hippt::warp_ballot(0xFFFFFFFF, radix_lane == radix);
 		unsigned int mask_lane_lt	 = (1U << lane_index) - 1;
+
 		if (lane_index == l)
 			// For this thread, the intra-warp offset is the number of threads with the same radix that are before us in the warp, which is given by the
 			// population count of the mask of threads with the same radix that are before us

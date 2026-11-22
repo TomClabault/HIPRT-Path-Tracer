@@ -40,6 +40,7 @@ void ImGuiAnimationWindow::draw_header()
 	RendererAnimationState& animation_state = m_renderer->get_animation_state();
 
 	ImGui::SeparatorText("General settings");
+
 	if (ImGui::Checkbox("Accumulate", &render_settings.accumulate))
 	{
 		m_render_window->set_render_dirty(true);
@@ -54,6 +55,7 @@ void ImGuiAnimationWindow::draw_header()
 	std::string animation_button_text = animation_state.do_animations ? "Disable animations" : "Enable animations";
 	if (ImGui::Button(animation_button_text.c_str()))
 		animation_state.do_animations = !animation_state.do_animations;
+
 	if (m_renderer->get_render_settings().accumulate && !animation_state.is_rendering_frame_sequence)
 	{
 		ImGui::TreePush("Animations warning tree");
@@ -87,11 +89,13 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 		ImGuiRenderer::show_help_marker("Advances all the animations N frames forward.");
 		ImGui::BeginDisabled(animation_state.do_animations == false);
 		ImGui::TreePush("Go button tree");
+
 		if (ImGui::Button("Go!"))
 		{
 			bool can_step_backup = animation_state.can_step_animation;
 
 			animation_state.can_step_animation = true;
+
 			for (int i = 0; i < move_n_frames_forward; i++)
 				m_renderer->step_animations(16.67f);
 
@@ -102,6 +106,7 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 		}
 		ImGui::TreePop();
 		ImGui::EndDisabled();
+
 		if (animation_state.do_animations == false)
 			ImGuiRenderer::show_help_marker("Disabled because animations are not enabled right now.");
 
@@ -115,8 +120,9 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 										"and the noise will look very similar from one frame to another which can be distracting for an animation.");
 
 		ImGui::BeginDisabled(!m_renderer->get_render_settings().accumulate);
+
 		std::string start_rendering_animation_text =
-								animation_state.is_rendering_frame_sequence ? "Stop rendering frame sequence" : "Start rendering frame sequence";
+			animation_state.is_rendering_frame_sequence ? "Stop rendering frame sequence" : "Start rendering frame sequence";
 		if (ImGui::Button(start_rendering_animation_text.c_str()))
 		{
 			m_render_window->set_render_dirty(true);
@@ -124,6 +130,7 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 			animation_state.is_rendering_frame_sequence = !animation_state.is_rendering_frame_sequence;
 			animation_state.reset();
 		}
+
 		if (!m_renderer->get_render_settings().accumulate)
 			ImGuiRenderer::show_help_marker("Feature disabled because accumulation is not enabled.");
 		else
@@ -137,6 +144,7 @@ void ImGuiAnimationWindow::draw_frame_sequence_rendering_panel()
 		if (!m_renderer->get_render_settings().accumulate)
 		{
 			ImGui::TreePush("Enable accumulation for start rendering frame sequence tree");
+
 			if (ImGui::Button("Enable accumulation"))
 			{
 				m_renderer->get_render_settings().accumulate = true;
@@ -162,6 +170,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 		ImGui::Checkbox("Animate", &camera_animation.animate);
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (ImGui::CollapsingHeader("Rotate around object"))
 		{
 			ImGui::TreePush("Rotate around object camera animation tree");
@@ -202,7 +211,6 @@ void ImGuiAnimationWindow::draw_camera_panel()
 				{
 					const std::string& mesh_name	 = mesh_names[i];
 					const std::string& material_name = material_names[m_renderer->get_mesh_material_indices()[i]];
-
 					if (mesh_name.find(filter_string) != std::string::npos || material_name.find(filter_string) != std::string::npos)
 						accepted_names.insert(i);
 				}
@@ -228,7 +236,8 @@ void ImGuiAnimationWindow::draw_camera_panel()
 
 					const std::string& mesh_name	 = mesh_names[n];
 					const std::string& material_name = material_names[m_renderer->get_mesh_material_indices()[n]];
-					std::string object_text			 = mesh_name + " (" + material_name + ")";
+
+					std::string object_text = mesh_name + " (" + material_name + ")";
 					if (ImGui::Selectable(object_text.c_str(), is_selected))
 					{
 						selected_object = n;
@@ -265,6 +274,7 @@ void ImGuiAnimationWindow::draw_camera_panel()
 				rotation_value = 8.0f;
 			ImGui::SameLine();
 			ImGui::BeginDisabled(rotation_type != 0);
+
 			if (ImGui::SliderFloat("Rotation duration (seconds per 360 degrees)", &rotation_value, 2.0f, 10.0f))
 				rotation_value = std::max(0.001f, rotation_value);
 			ImGuiRenderer::show_help_marker("The camera will take that much time to rotate "

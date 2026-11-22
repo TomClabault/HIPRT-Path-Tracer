@@ -79,6 +79,7 @@ void OpenGLShader::compile(const std::vector<std::string>& macros /* = std::vect
 	m_compiled_shader = glCreateShader(m_shader_type);
 	glShaderSource(m_compiled_shader, 1, &shader_text, NULL);
 	glCompileShader(m_compiled_shader);
+
 	if (!print_shader_compile_error(m_compiled_shader))
 	{
 		if (has_filepath())
@@ -92,6 +93,7 @@ bool OpenGLShader::print_shader_compile_error(GLuint shader)
 {
 	GLint isCompiled = 0;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+
 	if (isCompiled == GL_FALSE)
 	{
 		GLint maxLength = 0;

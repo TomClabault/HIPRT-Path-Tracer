@@ -45,11 +45,12 @@ HIPRT_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, float v
 	int upper		   = world_settings.envmap_height - 1;
 
 	int x_index = world_settings.envmap_width - 1;
+
 	while (lower < upper)
 	{
-		int y_index		  = static_cast<int>(floorf((lower + upper) * 0.5f));
-		int env_map_index = y_index * world_settings.envmap_width + x_index;
+		int y_index = static_cast<int>(floorf((lower + upper) * 0.5f));
 
+		int env_map_index = y_index * world_settings.envmap_width + x_index;
 		if (value < world_settings.envmap_cdf[env_map_index])
 			upper = y_index;
 		else
@@ -62,11 +63,12 @@ HIPRT_DEVICE void envmap_cdf_search(const WorldSettings& world_settings, float v
 	upper = world_settings.envmap_width - 1;
 
 	int y_index = y;
+
 	while (lower < upper)
 	{
-		int x_idx		  = static_cast<int>(floorf((lower + upper) * 0.5f));
-		int env_map_index = y_index * world_settings.envmap_width + x_idx;
+		int x_idx = static_cast<int>(floorf((lower + upper) * 0.5f));
 
+		int env_map_index = y_index * world_settings.envmap_width + x_idx;
 		if (value < world_settings.envmap_cdf[env_map_index])
 			upper = x_idx;
 		else
@@ -230,6 +232,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 				nee_plus_plus_context.shaded_point	 = closest_hit_info.inter_point;
 				nee_plus_plus_context.point_on_light = sampled_direction;
 				nee_plus_plus_context.envmap		 = true;
+
 				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
 																   random_number_generator);
 				if (!in_shadow)
@@ -268,6 +271,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 
 	// Sampling the BSDF with MIS
 	float cosine_term = hippt::abs(hippt::dot(closest_hit_info.shading_normal, bsdf_sampled_dir));
+
 	if (bsdf_sample_pdf > 0.0f)
 	{
 		hiprtRay shadow_ray;
@@ -278,9 +282,11 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 		{
 			float envmap_eval_pdf;
 			ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_dir, envmap_eval_pdf);
+
 			if (envmap_eval_pdf > 0.0f)
 			{
-				float mis_weight					= balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
+				float mis_weight = balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
+
 				ColorRGB32F contribution_if_visible = envmap_radiance * mis_weight * cosine_term * bsdf_color / bsdf_sample_pdf;
 				if (!contribution_if_visible.is_black())
 					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, bsdf_sampled_dir,
@@ -294,6 +300,7 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map_with_mis(HIPRTRenderData& render
 			{
 				float envmap_eval_pdf;
 				ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_dir, envmap_eval_pdf);
+
 				if (envmap_eval_pdf > 0.0f)
 				{
 					float mis_weight	  = balance_heuristic(bsdf_sample_pdf, envmap_eval_pdf);
@@ -319,7 +326,6 @@ HIPRT_DEVICE ColorRGB32F sample_environment_map(HIPRTRenderData& render_data,
 												WavefrontShadowSink* shadow_sink = nullptr)
 {
 	const WorldSettings& world_settings = render_data.world_settings;
-
 	if (world_settings.ambient_light_type != AmbientLightType::ENVMAP || render_data.bsdfs_data.white_furnace_mode)
 		// Not using the envmap
 		return ColorRGB32F(0.0f);

@@ -53,6 +53,7 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 #ifdef __KERNELCC__
 	unsigned int lightcut_index = blockIdx.x;
 	unsigned int slot			= threadIdx.x;
+
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
@@ -64,6 +65,7 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	unsigned int replayed_sample_count						  = kd_tree.learning_to_cluster.lightcut_sample_counts[lightcut_index];
+
 	if (!lightcut_data.Q0_initialized)
 		return;
 
@@ -75,6 +77,7 @@ IlluminationAwareKDTree_LearningToClusterQUpdates(IlluminationAwareKDTreeDevice 
 		apply_replayed_light_cluster_batch_q_update(kd_tree, lightcut_index, slot, learning_rate, history_weight);
 
 	__syncthreads();
+
 	if (slot != 0u)
 		return;
 #else  // #ifdef __KERNELCC__

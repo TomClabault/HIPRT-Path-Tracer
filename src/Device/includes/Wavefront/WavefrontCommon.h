@@ -29,16 +29,22 @@ HIPRT_DEVICE void wavefront_store_resolved_material_user_controls(HIPRTRenderDat
 
 	unsigned int validity_mask												 = resolved_user_controls.validity_mask;
 	wavefront_data.path_resolved_material_control_validity_masks[path_index] = validity_mask;
+
 	if (validity_mask & ResolvedMaterialUserControlRoughness)
 		wavefront_data.path_resolved_material_roughness[path_index] = resolved_user_controls.roughness;
+
 	if (validity_mask & ResolvedMaterialUserControlMetallic)
 		wavefront_data.path_resolved_material_metallic[path_index] = resolved_user_controls.metallic;
+
 	if (validity_mask & ResolvedMaterialUserControlSpecular)
 		wavefront_data.path_resolved_material_specular[path_index] = resolved_user_controls.specular;
+
 	if (validity_mask & ResolvedMaterialUserControlCoat)
 		wavefront_data.path_resolved_material_coat[path_index] = resolved_user_controls.coat;
+
 	if (validity_mask & ResolvedMaterialUserControlSheen)
 		wavefront_data.path_resolved_material_sheen[path_index] = resolved_user_controls.sheen;
+
 	if (validity_mask & ResolvedMaterialUserControlSpecularTransmission)
 		wavefront_data.path_resolved_material_specular_transmission[path_index] = resolved_user_controls.specular_transmission;
 }
@@ -53,16 +59,22 @@ HIPRT_DEVICE ResolvedMaterialUserControlsCache wavefront_load_resolved_material_
 
 	ResolvedMaterialUserControlsCache resolved_user_controls;
 	resolved_user_controls.validity_mask = wavefront_data.path_resolved_material_control_validity_masks[path_index];
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
 		resolved_user_controls.roughness = wavefront_data.path_resolved_material_roughness[path_index];
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlMetallic)
 		resolved_user_controls.metallic = wavefront_data.path_resolved_material_metallic[path_index];
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecular)
 		resolved_user_controls.specular = wavefront_data.path_resolved_material_specular[path_index];
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlCoat)
 		resolved_user_controls.coat = wavefront_data.path_resolved_material_coat[path_index];
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSheen)
 		resolved_user_controls.sheen = wavefront_data.path_resolved_material_sheen[path_index];
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecularTransmission)
 		resolved_user_controls.specular_transmission = wavefront_data.path_resolved_material_specular_transmission[path_index];
 
@@ -81,6 +93,7 @@ HIPRT_DEVICE void wavefront_store_current_material_classification(HIPRTRenderDat
 
 	WavefrontResolvedMaterialClassification current_classification;
 	current_classification.roughness = render_data.buffers.materials_buffer[material_index].get_roughness();
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
 		current_classification.roughness = resolved_user_controls.roughness;
 	current_classification.metallic				 = classification_inputs.lobe_user_weights.metallic;

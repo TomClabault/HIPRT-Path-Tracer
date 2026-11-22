@@ -23,7 +23,6 @@ void ImGuiRenderWindow::draw()
 
 	// GetWindowContentRegion() to get the size without the title bar and other decorations.
 	ImVec2 window_size = ImGui::GetContentRegionAvail();
-
 	if (window_size.x != m_current_size.x || window_size.y != m_current_size.y)
 		m_render_window->queue_resize(window_size.x, window_size.y);
 

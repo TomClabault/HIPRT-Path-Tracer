@@ -116,8 +116,9 @@ HIPRT_DEVICE float3_t normal_mapping(const HIPRTRenderData& render_data,
 	float det				 = delta_P1P0_texcoords.x * delta_P2P0_texcoords.y - delta_P1P0_texcoords.y * delta_P2P0_texcoords.x + det_bias;
 	// Check if the det isn't too low to avoid degenerate geometries that can then cause NaNs
 	float det_inverse = 1.0f / det;
-	float3_t T		  = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
-	float3_t B		  = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
+
+	float3_t T = (edge_P0P1 * delta_P2P0_texcoords.y - edge_P0P2 * delta_P1P0_texcoords.y) * det_inverse;
+	float3_t B = (edge_P0P2 * delta_P1P0_texcoords.x - edge_P0P1 * delta_P2P0_texcoords.x) * det_inverse;
 	if (hippt::length2(T) < 1.0e-6f || hippt::length2(B) < 1.0e-6f)
 		// The tangent or the bitangent is degenerate
 		return surface_normal;
@@ -151,7 +152,8 @@ HIPRT_DEVICE float3_t get_shading_normal(const HIPRTRenderData& render_data,
 		surface_normal = geometric_normal;
 
 	// Do normal mapping if we have a normal map
-	int material_index							= render_data.buffers.material_indices[primitive_index];
+	int material_index = render_data.buffers.material_indices[primitive_index];
+
 	unsigned short int normal_map_texture_index = render_data.buffers.materials_buffer[material_index].get_normal_map_texture_index();
 	if (normal_map_texture_index != MaterialConstants::NO_TEXTURE)
 		surface_normal =
@@ -245,6 +247,7 @@ HIPRT_DEVICE bool trace_main_path_ray(const HIPRTRenderData& render_data,
 	hiprtHit hit;
 	int material_index;
 	bool skipping_volume_boundary = false;
+
 	do
 	{
 #ifdef __KERNELCC__
@@ -363,6 +366,7 @@ HIPRT_DEVICE bool evaluate_shadow_ray_occluded(
 	float cumulative_t = 0.0f;
 
 	hiprtHit hit;
+
 	do
 	{
 		// We should use ray tracing filter functions here instead of re-tracing new rays
@@ -479,6 +483,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 
 	int global_triangle_index_hit;
 	hiprtHit shadow_ray_hit;
+
 	do
 	{
 		// We should use ray tracing filter functions here instead of re-tracing new rays
@@ -501,7 +506,6 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray_simplified(const HIPRTRenderDat
 	} while (alpha < 1.0f && cumulative_t < t_max - 1.0e-4f);
 
 	bool hit_found = shadow_ray_hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
-
 	if (hit_found)
 	{
 		// If we found a hit and that it is close enough (hit_found conditions)
@@ -570,6 +574,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	float cumulative_t = 0.0f;
 
 	hiprtHit shadow_ray_hit;
+
 	do
 	{
 		// We should use ray tracing filter functions here instead of re-tracing new rays
@@ -590,7 +595,6 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	} while (alpha < 1.0f && cumulative_t < t_max - 1.0e-4f);
 
 	bool hit_found = shadow_ray_hit.hasHit() && cumulative_t < t_max - 1.0e-4f;
-
 	if (!hit_found)
 		return false;
 
@@ -610,6 +614,7 @@ HIPRT_DEVICE bool evaluate_bsdf_light_sample_ray(const HIPRTRenderData& render_d
 	float2_t interpolated_texcoords			= uv_interpolate(triangle_texcoords, shadow_ray_hit.uv);
 
 	float emission_strength = render_data.buffers.materials_buffer[material_index].get_emission_strength();
+
 	if (emission_texture_index != MaterialConstants::NO_TEXTURE)
 		out_light_hit_info.hit_emission = read_material_texture<ColorRGB32F>(render_data, interpolated_texcoords, emission_texture_index, false);
 	// Getting the shading normal

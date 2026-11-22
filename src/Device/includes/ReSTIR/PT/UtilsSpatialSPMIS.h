@@ -55,6 +55,7 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 	unsigned int selected_cell_index = center_cell_index;
 	out_selected_pixel_index		 = center_pixel_index;
 	out_selected_cell_confidence_sum = center_cell_weight;
+
 	if (spmis_cell_in_list(center_cell_index, excluded_cells, excluded_cell_count))
 	{
 		// The center cell is excluded, starting the WRS with nothing selected
@@ -88,8 +89,8 @@ HIPRT_DEVICE unsigned int spmis_search_reuse_cell_index(const HIPRTRenderData& r
 			continue;
 
 		unsigned int neighbor_pixel_index = neighbor_coords.x + neighbor_coords.y * render_data.render_settings.render_resolution.x;
-		unsigned int neighbor_cell_index  = spmis_settings.all_pixel_hashes[neighbor_pixel_index];
 
+		unsigned int neighbor_cell_index = spmis_settings.all_pixel_hashes[neighbor_pixel_index];
 		if (neighbor_cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 			// Hit a pixel that doesn't have a valid cell index, skipping
 			continue;
@@ -137,7 +138,8 @@ HIPRT_DEVICE void spmis_get_cell_search_settings(const ReSTIRPTSPMISSettings& sp
 {
 	constexpr float variance_slider_lower_bound = 0.5f;
 	constexpr float variance_slider_upper_bound = 0.725f;
-	float cell_variance							= spmis_settings.cell_variance[center_cell_index];
+
+	float cell_variance = spmis_settings.cell_variance[center_cell_index];
 	if (cell_variance == -1.0f || cell_variance == 0.0f)
 		// In case we have no variance information, default to maximum variance.
 		// Same for 0 variance cells: 0 variance is basically impossible so this probably means that the cell is completely empty (no contributing reservoirs)
@@ -150,6 +152,7 @@ HIPRT_DEVICE void spmis_get_cell_search_settings(const ReSTIRPTSPMISSettings& sp
 	{
 		out_radius				  = hippt::lerp(10.0f, 20.0f, variance_slider);
 		out_max_search_iterations = hippt::lerp(2, 12, variance_slider);
+
 		if (cell_variance > 0.65f)
 			// Disabled
 			out_distance_scaling = 0.0f;
@@ -178,8 +181,9 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& rend
 	// Retry a bounded number of random cache slots so an all-invalid cache can fall through to a fresh search.
 	for (unsigned int cache_attempt = 0; cache_attempt < RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE; cache_attempt++)
 	{
-		unsigned int cache_slot					   = rng.random_index(RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE);
-		unsigned int cache_index				   = reuse_cell_cache_start_index + cache_slot;
+		unsigned int cache_slot	 = rng.random_index(RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE);
+		unsigned int cache_index = reuse_cell_cache_start_index + cache_slot;
+
 		unsigned int cached_reuse_cell_pixel_index = spmis_settings.all_pixels_reuse_cell_pixel_index[cache_index];
 		if (cached_reuse_cell_pixel_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX || cached_reuse_cell_pixel_index >= spmis_settings.pixel_hashes_count)
 		{
@@ -216,6 +220,7 @@ HIPRT_DEVICE unsigned int spmis_get_reuse_cell_index(const HIPRTRenderData& rend
 
 	unsigned int selected_cell_index		  = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
 	unsigned int selected_cell_confidence_sum = 0;
+
 	for (unsigned int cache_slot = 0; cache_slot < RESTIR_PT_SPMIS_REUSE_CELL_CACHE_SIZE; cache_slot++)
 	{
 		unsigned int selected_pixel_index				   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
@@ -261,7 +266,8 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
-	unsigned int cell_start_index	= spmis_settings.cell_offsets[neighbor_cell_index];
+	unsigned int cell_start_index = spmis_settings.cell_offsets[neighbor_cell_index];
+
 	unsigned int non_zero_cell_size = spmis_settings.cell_non_zero_reservoir_counters[neighbor_cell_index];
 	if (non_zero_cell_size == 0)
 	{
@@ -273,6 +279,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 	float weight_sum			   = 0.0f;
 	float selected_target_function = 0.0f;
 	unsigned int selected_index	   = HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX;
+
 	if (spmis_settings.ris_neighbor_cdf)
 	{
 		CDFDeviceWithLUT<ReSTIR_PT_SPMISCDFLUTSize, unsigned short int> cell_cdf;
@@ -320,6 +327,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 
 			float distance_to_sample_point;
 			float3_t incident_light_direction;
+
 			if (neighbor_reservoir.sample.is_envmap_path())
 			{
 				// For envmap path, the direction is stored in the 'rc_vertex' value
@@ -331,6 +339,7 @@ HIPRT_DEVICE unsigned int get_spmis_spatial_neighbor_pixel_index(const HIPRTRend
 				// Not an envmap path, the direction is the difference between the current shading
 				// point and the reconnection point
 				incident_light_direction = neighbor_reservoir.sample.rc_vertex - center_surface.shading_point;
+
 				distance_to_sample_point = hippt::length(incident_light_direction);
 				if (distance_to_sample_point <= 1.0e-6f)
 					// To avoid numerical instabilities

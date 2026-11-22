@@ -40,7 +40,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 		return;
 
 	uint32_t pixel_index = x + y * render_data.render_settings.render_resolution.x;
-
 	if (!render_data.aux_buffers.pixel_active[pixel_index])
 		return;
 
@@ -77,6 +76,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 	bool intersection_found = closest_hit_info.primitive_index != -1;
 
 	NEEDeferredMISContext nee_deferred_MIS_context;
+
 	for (int& bounce = ray_payload.bounce; bounce < bounce_count + 1; bounce++)
 	{
 		if (ray_payload.next_ray_state != RayState::MISSED)
@@ -102,10 +102,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline MegaKernel(HIPRTRenderData render_data, int
 				}
 
 				BSDFIncidentLightInfo sampled_light_info = BSDFIncidentLightInfo::NO_INFO; // This variable is never used, this is just for debugging on the CPU
-																						   // so that we know what the BSDF sampled
+
+				// so that we know what the BSDF sampled
 				bool valid_indirect_bounce = path_tracing_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray,
 																					   random_number_generator, sampled_light_info, nee_deferred_MIS_context);
-
 				if (!valid_indirect_bounce)
 				{
 					// Bad BSDF sample (under the surface), killed by russian roulette, ...

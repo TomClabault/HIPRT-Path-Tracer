@@ -131,7 +131,6 @@ void DisplayViewSystem::handle_automatic_display_view_changes()
 		return;
 
 	bool gmon_available = m_renderer->gmon_used();
-
 	if (m_current_display_view_type == DisplayViewType::GMON_BLEND && !gmon_available)
 	{
 		m_saved_display_view = DisplayViewType::GMON_BLEND;

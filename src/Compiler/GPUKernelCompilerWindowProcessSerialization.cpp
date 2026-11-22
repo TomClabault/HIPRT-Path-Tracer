@@ -80,6 +80,7 @@ bool GPUKernelCompilerWindowProcessSerialization::read_string(std::ifstream& inp
 		return false;
 
 	value.resize(value_size);
+
 	if (value_size > 0)
 		input.read(value.data(), value_size);
 
@@ -113,6 +114,7 @@ bool GPUKernelCompilerWindowProcessSerialization::read_string_vector(std::ifstre
 		return false;
 
 	values.resize(value_count);
+
 	for (std::string& value : values)
 		if (!read_string(input, value))
 
@@ -157,6 +159,7 @@ bool GPUKernelCompilerWindowProcessSerialization::write_request(const std::files
 		if (has_intersect_function_name && !write_string(output, function_name_set.intersect_function_name.value()))
 
 			return false;
+
 		if (has_filter_function_name && !write_string(output, function_name_set.filter_function_name.value()))
 
 			return false;
@@ -181,6 +184,7 @@ bool GPUKernelCompilerWindowProcessSerialization::read_request(const std::filesy
 
 	unsigned int magic	 = 0;
 	unsigned int version = 0;
+
 	if (!read_unsigned_int(input, magic) || !read_unsigned_int(input, version) || magic != REQUEST_FILE_MAGIC || version != REQUEST_FILE_VERSION ||
 		!read_string(input, request.kernel_file_path) || !read_string(input, request.kernel_function_name) ||
 		!read_string_vector(input, request.additional_include_directories) || !read_string_vector(input, request.compiler_options) ||
@@ -195,6 +199,7 @@ bool GPUKernelCompilerWindowProcessSerialization::read_request(const std::filesy
 		return false;
 
 	request.function_name_sets.resize(function_name_set_count);
+
 	for (GPUKernelCompilerWindowProcessFunctionNameSet& function_name_set : request.function_name_sets)
 	{
 		bool has_intersect_function_name = false;

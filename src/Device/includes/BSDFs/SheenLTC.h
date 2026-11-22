@@ -87,6 +87,7 @@ HIPRT_DEVICE static ColorRGB32F sheen_ltc_eval(const HIPRTRenderData& render_dat
 	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
 	{
 		out_pdf = 0.0f;
+
 		if (local_view_direction.z > 0.0f)
 			out_sheen_reflectance = get_sheen_ltc_reflectance(render_data, material, local_view_direction);
 		else

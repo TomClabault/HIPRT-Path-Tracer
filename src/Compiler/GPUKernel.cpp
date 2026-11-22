@@ -283,6 +283,7 @@ void GPUKernel::launch_synchronous(int block_size_x, int block_size_y, int nb_th
 
 	std::size_t execution_event_index = m_recorded_execution_event_count - 1;
 	OROCHI_CHECK_ERROR(oroEventSynchronize(m_execution_stop_events[execution_event_index]));
+
 	if (execution_time_out != nullptr)
 		OROCHI_CHECK_ERROR(
 			oroEventElapsedTime(execution_time_out, m_execution_start_events[execution_event_index], m_execution_stop_events[execution_event_index]));
@@ -333,6 +334,7 @@ float GPUKernel::compute_execution_time_and_reset_execution_count()
 	}
 
 	float total_execution_time = 0.0f;
+
 	for (std::size_t event_index = 0; event_index < m_recorded_execution_event_count; event_index++)
 	{
 		float execution_time = 0.0f;

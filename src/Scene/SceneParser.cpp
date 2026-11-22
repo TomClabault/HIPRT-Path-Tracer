@@ -29,6 +29,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 	// TODO MATERIAL DEDUPLICATION: we don't want ASSIMP::PreTransform but then this is going to duplicate materials for each mesh that use the same material
 	// We don't want the duplicate materials but we do want separate meshes that use the same material
 	assimp_importer.SetPropertyInteger(AI_CONFIG_PP_PTV_KEEP_HIERARCHY, 1);
+
 	scene = assimp_importer.ReadFile(scene_filepath, aiPostProcessSteps::aiProcess_PreTransformVertices | aiPostProcessSteps::aiProcess_Triangulate |
 														 aiPostProcessSteps::aiProcess_GenBoundingBoxes);
 	if (scene == nullptr)
@@ -129,6 +130,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 	// The offset thus offsets the indices of the meshes that come after the first one
 	// to account for all the indices of the previously parsed meshes
 	int global_indices_offset = 0;
+
 	for (int mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++)
 	{
 		aiMesh* mesh			  = scene->mMeshes[mesh_index];
@@ -137,6 +139,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 
 		std::string material_name = std::string(mesh_material->GetName().C_Str());
 		std::string mesh_name	  = std::string(mesh->mName.C_Str());
+
 		if (material_name == "")
 			material_name = std::string("Material.") + std::to_string(material_index);
 		parsed_scene.metadata.material_names[material_index]	= material_name;
@@ -144,6 +147,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 		parsed_scene.metadata.mesh_material_indices[mesh_index] = material_index;
 
 		CPUMaterial& renderer_material = parsed_scene.materials[material_index];
+
 		if (material_indices_already_seen.find(mesh->mMaterialIndex) == material_indices_already_seen.end())
 		{
 			// If we haven't seen that material before
@@ -177,6 +181,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 											   reinterpret_cast<hiprtFloat3*>(&mesh->mVertices[mesh->mNumVertices]));
 
 		int max_mesh_index_offset = 0;
+
 		for (int face_index = 0; face_index < mesh->mNumFaces; face_index++)
 		{
 			aiFace face = mesh->mFaces[face_index];
@@ -207,6 +212,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 		AABB mesh_bounding_box;
 		mesh_bounding_box.mini = make_float3(mesh_aabb.mMin.x, mesh_aabb.mMin.y, mesh_aabb.mMin.z);
 		mesh_bounding_box.maxi = make_float3(mesh_aabb.mMax.x, mesh_aabb.mMax.y, mesh_aabb.mMax.z);
+
 		if (mesh_bounding_box.get_max_extent() == 0.0f)
 		{
 			// I've had cases where the bounding box given by ASSIMP was (0, 0, 0), (0, 0, 0).
@@ -217,6 +223,7 @@ void SceneParser::parse_scene_file(std::string& scene_filepath, Assimp::Importer
 			// Resetting the bounding because we just set its min and max to (0, 0, 0) and (0, 0, 0)
 			// because of the situation we're in
 			mesh_bounding_box = AABB();
+
 			for (int vert_index = 0; vert_index < mesh->mNumVertices; vert_index++)
 				mesh_bounding_box.extend(*(float3_t*)(&mesh->mVertices[vert_index]));
 		}
@@ -321,6 +328,7 @@ void SceneParser::parse_camera(const aiScene* scene, Scene& parsed_scene, float 
 		parsed_scene.camera.m_rotation	  = orientation;
 
 		float vertical_fov;
+
 		if (is_gltf_scene && camera->mAspect == 0.0f)
 		{
 			// The glTF specification stores a vertical FOV. When aspectRatio is omitted, Assimp
@@ -498,6 +506,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
 	// of the application
 
 	mesh_material->Get(AI_MATKEY_COLOR_DIFFUSE, *((aiColor3D*)&renderer_material.base_color));
+
 	if (renderer_material.emission_texture_index == MaterialConstants::NO_TEXTURE)
 	{
 		ColorRGB32F emission;
@@ -524,6 +533,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
 	mesh_material->Get(AI_MATKEY_METALLIC_FACTOR, renderer_material.metallic);
 	mesh_material->Get(AI_MATKEY_ROUGHNESS_FACTOR, renderer_material.roughness);
 	mesh_material->Get(AI_MATKEY_ANISOTROPY_FACTOR, renderer_material.anisotropy);
+
 	if (!mesh_material->Get(AI_MATKEY_SHEEN_COLOR_FACTOR, *((aiColor3D*)&renderer_material.sheen_color)))
 	{
 		// We did get sheen color from the parsed scene, also trying the roughness
@@ -532,6 +542,7 @@ void SceneParser::read_material_properties(aiMaterial* mesh_material, CPUMateria
 		// that sith ASSIMP
 		renderer_material.sheen = 1.0f;
 	}
+
 	if (!mesh_material->Get(AI_MATKEY_SPECULAR_FACTOR, renderer_material.specular))
 	{
 		// We sucessfully got the specular color so we're going to assume that we the specular and tint are 100%
@@ -568,6 +579,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
 	std::vector<std::pair<aiTextureType, std::string>> texture_paths;
 
 	texture_indices.base_color_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_BASE_COLOR, texture_paths);
+
 	if (texture_indices.base_color_texture_index == MaterialConstants::NO_TEXTURE)
 		// Trying diffuse for some file formats
 		// The OBJ format uses DIFFUSE instead of BASE_COLOR
@@ -599,6 +611,7 @@ std::vector<std::pair<aiTextureType, std::string>> SceneParser::get_textures_pat
 	texture_indices.specular_transmission_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_TRANSMISSION, texture_paths);
 
 	texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_NORMALS, texture_paths);
+
 	if (texture_indices.normal_map_texture_index == MaterialConstants::NO_TEXTURE)
 		// Trying HEIGHT for the normal map for some file formats
 		texture_indices.normal_map_texture_index = get_first_texture_of_type(mesh_material, aiTextureType_HEIGHT, texture_paths);

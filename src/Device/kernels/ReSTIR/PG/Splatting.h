@@ -108,6 +108,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 	uint32_t pixel_index = y * render_data.render_settings.render_resolution.x + x;
 	uint32_t pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
 	uint32_t restir_pt_reservoir_pixel_index;
+
 	if (thread_valid)
 	{
 		// Reading from the output of ReSTIR PT
@@ -122,6 +123,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 #endif
 #endif // #if PathSamplingStrategyIsReSTIRPT
 	}
+
 	if (restir_pt_reservoir_pixel_index == static_cast<unsigned int>(-1))
 		// That means potentially no spatial reuse / temporal so our reservoir didn't move
 		restir_pt_reservoir_pixel_index = pixel_index;
@@ -134,6 +136,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 	for (int bounce = 0; bounce < render_data.render_settings.nb_bounces; bounce++)
 	{
 		ReSTIRPGSplattingSample sample;
+
 		if (thread_valid)
 		{
 			if (bounce == 0)
@@ -164,11 +167,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 
 		unsigned int checksum;
 		unsigned int sample_hash_grid_index;
+
 		if (should_participate)
 		{
 			sample_hash_grid_index =
 				restir_pg_settings.get_hash_grid_cell_index_from_position_data(sample.position, sample.normal, render_data.current_camera, checksum);
-
 			if (!HashGrid::resolve_collision<ReSTIRPGHashGridCollisionResolveSteps, true>(
 					restir_pg_settings.hash_grid_checksums, restir_pg_settings.hash_grid_total_number_of_cells, sample_hash_grid_index, checksum))
 				// If the collision resolution failed, then we just skip this sample and don't insert it into the hash grid
@@ -194,6 +197,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_Splatting(HIPRTRenderData render_
 		// Begin by computing the responsibility of this sample for each component of the distribution of the hash grid cell it maps to
 		float sum_responsibilities = 1.0e-8f;
 		float responsibilities[ReSTIRPGDistributionComponentCount];
+
 		if (should_participate)
 		{
 			for (int component = 0; component < ReSTIRPGDistributionComponentCount; component++)

@@ -15,6 +15,7 @@ WavefrontRenderPassCommon::WavefrontRenderPassCommon()
 {
 	// The events only order the streams, they are never used for timing
 	OROCHI_CHECK_ERROR(oroEventCreateWithFlags(&m_material_family_fork_event, oroEventDisableTiming));
+
 	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
 	{
 		OROCHI_CHECK_ERROR(oroStreamCreate(&m_material_family_streams[family_index]));
@@ -45,10 +46,10 @@ unsigned int WavefrontRenderPassCommon::get_shadow_work_capacity(unsigned int pa
 	if (compiler_options.get_macro_value(GPUKernelCompilerOptions::WAVEFRONT_DEFER_NEE_SHADOW_TRAVERSAL) != KERNEL_OPTION_TRUE)
 		return 0;
 
-	int nee_estimator					   = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+	int nee_estimator = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
+
 	int sampling_strategy				   = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY);
 	unsigned int direct_light_sample_count = 1;
-
 	if (sampling_strategy == LSS_BASE_LIGHT_TREE_ATS &&
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::LIGHT_TREE_ATS_DO_SPLITTING) == KERNEL_OPTION_TRUE)
 		direct_light_sample_count =
@@ -65,10 +66,12 @@ unsigned int WavefrontRenderPassCommon::get_shadow_work_capacity(unsigned int pa
 		emissive_shadow_count = 1;
 
 	unsigned int envmap_shadow_count = 0;
+
 	if (nee_estimator != LSS_NO_DIRECT_LIGHT_SAMPLING &&
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) != ESS_NO_SAMPLING)
 	{
 		envmap_shadow_count = 1;
+
 		if (compiler_options.get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_DO_BSDF_MIS) == KERNEL_OPTION_TRUE)
 			envmap_shadow_count++;
 	}
@@ -130,8 +133,10 @@ bool WavefrontRenderPassCommon::resize_staging_buffers(unsigned int path_capacit
 	int nee_estimator								  = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	bool allocate_learning_to_cluster_shadow_sidecars = shadow_work_capacity > 0 && DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator);
 	bool allocate_nisml_shadow_sidecars				  = shadow_work_capacity > 0 && nee_estimator == LSS_NEURAL_MANY_LIGHTS;
+
 	if (ray_volume_state_byte_size == 0)
 		Debug::debugbreak();
+
 	std::size_t nee_deferred_mis_context_byte_size = compute_nee_deferred_mis_context_byte_size(nee_deferred_mis_context_size_kernel);
 	if (nee_deferred_mis_context_byte_size == 0)
 	{
@@ -263,6 +268,7 @@ bool WavefrontRenderPassCommon::prepare_material_family_render_data(const HIPRTR
 	hiprtGlobalStackBuffer global_stack_buffer = render_data.global_traversal_stack_buffer;
 	unsigned int family_stack_count			   = global_stack_buffer.stackCount / material_family_count;
 	family_block_count						   = std::min(wavefront_block_count, family_stack_count / wavefront_block_size);
+
 	// The families fall back to running one after the other on the main stream with the whole stack buffer if
 	// it is too small to be split between them. A single family has nothing to overlap with.
 	// They also run one after the other if overlapping was turned off to measure the cost of each family kernel
@@ -273,10 +279,12 @@ bool WavefrontRenderPassCommon::prepare_material_family_render_data(const HIPRTR
 
 	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer();
 	host_pinned_render_data[0]				 = render_data;
+
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 	{
 		HIPRTRenderData& family_render_data = host_pinned_render_data[1 + family_index];
 		family_render_data					= render_data;
+
 		if (!overlap_family_kernels)
 			continue;
 

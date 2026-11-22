@@ -30,6 +30,7 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3_t aabb_m
 	// Compute the average vector to each of the bounding box corners to get the direction of
 	// the bounding cone
 	float3_t direction_to_corners_sum = make_float3(0.0f, 0.0f, 0.0f);
+
 	for (int i = 0; i < 8; ++i)
 	{
 		float3_t corner = make_float3((i & 1) ? aabb_min.x : aabb_max.x, (i & 2) ? aabb_min.y : aabb_max.y, (i & 4) ? aabb_min.z : aabb_max.z);
@@ -44,6 +45,7 @@ HIPRT_DEVICE float subtended_angle_aabb_to_point_average_corners(float3_t aabb_m
 	// Compute the cosine of the maximum angle between a corner and the
 	// average vector.
 	float cos_theta = 1.0f;
+
 	for (int i = 0; i < 8; ++i)
 	{
 		float3_t corner = make_float3((i & 1) ? aabb_min.x : aabb_max.x, (i & 2) ? aabb_min.y : aabb_max.y, (i & 4) ? aabb_min.z : aabb_max.z);
@@ -89,6 +91,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 	bool inside_aabb	= point_inside_AABB(node.bounds_min, node.bounds_max, shading_point);
 	float sin_theta_u	= 0.0f;
 	float cos_theta_u	= 1.0f;
+
 	if (inside_aabb)
 	{
 		// If the shading point is inside the bounds, treat theta_u as PI
@@ -137,6 +140,7 @@ HIPRT_DEVICE float light_tree_ats_node_importance(const LightTreeATSNodeDevice& 
 	// For T = node.theta_o + theta_u
 	// Compute cos_T and sin_T
 	float cos_T = node.cos_theta_o * cos_theta_u - node.sin_theta_o * sin_theta_u;
+
 	float sin_T = node.sin_theta_o * cos_theta_u + node.cos_theta_o * sin_theta_u;
 	float cos_theta_prime;
 	if (sin_T <= 0.0f)
@@ -233,7 +237,6 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 					light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index], shading_point, shading_normal);
 				float node_importance_right = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index + 1],
 																							 shading_point, shading_normal);
-
 				if (node_importance_left > node_importance_right)
 				{
 					// We're going to want to explore the left child first
@@ -291,6 +294,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 		LightTreeATSNodeDevice current_node = nodes[node_index];
 
 		float cumulative_probability = 1.0f;
+
 		while (current_node.triangle_count == 0)
 		{
 			LightTreeATSNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
@@ -300,6 +304,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 			float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 
 			float p_left = left_importance / (left_importance + right_importance);
+
 			if (left_importance == 0.0f && right_importance == 0.0f)
 			{
 				// Indicating no sample
@@ -344,6 +349,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 		LightTreeATSNodeDevice current_node = nodes[node_index];
 
 		float cumulative_probability = 1.0f;
+
 		while (current_node.triangle_count == 0)
 		{
 			LightTreeATSNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
@@ -353,6 +359,7 @@ HIPRT_DEVICE LightSampleArray<DirectLightSampleCount<LSS_BASE_LIGHT_TREE_ATS>()>
 			float right_importance = light_tree_ats_node_importance<UseOrientation>(right_child, shading_point, shading_normal);
 
 			float p_left = left_importance / (left_importance + right_importance);
+
 			if (left_importance == 0.0f && right_importance == 0.0f)
 			{
 				// Indicating no sample
@@ -423,7 +430,6 @@ HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data,
 					light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index], shading_point, shading_normal);
 				float node_importance_right = light_tree_ats_node_importance<UseOrientation>(nodes[current_node.left_child_index_or_first_triangle_index + 1],
 																							 shading_point, shading_normal);
-
 				if (node_importance_left > node_importance_right)
 				{
 					// We're going to want to explore the left child first
@@ -495,6 +501,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	bool can_split = true;
 
 	float cumulative_probability = 1.0f;
+
 	while (current_node.triangle_count == 0)
 	{
 		LightTreeATSNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
@@ -506,6 +513,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 			return 0.0f;
 
 		bool node_split = false;
+
 		if (collected_split_samples < LightTreeATSSplittingMaxLightSamples && can_split)
 		{
 			float node_coherence = light_tree_ats_node_coherence(current_node, shading_point);
@@ -575,6 +583,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 			can_split = false;
 
 		float p_left = left_importance / (left_importance + right_importance);
+
 		if (!(bit_trail & (1 << current_depth)))
 		{
 			// If the bit is not set we're going to the left
@@ -616,6 +625,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_ats(con
 	unsigned int depth				= 0;
 
 	float cumulative_probability = 1.0f;
+
 	while (nodes[current_node_index].triangle_count == 0)
 	{
 		const LightTreeATSNodeDevice& current_node = nodes[current_node_index];
@@ -682,6 +692,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_ats(const HIPRTRenderData
 	unsigned int current_depth = 0;
 
 	float cumulative_probability = 1.0f;
+
 	while (current_node.triangle_count == 0)
 	{
 		const unsigned int left_index	   = current_node.left_child_index_or_first_triangle_index;

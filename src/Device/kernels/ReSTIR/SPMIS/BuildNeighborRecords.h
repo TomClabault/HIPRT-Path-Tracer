@@ -64,6 +64,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SPMIS_BuildNeighborRecords(HIPRTR
 	// Radiance leaving the reconnection vertex toward the shading point of this pixel and inverse of the solid angle to area conversion of this pixel
 	float outgoing_radiance_luminance;
 	float inverse_area_to_solid_angle = 1.0f;
+
 	if (reservoir.sample.is_envmap_path())
 		outgoing_radiance_luminance = reservoir.sample.rc_vertex_incident_radiance.luminance();
 	else

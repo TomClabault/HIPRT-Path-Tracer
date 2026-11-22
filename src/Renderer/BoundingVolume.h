@@ -89,12 +89,12 @@ struct BoundingVolume
 			// inverse denom to avoid division
 			float d_near_i = (d_near[i] - numers[i]) / denom;
 			float d_far_i  = (d_far[i] - numers[i]) / denom;
+
 			if (denom < 0)
 				std::swap(d_near_i, d_far_i);
 
 			t_near = hippt::max(t_near, d_near_i);
 			t_far  = hippt::min(t_far, d_far_i);
-
 			if (t_far < t_near)
 				return false;
 		}
@@ -119,12 +119,12 @@ struct BoundingVolume
 			// inverse denom to avoid division
 			float d_near_i = (_d_near[i] - numers[i]) / denom;
 			float d_far_i  = (_d_far[i] - numers[i]) / denom;
+
 			if (denom < 0.0f)
 				std::swap(d_near_i, d_far_i);
 
 			t_near = hippt::max(t_near, d_near_i);
 			t_far  = hippt::min(t_far, d_far_i);
-
 			if (t_far < t_near)
 				return false;
 		}

@@ -12,7 +12,8 @@
 HIPRT_DEVICE bool aabb_rasterize_ray_is_near_segment(
 	const hiprtRay& ray, float3_t segment_start, float3_t segment_end, float pixel_angular_radius, float& out_ray_parameter)
 {
-	const float3_t segment_direction   = segment_end - segment_start;
+	const float3_t segment_direction = segment_end - segment_start;
+
 	const float segment_length_squared = hippt::dot(segment_direction, segment_direction);
 	if (segment_length_squared <= 1.0e-12f)
 		return false;
@@ -25,6 +26,7 @@ HIPRT_DEVICE bool aabb_rasterize_ray_is_near_segment(
 
 	float ray_parameter		= 0.0f;
 	float segment_parameter = 0.0f;
+
 	if (denominator > 1.0e-12f)
 	{
 		ray_parameter	  = (ray_segment_direction_dot * segment_origin_offset - segment_length_squared * ray_origin_offset) / denominator;

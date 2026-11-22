@@ -34,12 +34,14 @@ IlluminationAwareKDTree_LearningToClusterReplayQRewards(IlluminationAwareKDTreeD
 
 	unsigned int lightcut_index = kd_tree.learning_to_cluster.training_samples_soa.replayed_lightcut_indices[sample_index];
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
+
 	if (lightcut_index == invalid_lightcut_index || lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
 
 	IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 	if (!lightcut_data.Q0_initialized)
 		return;
+
 	if (lightcut_data.batch_statistics_valid_for_q != 0u)
 		return;
 

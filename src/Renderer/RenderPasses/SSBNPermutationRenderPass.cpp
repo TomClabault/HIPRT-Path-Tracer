@@ -151,6 +151,7 @@ std::string SSBNPermutationRenderPass::get_permutation_file_path_no_extension(in
 bool SSBNPermutationRenderPass::pre_frame_render_update(float delta_time)
 {
 	bool updated = false;
+
 	if (!is_render_pass_used(*m_compiler_options))
 	{
 		if (m_sorted_seeds_buffer.size() != 0)
@@ -172,7 +173,6 @@ bool SSBNPermutationRenderPass::pre_frame_render_update(float delta_time)
 	{
 		unsigned int resolution_x = m_renderer->get_render_data().render_settings.render_resolution.x;
 		unsigned int resolution_y = m_renderer->get_render_data().render_settings.render_resolution.y;
-
 		if (m_sorted_seeds_buffer.size() != resolution_x * resolution_y)
 		{
 			// If one buffer is not the right size, assuming everyone isn't the right size and resizing
@@ -220,6 +220,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		m_different_hash_count = 0;
 		// CPU sorting for now
 		std::vector<uint3_t> screen_space_hash_grid_data = m_screen_space_hash_grid_buffer.download_data();
+
 		if (compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_DEBUG_HASH_GRID) == KERNEL_OPTION_FALSE)
 			// Only sorting if we're not debugging the hash grid because if we're debugging the hash grid we're going to display the hash cells on screen but if
 			// they are sorted this does not look like much of anything
@@ -228,6 +229,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 		// Computing the number of hash cells and the offsets of each cell in the sorted hash grid
 		std::vector<int> offsets(render_resolution_x * render_resolution_y);
 		offsets[0] = 0;
+
 		for (size_t i = 1; i < screen_space_hash_grid_data.size(); i++)
 		{
 			if (screen_space_hash_grid_data[i].x != screen_space_hash_grid_data[i - 1].x)
@@ -256,6 +258,7 @@ void SSBNPermutationRenderPass::post_sample_update_async(HIPRTRenderData& render
 	}
 
 	unsigned int block_size = compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_BLOCK_SIZE);
+
 	if (m_do_retargeting)
 	{
 		std::vector<unsigned int> input_seeds =

@@ -35,10 +35,10 @@ HIPRT_DEVICE TransformedDataType block_scan_early_publish(TransformedDataType th
 	// Scan the warp sums (only warp 0 does this)
 	// This calculates the base value to add to each warp
 	TransformedDataType warp_base = 0;
+
 	if (warp_id == 0)
 	{
 		TransformedDataType my_warp_sum = 0;
-
 		if (tid < (PARALLEL_PREFIX_SCAN_CHUNK_SIZE / 32))
 			// Only load if the warp actually exists in this block
 			my_warp_sum = smem_warp_sums[tid];
@@ -89,6 +89,7 @@ ParallelPrefixScanDecoupledLookback_Scan(const InputDataType* __restrict__ input
 	int tid = threadIdx.x;
 
 	__shared__ unsigned int block_index;
+
 	if (tid == 0)
 		block_index = hippt::atomic_fetch_add_gpu(g_global_block_index_counter, 1u);
 	__syncthreads();
@@ -114,6 +115,7 @@ ParallelPrefixScanDecoupledLookback_Scan(const InputDataType* __restrict__ input
 
 	__shared__ TransformedDataType block_prefix;
 	__shared__ int base_lookback_block_index;
+
 	if (tid == 0)
 	{
 		block_prefix			  = 0;

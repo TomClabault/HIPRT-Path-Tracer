@@ -43,8 +43,8 @@ HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior,
 	pdf = 0.0f;
 
 	float NoV = local_view_direction.z;
-	float NoL = local_to_light_direction.z;
 
+	float NoL = local_to_light_direction.z;
 	if (hippt::abs(NoL) < 1.0e-8f)
 
 		// Check to avoid dividing by 0 later on
@@ -74,7 +74,6 @@ HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior,
 
 	float HoL = hippt::dot(local_to_light_direction, local_half_vector);
 	float HoV = hippt::dot(local_view_direction, local_half_vector);
-
 	if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
 
 		// Backfacing microfacets when the microfacet normal isn't in the same
@@ -83,6 +82,7 @@ HIPRT_DEVICE float GGX_glass_E_eval(float relative_ior,
 
 	float albedo;
 	float F = full_fresnel_dielectric(hippt::dot(local_view_direction, local_half_vector), relative_ior);
+
 	if (reflecting)
 	{
 		HIPRTRenderData render_data;
@@ -212,8 +212,9 @@ HIPRT_DEVICE void glass_directional_albedo_integration(int kernel_iterations,
 		float3_t sampled_local_to_light_direction = GGX_glass_E_sample(relative_ior, roughness, local_view_direction, random_number_generator);
 
 		float eval_pdf;
-		float directional_albedo = GGX_glass_E_eval(relative_ior, roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf,
-													bake_settings.masking_shadowing_term);
+		float directional_albedo =
+			GGX_glass_E_eval(relative_ior, roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf, bake_settings.masking_shadowing_term);
+
 		if (eval_pdf == 0.0f)
 			continue;
 

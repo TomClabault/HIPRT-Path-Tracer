@@ -15,7 +15,8 @@ HIPRT_DEVICE unsigned int path_tracing_compute_nisml_hash_key(const HIPRTRenderD
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+
 	unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
 	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
@@ -36,10 +37,13 @@ HIPRT_DEVICE bool path_tracing_pixel_is_on_nisml_hash_key_outline(const HIPRTRen
 
 	if (pixel_x > 0 && path_tracing_compute_nisml_hash_key(render_data, pixel_index - 1) != nisml_hash_key)
 		return true;
+
 	if (pixel_x + 1 < image_width && path_tracing_compute_nisml_hash_key(render_data, pixel_index + 1) != nisml_hash_key)
 		return true;
+
 	if (pixel_y > 0 && path_tracing_compute_nisml_hash_key(render_data, pixel_index - image_width) != nisml_hash_key)
 		return true;
+
 	if (pixel_y + 1 < image_height && path_tracing_compute_nisml_hash_key(render_data, pixel_index + image_width) != nisml_hash_key)
 		return true;
 
@@ -59,6 +63,7 @@ HIPRT_DEVICE bool path_tracing_compute_learning_to_cluster_cut_size_debug_value(
 		return false;
 
 	const IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
+
 	unsigned int lightcut_index;
 	if (!path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_lightcut_index(render_data, static_cast<unsigned int>(pixel_index), lightcut_index))
 		return false;
@@ -75,6 +80,7 @@ HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_
 																							   unsigned int& out_lightcut_index)
 {
 	out_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1 || render_data.buffers.global_triangle_index_to_mesh_index == nullptr)
 		return false;
 
@@ -87,7 +93,8 @@ HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face_mesh_id_
 	context.position	   = render_data.g_buffer.primary_hit_position[pixel_index];
 	context.shading_normal = render_data.g_buffer.shading_normals[pixel_index].unpack();
 	unsigned int mesh_id   = render_data.buffers.global_triangle_index_to_mesh_index[render_data.g_buffer.first_hit_prim_index[pixel_index]];
-	out_lightcut_index	   = kd_tree_device.resolve_lightcut(context, mesh_id);
+
+	out_lightcut_index = kd_tree_device.resolve_lightcut(context, mesh_id);
 	if (out_lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX || out_lightcut_index >= kd_tree_device.learning_to_cluster.lightcut_capacity)
 		return false;
 
@@ -101,10 +108,12 @@ HIPRT_DEVICE bool path_tracing_get_learning_to_cluster_cell_normal_face(const HI
 {
 	out_guiding_cell_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 	out_normal_face		   = 0u;
+
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] == -1)
 		return false;
 
-	float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
+
 	unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
 	if (guiding_cell_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 		return false;
@@ -255,6 +264,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_entropy_debug_value(const HIPRTRend
 
 	float probability_sum = 0.0f;
 	float entropy		  = 0.0f;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		float probability = cluster_log_baseline_weights[cluster_index];
@@ -328,6 +338,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_kl_divergence_debug_value(const HIP
 		return false;
 
 	float kl_divergence = 0.0f;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		float neural_probability = cluster_log_baseline_weights[cluster_index];
@@ -381,9 +392,11 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_latent_activation_color(const HIPRT
 
 	float activation_norm = hippt::sqrt(activation_norm_squared);
 	float projections[3]  = {};
+
 	for (unsigned int projection_channel = 0; projection_channel < 3; projection_channel++)
 	{
 		float projection = 0.0f;
+
 		for (unsigned int neuron = 0; neuron < NeuralImportanceSamplingMLP::HIDDEN_LAYER_SIZE; neuron++)
 		{
 			unsigned int hash = pcg_hash(neuron * pcg_hash(projection_channel));
@@ -397,6 +410,7 @@ HIPRT_DEVICE bool path_tracing_compute_nisml_latent_activation_color(const HIPRT
 	}
 
 	float quantized_color[3];
+
 	for (unsigned int color_channel = 0; color_channel < 3; color_channel++)
 	{
 		float color_channel_value	   = hippt::clamp(0.0f, 1.0f, 0.5f + 0.5f * projections[color_channel]);
@@ -477,7 +491,8 @@ HIPRT_DEVICE bool path_tracing_pixel_is_near_nisml_representative(const HIPRTRen
 			continue;
 
 		float3_t representative_position = nisml.nisml_cache[flat_representative_index].representative_position;
-		float ray_parameter				 = hippt::dot(representative_position - center_ray.origin, center_ray.direction);
+
+		float ray_parameter = hippt::dot(representative_position - center_ray.origin, center_ray.direction);
 		if (ray_parameter <= 0.0f)
 			continue;
 
@@ -525,6 +540,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderD
 #elif LearningToClusterDebugMode ==                                                                                                                            \
 	LEARNING_TO_CLUSTER_DEBUG_MODE_CELL_NORMAL_FACE_SOLID // #if LearningToClusterDebugMode == LEARNING_TO_CLUSTER_DEBUG_MODE_LIGHT_CUT_SIZE_HEATMAP
 	unsigned int guiding_cell_index;
+
 	unsigned int normal_face;
 	if (path_tracing_get_learning_to_cluster_cell_normal_face(render_data, pixel_index, guiding_cell_index, normal_face))
 		out_debug_color = ColorRGB32F::random_color(path_tracing_get_learning_to_cluster_cell_normal_face_color_seed(guiding_cell_index, normal_face)) *
@@ -586,9 +602,9 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderD
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
 		// We have a first hit
-		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
-		unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
+		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
+		unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
 		if (guiding_cell_index != IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			out_debug_color = ColorRGB32F::random_color(guiding_cell_index) * (render_data.render_settings.sample_number + 1);
 	}
@@ -655,6 +671,7 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderD
 
 		bool is_cell_outline		   = false;
 		bool is_lookahead_cell_outline = false;
+
 		if (pixel_x > 0)
 		{
 			unsigned int neighbor_pixel_index = pixel_index - 1;
@@ -755,9 +772,9 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderD
 	{
 		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 		float3_t normal		 = render_data.g_buffer.geometric_normals[pixel_index].unpack();
+
 		ReSTIRPGDistribution distribution =
 			render_data.render_settings.restir_pg_settings.get_distribution_from_position_data(primary_hit, normal, render_data.current_camera);
-
 		if (distribution.distribution_components[0].weight == 0.0f)
 			color = ColorRGB32F(0.0f);
 		else if (!hippt::is_finite(distribution.distribution_components[0].weight))
@@ -774,7 +791,6 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderD
 #elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_SHARPNESS &&                                                                                 \
 	ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	ColorRGB32F color;
-
 	if (render_data.render_settings.sample_number == 0)
 		// At sample 0 all distributions are at sharpness 50
 		color = ColorRGB32F(50.0f);
@@ -796,7 +812,6 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderD
 #elif ReSTIRPGDebugMode == RESTIR_PG_DEBUG_DISTRIBUTION_COMPONENT_WEIGHT &&                                                                                    \
 	ReSTIRPGEnable == KERNEL_OPTION_TRUE // #if NEEPlusPlusDebugMode != NEE_PLUS_PLUS_DEBUG_MODE_NO_DEBUG
 	ColorRGB32F color;
-
 	if (render_data.render_settings.sample_number == 0)
 		// At sample 0 all distributions are at sharpness 50
 		color = ColorRGB32F(0.25f);
@@ -831,9 +846,9 @@ HIPRT_DEVICE void path_tracing_compute_debug_view_debug_color(const HIPRTRenderD
 #if IlluminationAwareKDTreeDebugRepresentativePoints == KERNEL_OPTION_TRUE
 	if (render_data.g_buffer.first_hit_prim_index[pixel_index] != -1)
 	{
-		float3_t primary_hit			= render_data.g_buffer.primary_hit_position[pixel_index];
-		unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
+		float3_t primary_hit = render_data.g_buffer.primary_hit_position[pixel_index];
 
+		unsigned int guiding_cell_index = render_data.kd_tree_device.core.find_guiding_cell(primary_hit);
 		if (path_tracing_pixel_is_near_nisml_representative(render_data, pixel_index, guiding_cell_index))
 			out_debug_color = ColorRGB32F(1.0f, 0.0f, 0.0f) * (render_data.render_settings.sample_number + 1);
 	}

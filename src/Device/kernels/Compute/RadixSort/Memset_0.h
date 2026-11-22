@@ -17,7 +17,6 @@ RadixSort_Memset_0(unsigned int* __restrict__ global_count_table,
 				   unsigned int per_block_count_tables_scanned_size)
 {
 	unsigned int global_thread_index = blockIdx.x * blockDim.x + threadIdx.x;
-
 	if (global_thread_index < global_count_table_size)
 		global_count_table[global_thread_index] = 0;
 

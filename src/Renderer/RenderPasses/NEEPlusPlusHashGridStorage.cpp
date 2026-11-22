@@ -106,7 +106,8 @@ bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, GPUKer
 {
 	update_cell_alive_count();
 
-	float load_factor			  = m_total_cells_alive_count_cpu / (float)m_checksum_buffer.size();
+	float load_factor = m_total_cells_alive_count_cpu / (float)m_checksum_buffer.size();
+
 	bool load_factor_too_high	  = load_factor > 0.65f;
 	bool maximum_size_not_reached = get_byte_size() / 1000000.0f <= max_megabyte_size * 0.95f;
 	bool maximum_size_exceeded	  = get_byte_size() / 1000000.0f >= max_megabyte_size * 1.05f;
@@ -115,7 +116,8 @@ bool NEEPlusPlusHashGridStorage::try_resize(HIPRTRenderData& render_data, GPUKer
 		unsigned int current_cell_count = m_checksum_buffer.size();
 		unsigned int new_cell_count		= current_cell_count * 1.5f;
 
-		float cell_size_byte		   = get_byte_size() / current_cell_count;
+		float cell_size_byte = get_byte_size() / current_cell_count;
+
 		float estimated_new_size_bytes = cell_size_byte * new_cell_count;
 		if (estimated_new_size_bytes > max_megabyte_size * 1000000.0f)
 			// If the estimated new size is larger than the maximum size,

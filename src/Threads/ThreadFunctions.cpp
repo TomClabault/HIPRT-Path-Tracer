@@ -55,6 +55,7 @@ void ThreadFunctions::load_scene_texture(const aiScene* assimp_scene,
 	std::string corrected_filepath;
 	// Starting with the .GLTF/.OBJ/.whatever-scene-format file
 	corrected_filepath = scene_path;
+
 	// Removing the name of the .GLTF / .OBJ / .XXX file by looking at the *last* '/' or '\'
 	if (corrected_filepath.find('/') != std::string::npos)
 		corrected_filepath = corrected_filepath.substr(0, corrected_filepath.rfind('/') + 1);
@@ -120,10 +121,12 @@ void ThreadFunctions::load_scene_texture(const aiScene* assimp_scene,
 		}
 
 		Image8Bit texture;
+
 		if (!texture_file_path.empty() && texture_file_path[0] == '*')
 		{
 			// Embedded texture reference (ASSIMP uses "*0", "*1", etc. as paths for embedded textures)
-			int embedded_idx			  = std::stoi(texture_file_path.substr(1));
+			int embedded_idx = std::stoi(texture_file_path.substr(1));
+
 			const aiTexture* embedded_tex = assimp_scene->mTextures[embedded_idx];
 			if (embedded_tex != nullptr)
 			{
@@ -136,9 +139,9 @@ void ThreadFunctions::load_scene_texture(const aiScene* assimp_scene,
 					stbi_set_flip_vertically_on_load_thread(false);
 
 					int w, h, n;
+
 					unsigned char* pixels =
 						stbi_load_from_memory(reinterpret_cast<const unsigned char*>(embedded_tex->pcData), embedded_tex->mWidth, &w, &h, &n, nb_channels);
-
 					if (pixels)
 					{
 						texture = Image8Bit(pixels, w, h, nb_channels);
@@ -158,6 +161,7 @@ void ThreadFunctions::load_scene_texture(const aiScene* assimp_scene,
 						Image8Bit converted(embedded_tex->mWidth, embedded_tex->mHeight, nb_channels);
 						int num_pixels				  = embedded_tex->mWidth * embedded_tex->mHeight;
 						const unsigned char* src_data = reinterpret_cast<const unsigned char*>(embedded_tex->pcData);
+
 						for (int pixel_i = 0; pixel_i < num_pixels; pixel_i++)
 							for (int c = 0; c < nb_channels; c++)
 								converted[pixel_i * nb_channels + c] = src_data[pixel_i * 4 + c];
@@ -177,6 +181,7 @@ void ThreadFunctions::load_scene_texture(const aiScene* assimp_scene,
 		}
 
 		int material_index = material_indices[thread_index];
+
 		if (type == aiTextureType_EMISSIVE)
 		{
 			if (texture.is_constant_color(/* threshold */ 5))
@@ -238,6 +243,7 @@ void ThreadFunctions::load_scene_parse_emissive_triangles(const aiScene* scene, 
 		CPUMaterial& renderer_material = parsed_scene.materials[material_index];
 
 		int max_emissive_mesh_index_offset = 0;
+
 		for (int face_index = 0; face_index < mesh->mNumFaces; face_index++, current_triangle_index_in_whole_scene++)
 		{
 			{

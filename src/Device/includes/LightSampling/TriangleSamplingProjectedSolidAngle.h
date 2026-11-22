@@ -358,6 +358,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	projected_solid_angle_triangle_t polygon;
 	// Copy vertices and assign ellipses
 	polygon.vertex_count = vertex_count;
+
 	if (vertex_count == 0)
 		return polygon;
 
@@ -395,6 +396,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 
 		// i == 3
 		polygon.get_vertex(3) = make_float2(vertices_clockwise_order[3].x, vertices_clockwise_order[3].y);
+
 		if (3 == polygon.vertex_count)
 			break;
 		ellipse = ellipse_from_edge(vertices_clockwise_order[3], vertices_clockwise_order[(3 + 1) % MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING]);
@@ -409,6 +411,7 @@ HIPRT_DEVICE projected_solid_angle_triangle_t prepare_projected_solid_angle_tria
 	for (unsigned int i = 1; i != MAX_POLYGON_VERTEX_COUNT_PROJECTED_SOLID_ANGLE_SAMPLING; ++i)
 	{
 		polygon.get_vertex(i) = make_float2(vertices_clockwise_order[i].x, vertices_clockwise_order[i].y);
+
 		if (i > 2 && i == polygon.vertex_count)
 			break;
 		float2_t ellipse =
@@ -721,7 +724,6 @@ HIPRT_DEVICE float projected_solid_angle_triangle_solid_angle_pdf_internal(const
 		prepare_projected_solid_angle_triangle_sampling_from_world_space_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 																				  shading_point, view_direction, shading_normal, material, ltc_lobe)
 			.projected_solid_angle;
-
 	if (projected_solid_angle == 0.0f)
 		// The whole polygon is below the hemisphere, clipping returned 0 vertices
 		return 0.0f;
@@ -1032,7 +1034,6 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 
 	projected_solid_angle_triangle_t polygon = prepare_projected_solid_angle_triangle_sampling_from_world_space(
 		render_data, vertex_A, vertex_B, vertex_C, shading_point, view_direction, shading_normal, ltc_lobe_probabilities, material, rng);
-
 	if (polygon.vertex_count == 0 || polygon.projected_solid_angle == 0.0f)
 	{
 		out_area_pdf = 0.0f;
@@ -1058,6 +1059,7 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 			// i == 0
 			outer_ellipse = polygon.get_ellipse(0);
 			dir_0		  = polygon.get_vertex(0);
+
 			if (target_projected_solid_angle < polygon.sector_projected_solid_angles[0])
 				break;
 
@@ -1066,6 +1068,7 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 
 			outer_ellipse = polygon.get_ellipse(1);
 			dir_0		  = polygon.get_vertex(1);
+
 			if ((1 >= 2 && 1 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[1])
 				break;
 
@@ -1073,6 +1076,7 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 			target_projected_solid_angle -= polygon.sector_projected_solid_angles[2 - 1];
 			outer_ellipse = polygon.get_ellipse(2);
 			dir_0		  = polygon.get_vertex(2);
+
 			if ((2 >= 2 && 2 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[2])
 				break;
 
@@ -1080,6 +1084,7 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 			target_projected_solid_angle -= polygon.sector_projected_solid_angles[3 - 1];
 			outer_ellipse = polygon.get_ellipse(3);
 			dir_0		  = polygon.get_vertex(3);
+
 			if ((3 >= 2 && 3 + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[3])
 				break;
 		} while (false);
@@ -1091,6 +1096,7 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 
 			outer_ellipse = polygon.get_ellipse(i);
 			dir_0		  = polygon.get_vertex(i);
+
 			if ((i >= 2 && i + 1 == polygon.vertex_count) || target_projected_solid_angle < polygon.sector_projected_solid_angles[i])
 				break;
 		}
@@ -1127,10 +1133,10 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 			vertex_ellipse = polygon.get_ellipse(0);
 			outer_ellipse  = vertex_ellipse;
 
-			dir_0						 = polygon.get_vertex(0);
-			dir_1						 = polygon.get_vertex(0 + 1);
-			sector_projected_solid_angle = polygon.sector_projected_solid_angles[0];
+			dir_0 = polygon.get_vertex(0);
+			dir_1 = polygon.get_vertex(0 + 1);
 
+			sector_projected_solid_angle = polygon.sector_projected_solid_angles[0];
 			if ((0 >= 1 && 0 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
 				break;
 
@@ -1141,10 +1147,10 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
 			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
 
-			dir_0						 = polygon.get_vertex(1);
-			dir_1						 = polygon.get_vertex(1 + 1);
-			sector_projected_solid_angle = polygon.sector_projected_solid_angles[1];
+			dir_0 = polygon.get_vertex(1);
+			dir_1 = polygon.get_vertex(1 + 1);
 
+			sector_projected_solid_angle = polygon.sector_projected_solid_angles[1];
 			if ((1 >= 1 && 1 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
 				break;
 
@@ -1155,10 +1161,10 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 			inner_ellipse = vertex_inner ? vertex_ellipse : inner_ellipse;
 			outer_ellipse = vertex_inner ? outer_ellipse : vertex_ellipse;
 
-			dir_0						 = polygon.get_vertex(2);
-			dir_1						 = polygon.get_vertex(2 + 1);
-			sector_projected_solid_angle = polygon.sector_projected_solid_angles[2];
+			dir_0 = polygon.get_vertex(2);
+			dir_1 = polygon.get_vertex(2 + 1);
 
+			sector_projected_solid_angle = polygon.sector_projected_solid_angles[2];
 			if ((2 >= 1 && 2 + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
 				break;
 		} while (false);
@@ -1177,10 +1183,10 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 				outer_ellipse	  = vertex_inner ? outer_ellipse : vertex_ellipse;
 			}
 
-			dir_0						 = polygon.get_vertex(i);
-			dir_1						 = polygon.get_vertex(i + 1);
-			sector_projected_solid_angle = polygon.sector_projected_solid_angles[i];
+			dir_0 = polygon.get_vertex(i);
+			dir_1 = polygon.get_vertex(i + 1);
 
+			sector_projected_solid_angle = polygon.sector_projected_solid_angles[i];
 			if ((i >= 1 && i + 2 == polygon.vertex_count) || target_projected_solid_angle < sector_projected_solid_angle)
 				break;
 		}
@@ -1222,6 +1228,7 @@ HIPRT_DEVICE float3_t sample_point_on_triangle_projected_solid_angle_peters_2021
 	bool valid = false;
 	// Computing the point on light without the PDF since we compute it later
 	float3_t point_on_light = map_direction_to_triangle_point(sampled_dir_world_space, vertex_A, triangle_normal, shading_point, valid);
+
 	if (!valid)
 	{
 		out_area_pdf = 0.0f;

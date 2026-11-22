@@ -35,8 +35,8 @@ struct RISReservoir
 	HIPRT_DEVICE void add_one_candidate(RISSample new_sample, float weight, Xorshift32Generator& random_number_generator)
 	{
 		M++;
-		weight_sum += weight;
 
+		weight_sum += weight;
 		if (random_number_generator() < weight / weight_sum)
 			sample = new_sample;
 	}

@@ -55,9 +55,9 @@ HIPRT_HOST_DEVICE float compute_gini_coefficient(SORTED_MEANS_DECLARATION)
 		sum_of_means_weighted += j * sorted_mean_float;
 	}
 
-	float nume	= 2.0f * sum_of_means_weighted;
-	float denom = GMoNMSetsCount * sum_of_means;
+	float nume = 2.0f * sum_of_means_weighted;
 
+	float denom = GMoNMSetsCount * sum_of_means;
 	if (denom == 0.0f)
 		return 0.0f;
 

@@ -20,10 +20,12 @@ GLOBAL_KERNEL_SIGNATURE(void) inline HierarchicalAdaptiveSamplingBuildColumns(HI
 #endif // #ifdef __KERNELCC__
 	int width  = render_data.render_settings.render_resolution.x;
 	int height = render_data.render_settings.render_resolution.y;
+
 	if (x >= width)
 		return;
 
 	float column_sum = 0.0f;
+
 	for (int y = 0; y < height; y++)
 	{
 		unsigned int pixel_index = x + y * width;

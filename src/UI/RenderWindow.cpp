@@ -229,6 +229,10 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Denoiser-aware adaptive sampling: we don't need to make diffuse flat surface super noise-free because a denoiser is just going to do a super good job here,
+//	so we can reliably samples less and let that to the denoiser
+// - Stop paths on the primary surface if the primary surface is super bright: emissives seens directly, envmap shining bright, ... it's unlikely that longer
+//	paths here are going to make any difference visually to the final image
 // - Get inspiation from OpenQMC https://github.com/AcademySoftwareFoundation/openqmc
 // - Blue Noise Dithering for Reservoir-Based Spatio-Temporal Importance Resampling
 // - Screen space russian roulette: https://sa2026.conference-schedule.org/presentation/?id=papers_1375&sess=sess105
@@ -241,18 +245,14 @@ extern ImGuiLogger g_imgui_logger;
 // center with BSDF_center * incident_radiance_cache_direction_of_neighbor_same_random_seed
 // - Neural path guiding anisotropic gaussians
 // - Neural visibility cache for envmap sampling?
-// - Another separate render graph for interactivity
 // - Use only packed material throughout the shaders to save registers?
 // - We can use incoming radiance radiance cache to sample BSDF directions for MIS: we would cache the incoming radiance only from emissives and use that with
 //		RIS when sampling a BSDF direction for MIS maybe, somethiung lioke that
 // - With our radiance cache, we can fully use the paper that helps with cache placement
 // - For caching incoming radiance in a radcache, we can use a SH representation or this more precise representation here: https://suikasibyl.github.io/gilo/#/
 // - Better adaptive sampling + denoiser: https://www.cg.tuwien.ac.at/research/publications/2025/sakai-2025-stater/sakai-2025-stater-paper.pdf
-// - Constant memory for Render data such that it is available everywhere and we don't have it to pass it around all the time.
-//		- Same for more variables?
 // - Can we use LTCs for sampling the BSDFs with energy compensation? Since energy compensation has high variance, LTCs may help a lot there?
 // - Variance aware MIS weights? https://cgg.mff.cuni.cz/~jaroslav/papers/2019-variance-aware-mis/2019-grittmann-variance-aware-mis-paper.pdf
-// - RISLTC: https://data.ishaanshah.xyz/research/pdfs/risltc.pdf. Some explanations in there for projected solid angle and LTC sampling
 // - Inciteful graph to explore (started with Practical product sampling warping NVIDIA):
 // https://inciteful.xyz/p?ids%5B%5D=W4220995884&ids%5B%5D=W3179788358&ids%5B%5D=W4403641440&ids%5B%5D=W4390345185&ids%5B%5D=W4388994411&ids%5B%5D=W4200187284&ids%5B%5D=W2885975589&ids%5B%5D=W3183450244&ids%5B%5D=W1893031899&ids%5B%5D=W3036883119&ids%5B%5D=W3044759327&ids%5B%5D=W4240396283&ids%5B%5D=W3110265079&ids%5B%5D=W2073976119&ids%5B%5D=W2988541899&ids%5B%5D=W2885239691&ids%5B%5D=W2964425571&ids%5B%5D=W2030242873&ids%5B%5D=W3044185278
 // - VisibilityCluster: Average Directional Visibility for Many-Light Rendering: https://ieeexplore.ieee.org/document/6464264
@@ -654,6 +654,7 @@ RenderWindow::~RenderWindow()
 void RenderWindow::init_glfw(int window_width, int window_height)
 {
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Initializing GLFW...");
+
 	if (!glfwInit())
 	{
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Could not initialize GLFW...");
@@ -696,7 +697,8 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	// instead, which wakes up as soon as the renderer completes a frame
 	glfwSwapInterval(0);
 
-	GLFWmonitor* primary_monitor  = glfwGetPrimaryMonitor();
+	GLFWmonitor* primary_monitor = glfwGetPrimaryMonitor();
+
 	const GLFWvidmode* video_mode = primary_monitor != nullptr ? glfwGetVideoMode(primary_monitor) : nullptr;
 	if (video_mode != nullptr && video_mode->refreshRate > 0)
 		m_UI_refresh_period_ms = 1000.0f / video_mode->refreshRate;
@@ -719,6 +721,7 @@ void RenderWindow::init_gl(int width, int height)
 	// when calling OpenGL function with an incorrect OpenGL state
 	int flags;
 	glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+
 	if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
 	{
 		glEnable(GL_DEBUG_OUTPUT);
@@ -755,7 +758,6 @@ void RenderWindow::resize(int pixels_width, int pixels_height)
 
 	int new_render_width  = std::floor(pixels_width * resolution_scale);
 	int new_render_height = std::floor(pixels_height * resolution_scale);
-
 	if (new_render_height == 0 || new_render_width == 0)
 
 		// Can happen if resizing the window to a 1 pixel width/height while having a resolution scaling < 1.
@@ -802,6 +804,7 @@ void RenderWindow::correct_window_size_for_requested_viewport()
 	bool viewport_size_stable		 = viewport_width == m_previous_frame_viewport_width && viewport_height == m_previous_frame_viewport_height;
 	m_previous_frame_viewport_width	 = viewport_width;
 	m_previous_frame_viewport_height = viewport_height;
+
 	if (!viewport_size_stable || viewport_width <= 0 || viewport_height <= 0)
 		return;
 
@@ -927,8 +930,8 @@ void RenderWindow::update_renderer_view_zoom(float offset, bool scale_delta_time
 {
 	if (scale_delta_time)
 		offset *= m_application_state->last_CPU_frame_delta_time_ms / 1000.0f;
-	offset *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
 
+	offset *= m_renderer->get_camera().camera_movement_speed * m_renderer->get_camera().user_movement_speed_multiplier;
 	if (offset == 0.0f)
 
 		return;
@@ -974,7 +977,6 @@ bool RenderWindow::is_rendering_done()
 	// If we are at 0 samples, this means that the render got resetted and so
 	// the render is not done
 	rendering_done &= render_settings.sample_number > 0;
-
 	if (rendering_done)
 		set_ImGui_status_text("Finished!");
 	else
@@ -1170,8 +1172,8 @@ std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 void RenderWindow::run(const std::string& output_filepath, int render_samples)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
-	bool batch_output					 = !output_filepath.empty();
 
+	bool batch_output = !output_filepath.empty();
 	if (batch_output)
 	{
 		// Batch captures must contain exactly the requested number of noisy samples.
@@ -1186,6 +1188,7 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 	m_renderer->start_render_thread();
 
 	uint64_t previous_frame_start_time = glfwGetTimerValue();
+
 	while (!glfwWindowShouldClose(m_glfw_window))
 	{
 		// The frame delta time covers the whole iteration, the wait for the renderer included: it is the wall-clock time of
@@ -1245,6 +1248,7 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		// A viewport size change queued by draw_interface() in this frame is only applied at the next frame and must also
 		// delay the capture, otherwise the capture is written at the previous resolution
 		bool render_reset_pending = m_application_state->render_dirty || m_resize_queued;
+
 		if (batch_output && is_rendering_done() && !render_reset_pending)
 		{
 			m_screenshoter->write_to_png(output_filepath);
@@ -1281,7 +1285,8 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 
 void RenderWindow::wait_for_frame_completion_or_UI_refresh(uint64_t previous_frame_start_time)
 {
-	float elapsed_ms   = (glfwGetTimerValue() - previous_frame_start_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+	float elapsed_ms = (glfwGetTimerValue() - previous_frame_start_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+
 	float remaining_ms = m_UI_refresh_period_ms - elapsed_ms;
 	if (remaining_ms <= 0.0f)
 		// The UI is due for a refresh
@@ -1345,6 +1350,7 @@ void RenderWindow::render()
 				denoise();
 
 				DisplayViewType current_display_view_type = m_display_view_system->get_current_display_view_type();
+
 				bool uses_device_display_post_process =
 					current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::GMON_BLEND ||
 					current_display_view_type == DisplayViewType::DENOISED_BLEND || current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
@@ -1373,6 +1379,7 @@ void RenderWindow::render()
 			render_settings.wants_render_low_resolution = is_interacting();
 			bool samples_per_frame_auto_mode			= m_application_settings->auto_sample_per_frame;
 			bool current_or_last_frame_low_res			= render_settings.do_render_low_resolution() || m_renderer->was_last_frame_low_resolution();
+
 			if (samples_per_frame_auto_mode && current_or_last_frame_low_res && render_settings.accumulate)
 				// Only one sample when low resolution rendering.
 				//
@@ -1420,6 +1427,7 @@ void RenderWindow::render()
 			}
 
 			DisplayViewType current_display_view_type = m_display_view_system->get_current_display_view_type();
+
 			bool uses_device_display_post_process =
 				current_display_view_type == DisplayViewType::DEFAULT || current_display_view_type == DisplayViewType::GMON_BLEND ||
 				current_display_view_type == DisplayViewType::DENOISED_BLEND || current_display_view_type == DisplayViewType::DISPLAY_DENOISER_ALBEDO ||
@@ -1452,6 +1460,7 @@ void RenderWindow::render()
 				// Indicating that the animations can step forward since we're done
 				// with this frame
 				renderer_animation_state.frames_rendered_so_far++;
+
 				if (renderer_animation_state.frames_rendered_so_far == renderer_animation_state.number_of_animation_frames)
 					// We just rendered the last frame, deactivating rendering frame sequence state
 					renderer_animation_state.is_rendering_frame_sequence = false;

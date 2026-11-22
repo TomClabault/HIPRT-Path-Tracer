@@ -171,6 +171,7 @@ HIPRT_DEVICE static float3_t cosine_weighted_sample_around_normal_world_space(co
 {
 	float rand_1 = random_number_generator();
 	float rand_2 = 2.0f * random_number_generator() - 1.0f;
+
 	if (rand_1 < 1.0e-8f && rand_2 < -0.999999f && normal.z > 0.999999f)
 	{
 		// Slight perturbation when this would result in a singularity:

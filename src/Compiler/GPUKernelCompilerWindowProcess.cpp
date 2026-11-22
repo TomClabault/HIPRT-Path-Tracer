@@ -49,10 +49,11 @@ GPUKernelCompilerWindowProcessCompilationRequest GPUKernelCompilerWindowProcess:
 		for (size_t function_name_set_index = 0; function_name_set_index < function_name_set_count; function_name_set_index++)
 		{
 			GPUKernelCompilerWindowProcessFunctionNameSet request_function_name_set;
-			const hiprtFuncNameSet& function_name_set = function_name_sets[function_name_set_index];
 
+			const hiprtFuncNameSet& function_name_set = function_name_sets[function_name_set_index];
 			if (function_name_set.intersectFuncName != nullptr)
 				request_function_name_set.intersect_function_name = std::string(function_name_set.intersectFuncName);
+
 			if (function_name_set.filterFuncName != nullptr)
 				request_function_name_set.filter_function_name = std::string(function_name_set.filterFuncName);
 
@@ -124,6 +125,7 @@ void GPUKernelCompilerWindowProcess::print_worker_output(const std::string& outp
 	static std::mutex output_mutex;
 	std::lock_guard<std::mutex> lock(output_mutex);
 	std::cout.write(output.data(), static_cast<std::streamsize>(output.size()));
+
 	if (output.back() != '\n')
 		std::cout << std::endl;
 	else
@@ -156,6 +158,7 @@ bool GPUKernelCompilerWindowProcess::compile(const GPUKernelCompilerWindowProces
 		std::wstring command_line = GPUKernelCompilerWindowProcess::quote_windows_argument(worker_executable_path.wstring()) + L" --kernel-compiler-worker " +
 									GPUKernelCompilerWindowProcess::quote_windows_argument(request_file_path.wstring());
 		std::wstring current_directory = std::filesystem::current_path().wstring();
+
 		GPUKernelCompilerWindowProcessCacheLock cache_lock(request);
 		if (!cache_lock.acquired())
 		{
@@ -214,6 +217,7 @@ bool GPUKernelCompilerWindowProcess::compile(const GPUKernelCompilerWindowProces
 
 		std::error_code remove_error;
 		std::filesystem::remove(request_file_path, remove_error);
+
 		bool worker_succeeded = wait_result == WAIT_OBJECT_0 && exit_code_read != FALSE && process_exit_code == 0;
 		if (!worker_succeeded)
 			GPUKernelCompilerWindowProcess::print_worker_output(worker_output);

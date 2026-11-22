@@ -37,7 +37,8 @@ IlluminationAwareKDTree_NISMLReplayTrainingSamples()
 	if (training_record_index >= training_record_count)
 		return;
 
-	const NISMLTrainingSample& training_record	  = render_data.nisml.training_records[training_record_index];
+	const NISMLTrainingSample& training_record = render_data.nisml.training_records[training_record_index];
+
 	IlluminationAwareKDTreeDevice& kd_tree_device = render_data.kd_tree_device;
 	unsigned int node_index						  = kd_tree_device.core.find_guiding_cell(training_record.position);
 	if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || kd_tree_device.nisml.nisml_representative_dirty == nullptr)

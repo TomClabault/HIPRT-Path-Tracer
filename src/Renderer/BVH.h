@@ -88,7 +88,6 @@ public:
 		void insert(const std::vector<Triangle>& triangles_geometry, int triangle_id_to_insert, int current_depth, int max_depth, int leaf_max_obj_count)
 		{
 			bool depth_exceeded = max_depth != -1 && current_depth == max_depth;
-
 			if (m_is_leaf || depth_exceeded)
 			{
 				m_triangles.push_back(triangle_id_to_insert);
@@ -124,11 +123,12 @@ public:
 			float middle_z = (m_min.z + m_max.z) / 2;
 
 			int octant_index = 0;
-
 			if (bbox_centroid.x > middle_x)
 				octant_index += 1;
+
 			if (bbox_centroid.y > middle_y)
 				octant_index += 2;
+
 			if (bbox_centroid.z > middle_z)
 				octant_index += 4;
 
@@ -194,6 +194,7 @@ public:
 			}
 
 			std::priority_queue<QueueElement, std::vector<QueueElement>, std::greater<QueueElement>> intersection_queue;
+
 			for (int i = 0; i < 8; i++)
 			{
 				float inter_distance;
@@ -203,6 +204,7 @@ public:
 
 			bool intersection_found = false;
 			float closest_inter = 100000000, inter_distance = 100000000;
+
 			while (!intersection_queue.empty())
 			{
 				QueueElement top_element = intersection_queue.top();

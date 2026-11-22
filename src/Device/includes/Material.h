@@ -135,6 +135,7 @@ HIPRT_DEVICE static ColorRGB32F get_base_color(const HIPRTRenderData& render_dat
 {
 	out_alpha		  = 1.0f;
 	ColorRGBA32F rgba = read_material_texture<ColorRGBA32F>(render_data, texcoords, base_color_texture_index, true);
+
 	if (base_color_texture_index != MaterialConstants::NO_TEXTURE)
 	{
 		ColorRGB32F base_color = ColorRGB32F(rgba.r, rgba.g, rgba.b);
@@ -332,6 +333,7 @@ HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& r
 		{
 			if (resolved_user_controls->validity_mask & ResolvedMaterialUserControlRoughness)
 				out_material.roughness = resolved_user_controls->roughness;
+
 			if (resolved_user_controls->validity_mask & ResolvedMaterialUserControlMetallic)
 				out_material.metallic = resolved_user_controls->metallic;
 		}
@@ -343,6 +345,7 @@ HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& r
 
 			float2_t roughness_metallic =
 				get_metallic_roughness(render_data, texcoords, metallic_texture_index, roughness_texture_index, roughness_metallic_texture_index);
+
 			if (roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
 			{
 				// Merged roughness metallic texture
@@ -472,9 +475,9 @@ HIPRT_DEVICE static void load_effective_emission(const HIPRTRenderData& render_d
 	float emission_strength	 = packed_material.get_emission_strength();
 
 	unsigned short int emission_texture_index = packed_material.get_emission_texture_index();
+
 	bool uses_emission_texture =
 		emission_texture_index != MaterialConstants::NO_TEXTURE && emission_texture_index != MaterialConstants::CONSTANT_EMISSIVE_TEXTURE;
-
 	if (uses_emission_texture)
 		raw_emission = read_material_texture<ColorRGB32F>(render_data, texcoords, emission_texture_index, false);
 
@@ -641,6 +644,7 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 #if UseMaterialTextures == KERNEL_OPTION_TRUE
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
 		proposal_inputs.roughness = resolved_user_controls.roughness;
+
 	if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlMetallic)
 		proposal_inputs.metallic = resolved_user_controls.metallic;
 
@@ -655,10 +659,12 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 	{
 		float2_t roughness_metallic =
 			get_metallic_roughness(render_data, texcoords, metallic_texture_index, roughness_texture_index, roughness_metallic_texture_index);
+
 		if (roughness_metallic_texture_index != MaterialConstants::NO_TEXTURE)
 		{
 			if (roughness_needs_texture)
 				proposal_inputs.roughness = roughness_metallic.x;
+
 			if (metallic_needs_texture)
 				proposal_inputs.metallic = roughness_metallic.y;
 		}
@@ -666,6 +672,7 @@ HIPRT_DEVICE static LightProposalInputs load_light_proposal_inputs(const HIPRTRe
 		{
 			if (roughness_needs_texture && roughness_texture_index != MaterialConstants::NO_TEXTURE)
 				proposal_inputs.roughness = roughness_metallic.x;
+
 			if (metallic_needs_texture && metallic_texture_index != MaterialConstants::NO_TEXTURE)
 				proposal_inputs.metallic = roughness_metallic.y;
 		}

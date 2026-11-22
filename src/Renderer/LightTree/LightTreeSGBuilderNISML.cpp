@@ -18,6 +18,7 @@ void LightTreeSGBuilderNISML::build_lookup(const std::vector<LightTreeATSNode>& 
 	neural_cluster_node_depths.assign(effective_tree_cut_size_neural_many_lights, 0);
 
 	std::vector<unsigned int> node_to_cluster_slot(ats_nodes.size(), invalid_cluster_slot);
+
 	for (unsigned int cluster_slot = 0; cluster_slot < effective_tree_cut_size_neural_many_lights; cluster_slot++)
 	{
 		unsigned int node_index = tree_cut_node_indices_neural_many_lights[cluster_slot];
@@ -40,6 +41,7 @@ void LightTreeSGBuilderNISML::build_lookup(const std::vector<LightTreeATSNode>& 
 
 		unsigned int node_index = 0;
 		unsigned int depth		= 0;
+
 		while (node_index < ats_nodes.size())
 		{
 			unsigned int cluster_slot = node_to_cluster_slot[node_index];

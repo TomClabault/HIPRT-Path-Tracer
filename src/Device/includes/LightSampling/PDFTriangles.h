@@ -114,7 +114,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
 		return 0.0f;
 
 	float3_t light_direction = point_on_light - context.position;
-	float light_distance	 = hippt::length(light_direction);
+
+	float light_distance = hippt::length(light_direction);
 	if (light_distance <= 0.0f)
 		return 0.0f;
 

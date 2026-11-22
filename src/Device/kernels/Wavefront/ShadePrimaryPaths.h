@@ -31,7 +31,8 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontShadePrimaryPaths(HIPRTRenderData 
 	// The camera rays pass has appended the active pixels to the queue of the material family of their primary hit
 	unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
 	unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
-	unsigned int queue_count	   = render_data.wavefront_data.material_family_counts[material_family];
+
+	unsigned int queue_count = render_data.wavefront_data.material_family_counts[material_family];
 	if (queue_count > render_data.wavefront_data.path_capacity)
 		queue_count = render_data.wavefront_data.path_capacity;
 

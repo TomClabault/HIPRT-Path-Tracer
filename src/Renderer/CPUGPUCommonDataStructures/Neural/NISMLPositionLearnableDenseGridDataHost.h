@@ -49,6 +49,7 @@ struct NISMLPositionLearnableDenseGridDataHost
 		m_grid_data.template upload_to_buffer<NISMLPositionLearnableDenseGridDataHostBuffers::NISML_POSITION_LEARNABLE_DENSE_GRID_FEATURES>(features);
 
 		std::vector<GenericFP16Type<DataContainer>> features_fp16(features.size());
+
 		for (unsigned int feature_index = 0; feature_index < features.size(); feature_index++)
 		{
 			if constexpr (std::is_same_v<GenericFP16Type<DataContainer>, float>)
@@ -85,6 +86,7 @@ struct NISMLPositionLearnableDenseGridDataHost
 	NISMLPositionLearnableDenseGridDevice to_device(float adam_learning_rate)
 	{
 		NISMLPositionLearnableDenseGridDevice device;
+
 		if (maximum_size() == 0)
 			return device;
 

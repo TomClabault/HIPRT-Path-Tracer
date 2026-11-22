@@ -15,6 +15,7 @@ HIPRT_DEVICE bool normalize_nisml_baseline_distribution(float* log_importances, 
 {
 	float maximum_log_importance = -INFINITY;
 	bool has_valid_importance	 = false;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		float log_importance = log_importances[cluster_index];
@@ -32,6 +33,7 @@ HIPRT_DEVICE bool normalize_nisml_baseline_distribution(float* log_importances, 
 		return false;
 
 	float exponential_denominator = 0.0f;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		if (log_importances[cluster_index] == -INFINITY)
@@ -49,6 +51,7 @@ HIPRT_DEVICE bool normalize_nisml_baseline_distribution(float* log_importances, 
 		return false;
 
 	float reciprocal_denominator = 1.0f / exponential_denominator;
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		if (log_importances[cluster_index] == -INFINITY)
@@ -86,6 +89,7 @@ IlluminationAwareKDTree_NISMLBuildCaches(IlluminationAwareKDTreeDevice kd_tree_d
 		kd_tree_device.nisml.nisml_representative_valid == nullptr || kd_tree_device.nisml.nisml_cache_ready == nullptr ||
 		kd_tree_device.nisml.nisml_pending_cell_count == nullptr || kd_tree_device.nisml.nisml_representative_capacity == 0u)
 		return;
+
 	if (hippt::atomic_load(kd_tree_device.nisml.nisml_pending_cell_count) == 0u)
 		return;
 
@@ -106,6 +110,7 @@ IlluminationAwareKDTree_NISMLBuildCaches(IlluminationAwareKDTreeDevice kd_tree_d
 
 	float average_probabilities[NISML_MAX_CLUSTER_COUNT] = {};
 	unsigned int valid_representative_count				 = 0;
+
 	for (unsigned int representative_index = 0; representative_index < kd_tree_device.nisml.nisml_representative_capacity; representative_index++)
 	{
 		unsigned int flat_representative_index = kd_tree_device.nisml.get_nisml_representative_index(cache_index, representative_index);
@@ -121,6 +126,7 @@ IlluminationAwareKDTree_NISMLBuildCaches(IlluminationAwareKDTreeDevice kd_tree_d
 										 representative.representative_view_direction, representative.representative_normal,
 										 representative.representative_sg_specular_weight, representative.representative_alpha_x,
 										 representative.representative_alpha_y, normalized_probabilities);
+
 		if (!normalize_nisml_baseline_distribution(normalized_probabilities, cluster_count))
 			continue;
 
@@ -137,6 +143,7 @@ IlluminationAwareKDTree_NISMLBuildCaches(IlluminationAwareKDTreeDevice kd_tree_d
 
 	float reciprocal_representative_count	 = 1.0f / static_cast<float>(valid_representative_count);
 	IlluminationAwareKDTreeNISMLCache& cache = kd_tree_device.nisml.nisml_cache[kd_tree_device.nisml.get_nisml_representative_index(cache_index, 0u)];
+
 	for (unsigned int cluster_index = 0; cluster_index < cluster_count; cluster_index++)
 	{
 		float average_probability			 = average_probabilities[cluster_index] * reciprocal_representative_count;

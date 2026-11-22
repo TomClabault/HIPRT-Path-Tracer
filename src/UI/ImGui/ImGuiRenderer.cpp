@@ -17,7 +17,8 @@
 ImGuiRenderer::ImGuiRenderer()
 {
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	float windowDpiScale	= viewport->DpiScale;
+
+	float windowDpiScale = viewport->DpiScale;
 	if (windowDpiScale > 1.0f)
 		ImGui::GetStyle().ScaleAllSizes(windowDpiScale);
 
@@ -60,7 +61,6 @@ bool ImGuiRenderer::ComboWithTooltips(
 			ImGui::BeginDisabled(disabled_items && disabled_items[i]);
 
 			const bool is_selected = (*combo_value == i);
-
 			if (ImGui::Selectable(items[i], is_selected))
 			{
 				*combo_value = i;
@@ -97,6 +97,7 @@ void ImGuiRenderer::wrapping_tooltip(const std::string& text)
 void ImGuiRenderer::show_help_marker(const std::string& text, ImVec4 color)
 {
 	ImGui::SameLine();
+
 	if (color.x == -1.0f && color.y == -1.0f && color.z == -1.0 && color.w == -1.0f)
 		// Default "disabled" color
 		ImGui::TextDisabled("(?)");

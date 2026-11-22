@@ -32,7 +32,8 @@ inline ReSTIR_PT_WavefrontInitialCandidatesShade(HIPRTRenderData render_data, un
 	// The trace kernel has appended the paths to the queue of the material family of their hit
 	unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
 	unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
-	unsigned int queue_count	   = render_data.wavefront_data.material_family_counts[material_family];
+
+	unsigned int queue_count = render_data.wavefront_data.material_family_counts[material_family];
 	if (queue_count > render_data.wavefront_data.path_capacity)
 		queue_count = render_data.wavefront_data.path_capacity;
 
@@ -41,6 +42,7 @@ inline ReSTIR_PT_WavefrontInitialCandidatesShade(HIPRTRenderData render_data, un
 		unsigned int path_index = render_data.wavefront_data.material_family_indices[family_queue_base + queue_slot];
 		if (path_index >= render_data.wavefront_data.path_capacity)
 			continue;
+
 		if (render_data.wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_TERMINAL)
 			continue;
 

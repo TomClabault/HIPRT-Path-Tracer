@@ -89,8 +89,8 @@ HIPRT_DEVICE float thin_glass_eval(float relative_eta,
 	pdf = 0.0f;
 
 	float NoV = local_view_direction.z;
-	float NoL = local_to_light_direction.z;
 
+	float NoL = local_to_light_direction.z;
 	if (hippt::abs(NoL) < 1.0e-8f)
 
 		// Check to avoid dividing by 0 later on
@@ -141,7 +141,6 @@ HIPRT_DEVICE float thin_glass_eval(float relative_eta,
 
 	float HoL = hippt::dot(local_to_light_direction, local_half_vector);
 	float HoV = hippt::dot(local_view_direction, local_half_vector);
-
 	if (HoL * NoL < 0.0f || HoV * NoV < 0.0f)
 
 		// Backfacing microfacets when the microfacet normal isn't in the same
@@ -158,6 +157,7 @@ HIPRT_DEVICE float thin_glass_eval(float relative_eta,
 		F += hippt::square(1.0f - F) * F / (1.0f - hippt::square(F));
 
 	ColorRGB32F color;
+
 	if (reflecting)
 	{
 		HIPRTRenderData fake_render_data;
@@ -262,6 +262,7 @@ inline GGXThinGlassDirectionalAlbedoBake(int kernel_iterations,
 		float eval_pdf			 = 0.0f;
 		float directional_albedo = thin_glass_eval(relative_ior, thin_walled_roughness, local_view_direction, sampled_local_to_light_direction, eval_pdf,
 												   bake_settings.masking_shadowing_term);
+
 		if (eval_pdf == 0.0f)
 			continue;
 

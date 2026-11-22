@@ -42,7 +42,8 @@ inline NISMLTrain(
 									 record.alpha_x, record.alpha_y, cluster_log_baseline_weights_or_probabilities);
 
 	bool valid_softmax = evaluate_nisml_softmax(cluster_log_baseline_weights_or_probabilities, residuals, render_data.nisml.cluster_count);
-	bool valid_weight  = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
+
+	bool valid_weight = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
 						record.conditional_light_probability > 0.0f && record.point_on_light_pdf_solid_angle > 0.0f;
 	float weight = 0.0f;
 	if (valid_weight)
@@ -83,8 +84,8 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 {
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_RENDER_DATA);
 	unsigned int record_index	 = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int record_count	 = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
 
+	unsigned int record_count = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
 	if (blockIdx.x * blockDim.x >= record_count)
 		// Early-outing at the block level, not the thread level because we have some __synchthreads() in the kernel and it's UB to not have all threads in a
 		// block reach the __synchthreads() call
@@ -118,6 +119,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 
 	__syncthreads();
 	unsigned int activation_block_base = blockIdx.x * NeuralImportanceSamplingMLPGPU::NEURON_COUNT * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE;
+
 	for (unsigned int neuron_index = 0; neuron_index < NeuralImportanceSamplingMLPGPU::INPUT_SIZE_PADDED_WMMA; neuron_index++)
 		train_activations[activation_block_base + neuron_index * NeuralImportanceSamplingMLPGPU::BLOCK_SIZE + threadIdx.x] =
 			activations_buffer[neuron_index][threadIdx.x];
@@ -131,6 +133,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	if (valid_record)
 		build_nisml_log_baseline_weights(render_data, render_data.nisml, record.position, record.outgoing_direction, record.normal, record.sg_specular_weight,
 										 record.alpha_x, record.alpha_y, output_probabilities_buffer, NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);
+
 	if (valid_record)
 	{
 		constexpr unsigned int output_layer_offset = NeuralImportanceSamplingMLPGPU::get_neuron_data_index(NeuralImportanceSamplingMLPGPU::LAYER_COUNT - 1, 0);
@@ -143,6 +146,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 											   // Residual layout:
 											   NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, threadIdx.x);
 	}
+
 	if (valid_record)
 	{
 		valid_weight = valid_softmax && record.cluster_index < render_data.nisml.cluster_count && record.cluster_probability > 0.0f &&
@@ -152,6 +156,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 																						  record.point_on_light_pdf_solid_angle)
 													   : 0.0f;
 	}
+
 	if (valid_record)
 	{
 		if (valid_weight)
@@ -166,6 +171,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	float maximum_weight = block_reduce<NeuralImportanceSamplingMLPGPU::BLOCK_SIZE, float, OperatorMax<float>>(valid_training_sample ? weight : 0.0f);
 	if (maximum_weight > TARGET_MAX_ERROR)
 		error_scale = TARGET_MAX_ERROR / maximum_weight;
+
 	for (unsigned int output_index = 0; output_index < NeuralImportanceSamplingMLPGPU::OUTPUT_SIZE_PADDED_WMMA; output_index++)
 	{
 		float output_gradient = 0.0f;
@@ -203,8 +209,8 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 {
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(NISML_RENDER_DATA);
 	unsigned int record_index	 = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int record_count	 = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
 
+	unsigned int record_count = hippt::min(training_record_count, render_data.nisml.training_record_capacity);
 	if (blockIdx.x * blockDim.x >= record_count)
 		// Early-outing at the block level, not the thread level because we have some __synchthreads() in the kernel and it's UB to not have all threads in a
 		// block reach the __synchthreads() call
@@ -218,6 +224,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 	float neurons_activations[NeuralImportanceSamplingMLPGPU::NEURON_COUNT];
 
 	NISMLTrainingSample record;
+
 	if (valid_record)
 	{
 		record = render_data.nisml.training_records[record_index];
@@ -276,6 +283,7 @@ __launch_bounds__(NeuralImportanceSamplingMLPGPU::BLOCK_SIZE)
 		if (valid_weight)
 		{
 			valid_training_sample = true;
+
 			for (unsigned int output_index = 0; output_index < render_data.nisml.cluster_count; output_index++)
 				output_gradient_or_probabilities[output_index] =
 					weight * (cluster_log_baseline_weights_or_probabilities[output_index] - (output_index == record.cluster_index ? 1.0f : 0.0f));

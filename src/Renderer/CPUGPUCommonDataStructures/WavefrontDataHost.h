@@ -208,6 +208,7 @@ struct WavefrontDataHost
 	WavefrontDataDevice to_device()
 	{
 		WavefrontDataDevice wavefront_data_device;
+
 		if (path_capacity() == 0)
 			return wavefront_data_device;
 
@@ -225,6 +226,7 @@ struct WavefrontDataHost
 		wavefront_data_device.material_family_indices		  = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_MATERIAL_FAMILY_INDICES>();
 		wavefront_data_device.material_family_counts		  = m_wavefront_data.template get_buffer_data_atomic_ptr<WAVEFRONT_MATERIAL_FAMILY_COUNTS>();
 		wavefront_data_device.material_family_routing_enabled = 1;
+
 		if (m_resolved_material_control_cache_allocated)
 		{
 			wavefront_data_device.path_resolved_material_roughness =
@@ -238,6 +240,7 @@ struct WavefrontDataHost
 			wavefront_data_device.path_resolved_material_control_validity_masks =
 				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_RESOLVED_MATERIAL_CONTROL_VALIDITY_MASKS>();
 		}
+
 		if (m_current_material_classifications_allocated)
 			wavefront_data_device.path_current_material_classifications =
 				m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_PATH_CURRENT_MATERIAL_CLASSIFICATIONS>();
@@ -264,6 +267,7 @@ struct WavefrontDataHost
 			if (m_learning_to_cluster_shadow_sidecars_allocated)
 				wavefront_data_device.learning_to_cluster_shadow_sidecars =
 					m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_LEARNING_TO_CLUSTER_SHADOW_SIDECARS>();
+
 			if (m_nisml_shadow_sidecars_allocated)
 				wavefront_data_device.nisml_shadow_sidecars = m_wavefront_data.template get_buffer_data_ptr<WAVEFRONT_NISML_SHADOW_SIDECARS>();
 		}
@@ -276,6 +280,7 @@ struct WavefrontDataHost
 	{
 		if (queue_index == 0)
 			return m_wavefront_data.template get_buffer<WAVEFRONT_QUEUE_COUNT_0>();
+
 		if (queue_index == WAVEFRONT_COMPLETION_QUEUE_INDEX)
 			return m_wavefront_data.template get_buffer<WAVEFRONT_COMPLETION_QUEUE_COUNT>();
 

@@ -126,8 +126,9 @@ HIPRT_DEVICE T block_segmented_reduce(T thread_input_value, unsigned int flag, i
 	if (warp_id > 0)
 	{
 		// Add the reduction of the previous warps to the current warp reduction
-		bool warp_is_open						   = hippt::warp_shfl(flag, 0) == 0; // Whether or not the warp begins with an open flag
-		bool no_flag_up_to_current_lane			   = propagated_flag == 0;
+		bool warp_is_open				= hippt::warp_shfl(flag, 0) == 0; // Whether or not the warp begins with an open flag
+		bool no_flag_up_to_current_lane = propagated_flag == 0;
+
 		bool warp_is_continuation_of_previous_warp = warp_is_open && no_flag_up_to_current_lane;
 		if (warp_is_continuation_of_previous_warp)
 			warp_reduced = Operator::apply(warp_reduced, smem_warp_last_segment_reductions[warp_id - 1]);

@@ -30,6 +30,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shad
 
 	float sg_roughness	= MaterialConstants::ROUGHNESS_CLAMP;
 	float sg_anisotropy = 0.0f;
+
 	if constexpr (MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll && MaterialTraits<MaterialType>::is_principled)
 	{
 		float material_specular_weight =
@@ -37,6 +38,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeSGShadingContext build_light_clustering_shad
 		float specular_lobes_sum = material.coat + material.metallic + material_specular_weight;
 
 		context.sg_specular_weight = hippt::max(material.coat, hippt::max(material.metallic, material_specular_weight));
+
 		if (specular_lobes_sum > 0.0f)
 		{
 			sg_roughness = material.coat * material.coat_roughness + material.metallic * material.roughness + material_specular_weight * material.roughness;
@@ -114,6 +116,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
 
 	result.guiding_node_index = guiding_node_index;
+
 	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 	{
 		unsigned int initial_lightcut_size = kd_tree.learning_to_cluster.effective_initial_lightcut_size;
@@ -133,10 +136,10 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		for (unsigned int slot = 0; slot < initial_lightcut_size; slot++)
 		{
 			unsigned int node_index = kd_tree.learning_to_cluster.initial_lightcut_node_indices[slot];
+
 			float weight = light_clustering_cluster_importance(kd_tree.learning_to_cluster, render_data.light_tree_sg, node_index, specular_data, context);
 			weight		 = hippt::max(weight, 0.0f);
 			total_weight += weight;
-
 			if (weight > 0.0f && random_number_generator() < weight / total_weight)
 			{
 				selected_slot	= slot;
@@ -160,7 +163,8 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	}
 
 	const IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
-	unsigned int lightcut_size										= lightcut_data.lightcut_size;
+
+	unsigned int lightcut_size = lightcut_data.lightcut_size;
 	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
 		return result;
 
@@ -219,6 +223,7 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 		float right_importance =
 			light_tree_sg_node_importance(right_node, spatial_lobes + right_index * spatial_lobe_count, spatial_lobe_count, specular_data, context.position,
 										  context.view_direction, context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+
 		float importance_sum = left_importance + right_importance;
 		if (importance_sum <= 0.0f)
 			return false;
@@ -299,8 +304,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 
 	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
 	bool initial_lightcut						 = lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
-	unsigned int lightcut_size					 = initial_lightcut ? kd_tree.learning_to_cluster.effective_initial_lightcut_size
-																	: kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
+
+	unsigned int lightcut_size = initial_lightcut ? kd_tree.learning_to_cluster.effective_initial_lightcut_size
+												  : kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
 	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
 		return 0.0f;
 
@@ -385,17 +391,20 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 #endif
 
 	float cluster_probability;
+
 	if (initial_lightcut)
 	{
 		// Before a learned cut exists, sampling uses normalized SG importance, with uniform fallback for an all-zero cut.
 		float total_weight	  = 0.0f;
 		float selected_weight = 0.0f;
+
 		for (unsigned int slot = 0; slot < lightcut_size; slot++)
 		{
 			float weight =
 				light_clustering_cluster_importance(kd_tree.learning_to_cluster, render_data.light_tree_sg, cluster_node_indices[slot], specular_data, context);
 			weight = hippt::max(weight, 0.0f);
 			total_weight += weight;
+
 			if (slot == selected_slot)
 				selected_weight = weight;
 		}
@@ -417,6 +426,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 	unsigned int current_left_child_or_first_triangle = nodes[current_node_index].left_child_index_or_first_triangle_index;
 
 	float conditional_probability = 1.0f;
+
 	while (current_triangle_count == 0u)
 	{
 		if (current_depth >= sizeof(unsigned int) * 8u)
@@ -433,6 +443,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 		float right_importance =
 			light_tree_sg_node_importance(right_node, spatial_lobes + right_index * spatial_lobe_count, spatial_lobe_count, specular_data, context.position,
 										  context.view_direction, context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+
 		float importance_sum = left_importance + right_importance;
 		if (importance_sum <= 0.0f)
 			return 0.0f;
@@ -467,7 +478,8 @@ HIPRT_DEVICE float pdf_of_envmap_cluster_learning_to_cluster(const HIPRTRenderDa
 	if (!kd_tree.learning_to_cluster.envmap_cluster_enabled)
 		return 0.0f;
 
-	bool initial_lightcut	   = lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+	bool initial_lightcut = lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+
 	unsigned int lightcut_size = initial_lightcut ? kd_tree.learning_to_cluster.effective_initial_lightcut_size
 												  : kd_tree.learning_to_cluster.lightcut_data[lightcut_index].lightcut_size;
 	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
@@ -487,6 +499,7 @@ HIPRT_DEVICE float pdf_of_envmap_cluster_learning_to_cluster(const HIPRTRenderDa
 	const unsigned int* cluster_node_indices = kd_tree.learning_to_cluster.initial_lightcut_node_indices;
 
 	float total_weight = 0.0f;
+
 	for (unsigned int slot = 0; slot < lightcut_size; slot++)
 	{
 		float weight =

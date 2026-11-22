@@ -43,7 +43,8 @@ inline ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(HIPRTRenderData render_d
 	// first one read a copy of these queues that the render pass restores before each of them
 	unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
 	unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
-	unsigned int queue_count	   = render_data.wavefront_data.material_family_counts[material_family];
+
+	unsigned int queue_count = render_data.wavefront_data.material_family_counts[material_family];
 	if (queue_count > render_data.wavefront_data.path_capacity)
 		queue_count = render_data.wavefront_data.path_capacity;
 

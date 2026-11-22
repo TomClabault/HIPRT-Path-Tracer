@@ -75,8 +75,8 @@ struct ReSTIRPTReservoir
 	HIPRT_DEVICE void add_one_candidate(ReSTIRPTReservoirSample new_sample, float weight, Xorshift32Generator& random_number_generator)
 	{
 		confidence++;
-		weight_sum += weight;
 
+		weight_sum += weight;
 		if (random_number_generator() < weight / weight_sum)
 			sample = new_sample;
 	}
@@ -218,7 +218,6 @@ struct ReSTIRPTInitialCandidatesReservoir
 	HIPRT_DEVICE void add_one_candidate(const ReSTIRPTReservoirSample& new_sample, float weight, Xorshift32Generator& random_number_generator)
 	{
 		weight_sum += weight;
-
 		if (random_number_generator() < weight / weight_sum)
 			get_output_reservoir()->sample = new_sample;
 	}

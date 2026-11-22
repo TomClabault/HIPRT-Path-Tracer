@@ -53,7 +53,6 @@ struct WavefrontShadowSink
 								   unsigned int flags)
 	{
 		WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
-
 		if (emitted_count == 0)
 			// Clears the PENDING_FINALIZE flag set at a previous bounce of this path
 			wavefront_data.path_shadow_flags[path_index] = 0u;

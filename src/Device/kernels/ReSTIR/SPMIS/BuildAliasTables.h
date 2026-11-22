@@ -40,6 +40,7 @@ HIPRT_DEVICE void spmis_build_cell_alias_table(const float* scaled_importances, 
 		heavy++;
 
 	float heavy_remaining_mass = heavy < count ? scaled_importances[heavy] : 0.0f;
+
 	// Runs until the heavy entries are exhausted, not the light ones: a heavy entry whose remaining mass dropped to 1 or below after the last light
 	// entry still needs the next heavy entry to fill its bin
 	while (heavy < count)
@@ -56,6 +57,7 @@ HIPRT_DEVICE void spmis_build_cell_alias_table(const float* scaled_importances, 
 			heavy_remaining_mass -= 1.0f - light_probability;
 
 			light++;
+
 			while (light < count && scaled_importances[light] > 1.0f)
 				light++;
 		}
@@ -113,6 +115,7 @@ HIPRT_DEVICE void spmis_build_cell_alias_table_block(unsigned short int* cell_no
 	float importance_scale = count / cell_cdfs[cell_offset];
 
 	__shared__ float scaled_importances[RESTIR_PT_SPMIS_ALIAS_TABLE_MAX_CELL_SIZE];
+
 	for (unsigned int index_in_cell = threadIdx.x; index_in_cell < count; index_in_cell += blockDim.x)
 	{
 		const ReSTIRPTReservoir& input_reservoir = input_reservoirs[pixel_indices_sorted[cell_offset + index_in_cell]];
@@ -165,6 +168,7 @@ inline ReSTIR_PT_SPMIS_BuildAliasTables(AtomicType<unsigned short int>* cell_non
 	for (unsigned int cell_alive_index = 0; cell_alive_index < cell_alive_count; cell_alive_index++)
 	{
 		unsigned int cell_index = cell_alive_list[cell_alive_index];
+
 		unsigned int count = hippt::min(static_cast<unsigned int>(cell_non_zero_reservoir_counters[cell_index]), RESTIR_PT_SPMIS_ALIAS_TABLE_MAX_CELL_SIZE);
 		if (count == 0)
 			continue;

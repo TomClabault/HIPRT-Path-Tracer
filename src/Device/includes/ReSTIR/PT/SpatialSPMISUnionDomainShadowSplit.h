@@ -191,6 +191,7 @@ HIPRT_DEVICE bool spmis_union_domain_shadow_split_trace_ray(const HIPRTRenderDat
 
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
+
 	if (envmap_sample)
 	{
 		incident_light_direction = endpoint;
@@ -229,6 +230,7 @@ HIPRT_DEVICE bool spmis_union_domain_shadow_split_trace_pixel_ray(const HIPRTRen
 	float4_t ray;
 	bool envmap_sample;
 	unsigned int viewpoint_pixel;
+
 	if constexpr (reverseRays)
 	{
 		// From the companion of the slot to the sample of the neighbor of the slot
@@ -298,6 +300,7 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_trace_rays_block(const
 	if (thread_index == 0)
 	{
 		unsigned int ray_offset = 0;
+
 		for (unsigned int thread = 0; thread < KernelWorkgroupThreadCount; thread++)
 		{
 			block_ray_offsets[thread] = ray_offset;
@@ -332,7 +335,6 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_trace_rays_block(const
 			owner_mask &= owner_mask - 1u;
 
 		unsigned int ray_bit = hippt::lowest_set_bit(owner_mask);
-
 		if (spmis_union_domain_shadow_split_trace_pixel_ray<reverseRays>(render_data, block_pixels[owner], ray_bit, block_flags[owner]))
 			hippt::atomic_or(&block_visible_masks[owner], 1u << ray_bit);
 	}

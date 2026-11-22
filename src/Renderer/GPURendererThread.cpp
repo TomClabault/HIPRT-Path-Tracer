@@ -40,6 +40,7 @@ void GPURendererThread::render_thread_function()
 		// Wait for the signal to start rendering
 		std::unique_lock<std::mutex> lock(m_render_mutex);
 		m_render_condition_variable.wait(lock, [this] { return m_frame_requested || m_exit_requested; });
+
 		if (m_exit_requested)
 
 			return;
@@ -266,7 +267,6 @@ void GPURendererThread::internal_pre_render_update_clear_device_status_buffers()
 void GPURendererThread::internal_pre_render_update_adaptive_sampling_buffers()
 {
 	bool buffers_needed = m_renderer->get_render_data().render_settings.has_access_to_adaptive_sampling_buffers();
-
 	if (buffers_needed)
 	{
 		bool pixels_luminance_needs_resize				= m_renderer->m_pixels_luminance_buffer.size() == 0;
@@ -319,7 +319,6 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 		// Buffer is allocated but the stack size has been changed (through ImGui probably)
 		buffer_needs_update |=
 			m_renderer->get_render_data().global_traversal_stack_buffer_size != m_renderer->get_render_data().global_traversal_stack_buffer.stackSize;
-
 		if (buffer_needs_update)
 			m_renderer->recreate_global_bvh_stack_buffer();
 	}

@@ -15,6 +15,7 @@
 void GPUKernelCompilerWindowProcessCacheLock::update_request_hash(unsigned long long& request_hash, const void* data, size_t data_size)
 {
 	const unsigned char* bytes = reinterpret_cast<const unsigned char*>(data);
+
 	for (size_t byte_index = 0; byte_index < data_size; byte_index++)
 	{
 		request_hash ^= bytes[byte_index];
@@ -91,7 +92,8 @@ unsigned long long GPUKernelCompilerWindowProcessCacheLock::get_request_hash(con
 GPUKernelCompilerWindowProcessCacheLock::GPUKernelCompilerWindowProcessCacheLock(const GPUKernelCompilerWindowProcessCompilationRequest& request)
 {
 	std::wstring mutex_name = L"Local\\HIPRTPathTracerKernelCompile-" + std::to_wstring(GPUKernelCompilerWindowProcessCacheLock::get_request_hash(request));
-	mutex_handle			= CreateMutexW(nullptr, FALSE, mutex_name.c_str());
+
+	mutex_handle = CreateMutexW(nullptr, FALSE, mutex_name.c_str());
 	if (mutex_handle == nullptr)
 		return;
 
@@ -103,6 +105,7 @@ GPUKernelCompilerWindowProcessCacheLock::~GPUKernelCompilerWindowProcessCacheLoc
 {
 	if (mutex_acquired)
 		ReleaseMutex(reinterpret_cast<HANDLE>(mutex_handle));
+
 	if (mutex_handle != nullptr)
 		CloseHandle(reinterpret_cast<HANDLE>(mutex_handle));
 }

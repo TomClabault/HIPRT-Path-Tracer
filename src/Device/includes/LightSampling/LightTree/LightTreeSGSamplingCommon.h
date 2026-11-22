@@ -52,8 +52,8 @@ HIPRT_DEVICE LightSubtreeSample sample_light_tree_subtree(const LightTreeSGNodeD
 														  Xorshift32Generator& random_number_generator)
 {
 	float conditional_probability = 1.0f;
-	unsigned int node_index		  = subtree_root;
 
+	unsigned int node_index = subtree_root;
 	while (nodes[node_index].triangle_count == 0)
 	{
 		unsigned int left_child_index  = nodes[node_index].left_child_index_or_first_triangle_index;

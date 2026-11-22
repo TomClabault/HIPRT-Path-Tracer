@@ -272,7 +272,8 @@ bool IlluminationAwareKDTreeRenderPass::pre_render_compilation_check(std::shared
 
 		return false;
 
-	bool updated													 = false;
+	bool updated = false;
+
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = get_all_kernels();
 	for (std::map<std::string, std::shared_ptr<GPUKernel>>::value_type& name_to_kernel : active_kernels)
 	{
@@ -295,11 +296,13 @@ std::map<std::string, std::shared_ptr<GPUKernel>> IlluminationAwareKDTreeRenderP
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
 	bool using_nisml												 = is_using_nisml(*m_compiler_options);
 	bool using_learning_to_cluster									 = is_using_learning_to_cluster(*m_compiler_options);
+
 	if (!using_nisml)
 	{
 		active_kernels.erase(REPLAY_NISML_TRAINING_SAMPLES_KERNEL_ID);
 		active_kernels.erase(BUILD_NISML_CACHES_KERNEL_ID);
 	}
+
 	if (!using_learning_to_cluster)
 	{
 		active_kernels.erase(LEARNING_TO_CLUSTER_INITIALIZE_ROOT_LIGHTCUT_KERNEL_ID);
@@ -335,6 +338,7 @@ bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 	}
 
 	unsigned int nisml_representative_capacity = static_cast<unsigned int>(m_nisml_representative_capacity);
+
 	bool nisml_representative_capacity_changed = m_illumination_aware_kd_tree.m_nisml_data.m_representative_capacity != nisml_representative_capacity;
 	if (nisml_representative_capacity_changed)
 		m_buffers_need_reallocation = true;
@@ -346,7 +350,8 @@ bool IlluminationAwareKDTreeRenderPass::ensure_buffers_match_configuration()
 
 	unsigned int nisml_hash_table_reserved_bytes = static_cast<unsigned int>(m_nisml_hash_table_size_mb) * 1000000u;
 	unsigned int nisml_hash_normal_precision	 = static_cast<unsigned int>(m_nisml_hash_normal_precision);
-	bool nisml_hash_settings_changed			 = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
+
+	bool nisml_hash_settings_changed = m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_reserved_bytes != nisml_hash_table_reserved_bytes ||
 									   m_illumination_aware_kd_tree.m_nisml_data.m_hash_normal_precision != nisml_hash_normal_precision;
 	if (nisml_hash_settings_changed)
 		m_buffers_need_reallocation = true;
@@ -372,6 +377,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 		m_learning_to_cluster_elapsed_seconds += delta_time / 1000.0f;
 
 	bool render_data_invalidated = false;
+
 	if (ensure_buffers_match_configuration())
 	{
 		render_data_invalidated = true;
@@ -394,6 +400,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 																				render_data.bsdfs_data.white_furnace_mode);
 
 			std::vector<unsigned int> initial_lightcut_node_indices;
+
 			if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
 				initial_lightcut_node_indices.push_back(IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX);
 			initial_lightcut_node_indices.insert(initial_lightcut_node_indices.end(), second_tree_cut_node_indices.begin(),
@@ -403,6 +410,7 @@ bool IlluminationAwareKDTreeRenderPass::pre_frame_render_update(float delta_time
 
 			render_data.kd_tree_device.learning_to_cluster.set_effective_initial_lightcut_size(effective_initial_lightcut_size);
 			IlluminationAwareKDTreeDevice kd_tree_device = m_illumination_aware_kd_tree.to_device(render_data);
+
 			// Also without emissive geometry when the envmap is a cluster: the initial lightcut then only holds the envmap
 			if (effective_initial_lightcut_size > 0)
 			{
@@ -517,6 +525,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 		unsigned int maximum_lookahead_level_count =
 			static_cast<unsigned int>(compiler_options.get_macro_value(GPUKernelCompilerOptions::ILLUMINATION_AWARE_KD_TREE_MAXIMUM_LOOKAHEAD_LEVEL_COUNT));
+
 		for (unsigned int reduction_level = maximum_lookahead_level_count; reduction_level > 0; reduction_level--)
 		{
 			void* reduction_launch_args[] = { &kd_tree_device, &reduction_level };
@@ -528,6 +537,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 			256, 1, kd_tree_device.core.node_capacity, 1, launch_args, m_renderer->get_main_stream());
 
 		int split_iterations = m_split_iterations_per_SPP;
+
 		if (m_auto_split_iterations_per_SPP)
 		{
 			if (render_data.render_settings.sample_number == 0)
@@ -552,6 +562,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 			// The host-pinned flag lets us break out when no cell was marked for splitting.
 			m_illumination_aware_kd_tree.m_any_cell_needs_split.download_data_into(any_cell_needs_split_host_pinned);
+
 			if (*any_cell_needs_split_host_pinned == 0)
 				break;
 

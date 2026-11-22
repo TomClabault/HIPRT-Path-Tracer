@@ -113,8 +113,10 @@ HIPRT_HOST_DEVICE static float3_t hash_grid_aliasing_fix_clamping(float3_t base_
 	float3_t new_position = base_position;
 	if (grid_coord_x_frac < 1.0e-3f || grid_coord_x_frac > 0.999f)
 		new_position.x = roundf(base_position.x / grid_cell_size) * grid_cell_size;
+
 	if (grid_coord_y_frac < 1.0e-3f || grid_coord_y_frac > 0.999f)
 		new_position.y = roundf(base_position.y / grid_cell_size) * grid_cell_size;
+
 	if (grid_coord_z_frac < 1.0e-3f || grid_coord_z_frac > 0.999f)
 		new_position.z = roundf(base_position.z / grid_cell_size) * grid_cell_size;
 

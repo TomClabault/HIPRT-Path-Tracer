@@ -39,6 +39,7 @@ struct GBufferGPURenderer
 		primary_hit_position.free();
 		first_hit_prim_index.free();
 		ray_volume_states.free();
+
 		if (mis_target_function_bsdf_approximation_lobe_records.size() > 0)
 			mis_target_function_bsdf_approximation_lobe_records.free();
 	}

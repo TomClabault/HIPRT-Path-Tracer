@@ -175,7 +175,6 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRT
 	pdf = 0.0f;
 
 	constexpr KernelMaterialSpecialization family = MaterialTraits<MaterialType>::family;
-
 	if constexpr (family == KernelMaterialSpecializationDiffuse)
 	{
 		// A single-lobe material does not need an RNG draw for lobe selection.
@@ -184,12 +183,13 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRT
 			bsdf_context.volume_state.interior_stack.pop(false);
 
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
-		output_direction				 = principled_diffuse_sample(bsdf_context.shading_normal, random_number_generator);
 
+		output_direction = principled_diffuse_sample(bsdf_context.shading_normal, random_number_generator);
 		if (hippt::dot(output_direction, bsdf_context.geometric_normal) < 0.0f)
 			return ColorRGB32F(0.0f);
 
 		bsdf_context.to_light_direction = output_direction;
+
 		if constexpr (sampleDirectionOnly)
 		{
 			pdf = 0.0f;
@@ -210,6 +210,7 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRT
 			// Specialized glass sampling skips the top-level lobe-selection draw.
 			output_direction = local_to_world_frame(tangent, bitangent, bsdf_context.shading_normal,
 													principled_glass_sample(render_data, bsdf_context, local_view_direction, random_number_generator));
+
 			if constexpr (sampleDirectionOnly)
 			{
 				pdf = 0.0f;
@@ -239,6 +240,7 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRT
 															   specular_weight, diffuse_weight, specular_probability, diffuse_probability);
 
 			float lobe_choice = random_number_generator();
+
 			if (bsdf_context.update_ray_volume_state)
 				bsdf_context.volume_state.interior_stack.pop(false);
 
@@ -271,6 +273,7 @@ HIPRT_DEVICE static ColorRGB32F principled_specialized_family_sample(const HIPRT
 		}
 
 		bsdf_context.to_light_direction = output_direction;
+
 		if constexpr (family == KernelMaterialSpecializationSingleMetallic)
 			return principled_specialized_metallic_eval(render_data, bsdf_context, pdf, random_number_generator);
 		else if constexpr (family == KernelMaterialSpecializationSpecularDiffuse)

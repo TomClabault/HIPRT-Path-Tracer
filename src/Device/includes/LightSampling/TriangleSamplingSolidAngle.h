@@ -208,7 +208,6 @@ HIPRT_DEVICE float solid_angle_triangle_solid_angle_pdf_internal(const HIPRTRend
 	float solid_angle = prepare_solid_angle_triangle_sampling_internal(render_data, vertex_A_world_space, vertex_B_world_space, vertex_C_world_space,
 																	   shading_point, view_direction, shading_normal, material, ltc_lobe)
 							.solid_angle;
-
 	if (solid_angle == 0.0f)
 		// The whole polygon is below the hemisphere, clipping returned 0 vertices
 		return 0.0f;

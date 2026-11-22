@@ -58,6 +58,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 
 		// Compute prefix sums for each digit bin
 		__shared__ int bucket_base[RadixSortBlockRadix];
+
 		if constexpr (RadixSortBlockRadix < 32)
 		{
 			if (warp_index == 0)
@@ -73,6 +74,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 		{
 			int digit_count = thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0;
 			int digit_scan	= block_prefix_scan_exclusive<RadixSortBlockRadix>(digit_count, thread_id_in_block);
+
 			if (thread_id_in_block < RadixSortBlockRadix)
 				bucket_base[thread_id_in_block] = digit_scan;
 		}
@@ -82,6 +84,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 			if (thread_id_in_block == 0)
 			{
 				int sum = 0;
+
 				for (int i = 0; i < RadixSortBlockRadix; i++)
 				{
 					bucket_base[i] = sum;
@@ -95,6 +98,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 		// Computing the local rank of each element within its digit bin
 		unsigned int warp_local_rank = 0;
 		__shared__ unsigned int warp_digit_counts[warp_count][RadixSortBlockRadix];
+
 		for (int d = 0; d < RadixSortBlockRadix; d++)
 		{
 			bool is_digit = digit == d;
@@ -112,6 +116,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 		__syncthreads();
 
 		__shared__ unsigned int warp_digit_bases[warp_count][RadixSortBlockRadix];
+
 		// TODO We can have each warp scan one digit here
 		if (warp_index == 0)
 		{

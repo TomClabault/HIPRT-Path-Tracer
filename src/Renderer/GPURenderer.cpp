@@ -137,6 +137,7 @@ void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTexture
 	synchronize_all_kernels();
 
 	std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
+
 	for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename =
@@ -155,6 +156,7 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 	synchronize_all_kernels();
 
 	std::vector<Image32Bit> images(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename =
@@ -176,6 +178,7 @@ void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMo
 		OrochiTexture3D(images, filtering_mode == hipFilterModeLinear ? ORO_TR_FILTER_MODE_LINEAR : ORO_TR_FILTER_MODE_POINT, ORO_TR_ADDRESS_MODE_CLAMP);
 
 	images.resize(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+
 	for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
 		std::string filename =
@@ -318,16 +321,19 @@ void GPURenderer::prepare_adaptive_sampling_buffers()
 			m_pixels_converged_sample_count_buffer.resize(adaptive_sampling_buffer_size);
 			buffers_were_resized = true;
 		}
+
 		if (m_pixels_luminance_buffer.size() == 0)
 		{
 			m_pixels_luminance_buffer.resize(adaptive_sampling_buffer_size);
 			buffers_were_resized = true;
 		}
+
 		if (m_pixels_squared_luminance_buffer.size() == 0)
 		{
 			m_pixels_squared_luminance_buffer.resize(adaptive_sampling_buffer_size);
 			buffers_were_resized = true;
 		}
+
 		if (m_pixels_sample_count_buffer.size() == 0)
 		{
 			m_pixels_sample_count_buffer.resize(adaptive_sampling_buffer_size);
@@ -360,7 +366,6 @@ bool GPURenderer::needs_global_bvh_stack_buffer()
 		bool global_stack_buffer_needed = false;
 		global_stack_buffer_needed |=
 			name_to_kernel.second->get_kernel_options().get_macro_value(GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL) == KERNEL_OPTION_TRUE;
-
 		if (global_stack_buffer_needed)
 
 			return true;
@@ -478,7 +483,6 @@ void GPURenderer::reload_ssbn_permutation_blue_noise_texture(unsigned int new_wi
 void GPURenderer::render(float delta_time_gpu, RenderWindow* render_window)
 {
 	RenderGraph* active_render_graph;
-
 	if (render_window->is_interacting() && m_render_data.render_settings.accumulate)
 		active_render_graph = &m_render_thread.get_render_graphs()[GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME];
 	else
@@ -767,7 +771,6 @@ void GPURenderer::recompile_kernels(bool use_cache)
 std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
-
 	for (auto& name_to_kernel : get_active_render_graph().get_all_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
@@ -777,7 +780,6 @@ std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_all_kernels()
 std::map<std::string, std::shared_ptr<GPUKernel>> GPURenderer::get_tracing_kernels()
 {
 	std::map<std::string, std::shared_ptr<GPUKernel>> kernels;
-
 	for (auto& name_to_kernel : get_active_render_graph().get_tracing_kernels())
 		kernels[name_to_kernel.first] = name_to_kernel.second;
 
@@ -876,20 +878,25 @@ void GPURenderer::update_render_data()
 		m_render_data.buffers.materials_buffer			= m_hiprt_scene.materials_buffer.get_device_pointer();
 		m_render_data.buffers.triangles_opaque_bitfield = m_hiprt_scene.triangles_opaque_bitfield.get_device_pointer();
 		m_render_data.buffers.emissive_triangles_count	= m_hiprt_scene.emissive_triangles_count;
+
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 			m_render_data.buffers.emissive_triangles_primitive_indices =
 				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_primitive_indices.get_device_pointer());
+
 		if (m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.size() > 0)
 			m_render_data.buffers.emissive_triangles_primitive_indices_and_emissive_textures =
 				reinterpret_cast<int*>(m_hiprt_scene.emissive_triangles_indices_and_emissive_textures.get_device_pointer());
+
 		if (m_hiprt_scene.emissive_triangles_primitive_indices.size() > 0)
 		{
 			m_render_data.buffers.triangles_average_emissive_luminance		 = m_hiprt_scene.triangle_average_emissive_luminance.get_device_pointer();
 			m_render_data.buffers.triangles_average_emissive_power_luminance = m_hiprt_scene.triangle_average_emissive_power_luminance.get_device_pointer();
 		}
 		m_render_data.buffers.triangles_areas = m_hiprt_scene.triangle_areas.get_device_pointer();
+
 		if (m_hiprt_scene.gpu_materials_textures.size() > 0)
 			m_render_data.buffers.material_textures = m_hiprt_scene.gpu_materials_textures.get_device_pointer();
+
 		if (m_hiprt_scene.texcoords_buffer.size() > 0)
 			m_render_data.buffers.texcoords = reinterpret_cast<float2_t*>(m_hiprt_scene.texcoords_buffer.get_device_pointer());
 
@@ -905,6 +912,7 @@ void GPURenderer::update_render_data()
 		m_render_data.bsdfs_data.GGX_thin_glass_directional_albedo	  = m_GGX_thin_glass_directional_albedo.get_device_texture();
 
 		m_render_data.buffers.last_frame_ray_colors = m_last_frame_ray_colors.get_device_pointer();
+
 		if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 		{
 			m_render_data.aux_buffers.pixel_sample_count		   = m_pixels_sample_count_buffer.get_device_pointer();
@@ -1173,6 +1181,7 @@ const std::vector<std::string>& GPURenderer::get_material_names()
 DevicePackedTexturedMaterial GPURenderer::pack_material_to_GPU(const CPUMaterial& material) const
 {
 	DevicePackedTexturedMaterial packed_material = material.pack_to_GPU();
+
 	if (m_render_data.bsdfs_data.white_furnace_mode && m_render_data.bsdfs_data.white_furnace_mode_turn_off_emissives)
 		packed_material.set_emission_strength(0.0f);
 
@@ -1185,6 +1194,7 @@ void GPURenderer::update_all_materials(std::vector<CPUMaterial>& materials)
 
 	std::vector<unsigned char> new_opacity(materials.size());
 	std::vector<DevicePackedTexturedMaterial> packed_gpu_materials(materials.size());
+
 	for (int i = 0; i < materials.size(); i++)
 	{
 		packed_gpu_materials[i] = pack_material_to_GPU(materials[i]);

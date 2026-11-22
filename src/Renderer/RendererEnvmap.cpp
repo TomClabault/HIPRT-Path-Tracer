@@ -84,6 +84,7 @@ void RendererEnvmap::recompute_alias_table(const Image32Bit* image)
 {
 	std::vector<float> probas;
 	std::vector<int> alias;
+
 	if (image != nullptr)
 		image->compute_alias_table(probas, alias, &m_luminance_total_sum);
 	else

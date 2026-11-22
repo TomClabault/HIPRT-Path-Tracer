@@ -32,6 +32,7 @@ HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& ren
 	EffectiveMaterialEmission current_hit_emission;
 	current_hit_emission.emission		= ColorRGB32F(0.0f);
 	current_hit_emission.emission_flags = 0u;
+
 	if (intersection_found)
 	{
 		int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
@@ -41,6 +42,7 @@ HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& ren
 #if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
 	ResolvedMaterialUserControlsCache previous_resolved_user_controls;
 	previous_resolved_user_controls.validity_mask = 0;
+
 	// Stored light candidates are evaluated at the previous vertex even when the continuation ray misses or hits nonemissive geometry.
 	if (nee_deferred_MIS_context.last_primary_gbuffer_path_index == NEE_DEFERRED_INVALID_PATH_INDEX)
 		previous_resolved_user_controls = wavefront_load_resolved_material_user_controls(render_data, path_index, previous_resolved_user_controls);
@@ -62,6 +64,7 @@ HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& ren
 
 	int x = static_cast<int>(path_index % render_data.render_settings.render_resolution.x);
 	int y = static_cast<int>(path_index / render_data.render_settings.render_resolution.x);
+
 	if (terminal_path)
 	{
 		if (shadow_sink.has_work())
@@ -73,6 +76,7 @@ HIPRT_DEVICE static void wavefront_complete_terminated_path(HIPRTRenderData& ren
 
 	ray_payload.ray_color += path_tracing_miss_gather_envmap(render_data, ray_payload, ray.direction, path_index);
 	ray_payload.next_ray_state = RayState::MISSED;
+
 	if (shadow_sink.has_work())
 		shadow_sink.mark_pending_finalize(ray_payload, random_number_generator);
 	else
@@ -102,6 +106,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontCompleteDeferredPaths(HIPRTRenderD
 
 	unsigned int family_queue_base = 0;
 	unsigned int queue_count	   = hippt::atomic_fetch_add(render_data.wavefront_data.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX], 0u);
+
 	if (route_by_family)
 	{
 		if (render_data.wavefront_data.material_family_routing_enabled == 0)
@@ -111,6 +116,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontCompleteDeferredPaths(HIPRTRenderD
 		queue_count					 = render_data.wavefront_data.material_family_counts[material_family];
 		family_queue_base			 = material_family * render_data.wavefront_data.path_capacity;
 	}
+
 	if (queue_count > render_data.wavefront_data.path_capacity)
 		queue_count = render_data.wavefront_data.path_capacity;
 
@@ -120,6 +126,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontCompleteDeferredPaths(HIPRTRenderD
 												  : render_data.wavefront_data.path_queues[WAVEFRONT_COMPLETION_QUEUE_INDEX][queue_slot];
 		if (path_index >= render_data.wavefront_data.path_capacity)
 			continue;
+
 		if (route_by_family)
 		{
 			unsigned int path_flags = render_data.wavefront_data.path_state_flags[path_index];

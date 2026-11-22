@@ -12,26 +12,28 @@
 void BSDFDataHost::load_bsdf_data(HIPRTRenderData& render_data)
 {
 	m_sheen_zeltner_2022_ltc_params	   = Image32Bit(reinterpret_cast<const float*>(zeltner_2022_sheen_ltc_fit_parameters.data()), 32, 32, 3);
-	m_GGX_conductor_directional_albedo = Image32Bit::read_image_hdr(
-							BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" + GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(
-																									  render_data.bsdfs_data.GGX_masking_shadowing),
-							1, true);
+	m_GGX_conductor_directional_albedo =
+		Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" +
+									   GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(render_data.bsdfs_data.GGX_masking_shadowing),
+								   1, true);
 
 	std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
+
 	for (int i = 0; i < GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) +
-							   GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename =
+			std::to_string(i) + GPUBakerConstants::get_glossy_dielectric_directional_albedo_texture_filename(render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GlossyDielectrics/" + filename;
 		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
 	m_GGX_glossy_dielectrics_directional_albedo = Image32Bit3D(images);
 
 	images.resize(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+
 	for (int i = 0; i < GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) +
-							   GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename =
+			std::to_string(i) + GPUBakerConstants::get_GGX_glass_directional_albedo_texture_filename(render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}
@@ -47,10 +49,11 @@ void BSDFDataHost::load_bsdf_data(HIPRTRenderData& render_data)
 	m_GGX_glass_inverse_directional_albedo = Image32Bit3D(images);
 
 	images.resize(GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
+
 	for (int i = 0; i < GPUBakerConstants::GGX_THIN_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR; i++)
 	{
-		std::string filename = std::to_string(i) +
-							   GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(render_data.bsdfs_data.GGX_masking_shadowing);
+		std::string filename =
+			std::to_string(i) + GPUBakerConstants::get_GGX_thin_glass_directional_albedo_texture_filename(render_data.bsdfs_data.GGX_masking_shadowing);
 		std::string filepath = BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/Glass/" + filename;
 		images[i]			 = Image32Bit::read_image_hdr(filepath, 1, true);
 	}

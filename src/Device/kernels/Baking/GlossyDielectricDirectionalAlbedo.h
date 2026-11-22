@@ -82,12 +82,12 @@ inline GlossyDielectricDirectionalAlbedoBake(
 		// Sampling the specular GGX lobe or diffuse lobe
 		float rand_lobe = random_number_generator();
 		float3_t sampled_local_to_light_direction;
+
 		if (rand_lobe < 0.5f)
 		{
 			// Sampling the specular lobe
 			sampled_local_to_light_direction =
 				microfacet_GGX_sample_reflection(roughness, /* anisotropy */ 0.0f, local_view_direction, random_number_generator);
-
 			if (sampled_local_to_light_direction.z < 0)
 				// Sampled direction below surface, this can happen with microfacet
 				// sampling
@@ -138,6 +138,7 @@ inline GlossyDielectricDirectionalAlbedoBake(
 #ifndef __KERNELCC__
 	// Some sanity checks on the CPU
 	float threshold = 1.1f;
+
 	if (out_buffer[pixel_index] > threshold || out_buffer[pixel_index] < 0 || std::isinf(out_buffer[pixel_index]) || std::isnan(out_buffer[pixel_index]))
 		std::cout << "Error at x, y, z = [" << x << ", " << y << ", " << z << "]. Value = " << out_buffer[pixel_index] << std::endl;
 #endif // #ifndef __KERNELCC__

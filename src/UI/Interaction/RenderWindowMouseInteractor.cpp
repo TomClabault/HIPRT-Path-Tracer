@@ -15,7 +15,8 @@ void RenderWindowMouseInteractor::glfw_mouse_scroll_callback(GLFWwindow* window,
 	// the inputs
 	RenderWindow* render_window = reinterpret_cast<RenderWindow*>(user_pointer);
 	bool render_window_hovered	= render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
-	bool imgui_want_mouse		= io.WantCaptureMouse && !render_window_hovered;
+
+	bool imgui_want_mouse = io.WantCaptureMouse && !render_window_hovered;
 	if (!imgui_want_mouse)
 	{
 		RenderWindow* render_window = reinterpret_cast<RenderWindow*>(glfwGetWindowUserPointer(window));

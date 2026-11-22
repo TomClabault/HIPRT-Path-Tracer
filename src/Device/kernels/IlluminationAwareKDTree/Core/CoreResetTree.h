@@ -56,6 +56,7 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 			illumination_aware_kd_tree.core.active_guiding_nodes[0]					  = 0;
 
 			*illumination_aware_kd_tree.core.training_sample_count = 0;
+
 			if (illumination_aware_kd_tree.nisml.nisml_pending_cell_count != nullptr)
 				*illumination_aware_kd_tree.nisml.nisml_pending_cell_count = 0;
 			*illumination_aware_kd_tree.learning_to_cluster.training_sample_count = 0;
@@ -75,6 +76,7 @@ inline IlluminationAwareKDTree_CoreResetTree(IlluminationAwareKDTreeDevice illum
 	{
 		IlluminationAwareKDTreeLearningToClusterLightcutSet& lightcut_set = illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[reset_index];
 		lightcut_set.initialize_invalid();
+
 		for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
 		{
 			unsigned int observation_offset = illumination_aware_kd_tree.learning_to_cluster.get_normal_face_observation_offset(reset_index, normal_face);

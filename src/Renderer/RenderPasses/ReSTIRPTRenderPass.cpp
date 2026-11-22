@@ -345,6 +345,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	bool need_temporal = render_data.render_settings.restir_pt_settings.temporal_pass.do_temporal_reuse_pass &&
 						 !m_kernels[ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID]->has_been_compiled();
 	recompiled |= need_temporal;
+
 	if (need_temporal)
 		// Temporal needed
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
@@ -352,6 +353,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	bool need_spatial = render_data.render_settings.restir_pt_settings.spatial_pass.do_spatial_reuse_pass &&
 						!m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->has_been_compiled();
 	recompiled |= need_spatial;
+
 	if (need_spatial)
 		// Spatial needed
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
@@ -359,6 +361,7 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	bool need_directional_spatial_reuse = !m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->has_been_compiled() &&
 										  render_data.render_settings.restir_pt_settings.spatial_pass.use_adaptive_directional_spatial_reuse;
 	recompiled |= need_directional_spatial_reuse;
+
 	if (need_directional_spatial_reuse)
 		// Spatial needed
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
@@ -488,6 +491,7 @@ bool ReSTIRPTRenderPass::pre_render_update_directional_reuse_buffers(const HIPRT
 	const ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
 
 	bool render_data_invalidated = false;
+
 	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 	{
 		if (m_directional_spatial_reuse_data.maximum_size() == 0)
@@ -515,6 +519,7 @@ bool ReSTIRPTRenderPass::pre_render_update_spmis_buffers(const HIPRTRenderData& 
 	int mis_weight_type = compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE);
 
 	bool render_data_invalidated = false;
+
 	if (mis_weight_type == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
 		mis_weight_type == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS_DEFENSIVE)
 	{
@@ -700,6 +705,7 @@ void ReSTIRPTRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 		std::getenv("HIPRT_INITIAL_CANDIDATES_BANDS") != nullptr ? std::clamp(std::atoi(std::getenv("HIPRT_INITIAL_CANDIDATES_BANDS")), 1, 64) : 1;
 
 	std::shared_ptr<GPUKernel> initial_candidates_kernel = m_kernels[ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID];
+
 	if (band_count == 1)
 	{
 		initial_candidates_kernel->launch_asynchronous(KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x,
@@ -713,6 +719,7 @@ void ReSTIRPTRenderPass::launch_initial_candidates_pass(HIPRTRenderData& render_
 
 	int resolution_y = m_renderer->m_render_resolution.y;
 	int band_height	 = ((resolution_y + band_count - 1) / band_count + KernelBlockWidthHeight - 1) / KernelBlockWidthHeight * KernelBlockWidthHeight;
+
 	for (int band_index = 0; band_index < band_count; band_index++)
 	{
 		int band_y = band_index * band_height;
@@ -785,6 +792,7 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 
 	bool union_domain_reuse = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE));
+
 	// Only the legacy SPMIS spatial reuse samples the CDFs through their LUTs, the union domain reuse samples the alias tables of the cells
 	bool build_cdf_luts = !union_domain_reuse;
 	if (build_cdf_luts)
@@ -999,7 +1007,6 @@ void ReSTIRPTRenderPass::launch_spmis_union_domain_shadow_split_kernels(HIPRTRen
 													ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID,
 													ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_WEIGHTS_KERNEL_ID,
 													ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID };
-
 	for (const std::string& shadow_split_kernel_id : shadow_split_kernel_ids)
 	{
 		upload_render_data(shadow_split_kernel_id, render_data);
@@ -1165,6 +1172,7 @@ void ReSTIRPTRenderPass::update_render_data()
 		// every kernel of the frame sees the same pointers
 		ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers =
 			render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers;
+
 		if (m_spmis_union_domain_shadow_split_buffer.size() > 0)
 			layout_spmis_union_domain_shadow_split_buffers(reinterpret_cast<unsigned char*>(m_spmis_union_domain_shadow_split_buffer.get_device_pointer()),
 														   m_spmis_union_domain_shadow_split_pixel_count, shadow_split_buffers);

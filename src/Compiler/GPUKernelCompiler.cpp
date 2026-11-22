@@ -91,6 +91,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 
 	hiprtApiFunction trace_function_out = nullptr;
 	hiprtApiModule trace_module_out		= nullptr;
+
 	bool use_shader_cache;
 	if (m_shader_cache_force_usage == GPUKernelCompiler::ShaderCacheUsageOverride::FORCE_SHADER_CACHE_OFF)
 		use_shader_cache = false;
@@ -105,7 +106,6 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 		GPUKernelCompilerWindowProcessCompilationRequest request = GPUKernelCompilerWindowProcess::make_window_process_compilation_request(
 			kernel, additional_include_dirs, compiler_options, num_geom_types, num_ray_types, use_shader_cache, function_name_sets, additional_cache_key,
 			hiprt_orochi_ctx->device_index);
-
 		if (!GPUKernelCompilerWindowProcess::compile(request))
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Unable to compile kernel \"%s\" in the worker process. Cannot continue.",
@@ -137,6 +137,7 @@ oroFunction_t GPUKernelCompiler::compile_kernel(GPUKernel& kernel,
 	}
 
 	oroFunction kernel_function = reinterpret_cast<oroFunction>(trace_function_out);
+
 	if (module_out != nullptr)
 		*module_out = reinterpret_cast<oroModule_t>(trace_module_out);
 
@@ -177,6 +178,7 @@ std::string GPUKernelCompiler::find_in_include_directories(const std::string& in
 	{
 		std::string add_slash = include_directory[include_directory.length() - 1] != '/' ? "/" : "";
 		std::string file_path = include_directory + add_slash + include_name;
+
 		std::ifstream try_open_file(file_path);
 		if (try_open_file.is_open())
 
@@ -228,7 +230,6 @@ void GPUKernelCompiler::read_includes_of_file(const std::string& include_file_pa
 				// We have only the file name (which looks like "MyInclude.h" for example), let's see
 				// if it can be found in the include directories
 				std::string include_file_path = find_in_include_directories(full_include_name, include_directories);
-
 				if (!include_file_path.empty())
 					// Adding to file path that can directly be opened in an std::ifstream
 					output_includes.insert(include_file_path);
@@ -278,6 +279,7 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 	}
 
 	std::unordered_set<std::string> option_macros;
+
 	std::ifstream include_file(filepath);
 	if (include_file.is_open())
 	{
@@ -335,6 +337,7 @@ std::string GPUKernelCompiler::get_additional_cache_key(GPUKernel& kernel)
 	// that the kernel file we just parsed depends on. That way, if any dependency of this kernel has
 	// been modified, the cache key will be different and the cache will be invalidated.
 	std::string final_cache_key = "";
+
 	for (const std::string& include : already_processed_includes)
 	{
 		// TODO this exception here should probably go up a level so that we can know that the kernel compilation failed --> set the kernel function to nullptr
@@ -408,10 +411,10 @@ std::set<std::string> GPUKernelCompiler::get_option_macros_used_by_kernel(const 
 	}
 
 	std::set<std::string> option_macro_names;
+
 	for (const std::string& include : already_processed_includes)
 	{
 		std::unordered_set<std::string> include_option_macros = read_option_macro_of_file(include);
-
 		for (const std::string& option_macro : include_option_macros)
 			option_macro_names.insert(option_macro);
 	}

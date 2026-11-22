@@ -51,6 +51,7 @@ bool NISMLMegaKernelRenderPass::pre_render_compilation_check(std::shared_ptr<HIP
 		return false;
 
 	bool updated = false;
+
 	for (std::pair<const std::string, std::shared_ptr<GPUKernel>>& name_to_kernel : m_kernels)
 	{
 		if (!name_to_kernel.second->has_been_compiled())
@@ -139,7 +140,6 @@ void NISMLMegaKernelRenderPass::post_sample_update_async(HIPRTRenderData& render
 void NISMLMegaKernelRenderPass::update_render_data()
 {
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
-
 	if (is_render_pass_used(*m_compiler_options) && m_staging_buffers_allocated)
 		render_data.nisml_mega_kernel = get_device_data();
 	else
@@ -187,7 +187,8 @@ std::map<std::string, std::shared_ptr<GPUKernel>> NISMLMegaKernelRenderPass::get
 
 bool NISMLMegaKernelRenderPass::resize_staging_buffers()
 {
-	unsigned int path_count			  = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
+	unsigned int path_count = static_cast<unsigned int>(m_render_resolution.x * m_render_resolution.y);
+
 	size_t ray_volume_state_byte_size = m_renderer->get_render_data().ray_volume_state_byte_size;
 	if (ray_volume_state_byte_size == 0)
 		ray_volume_state_byte_size = sizeof(RayVolumeState);

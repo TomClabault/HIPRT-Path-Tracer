@@ -23,7 +23,6 @@ struct CDFDevice
 		// Binary search
 		unsigned int left  = 0;
 		unsigned int right = size;
-
 		while (left < right)
 		{
 			unsigned int mid = (left + right) / 2;
@@ -34,6 +33,7 @@ struct CDFDevice
 				cdf_value = 0.0f;
 			else
 				cdf_value = cdf[mid];
+
 			if (cdf_value < random_value)
 				left = mid + 1;
 			else
@@ -93,6 +93,7 @@ struct CDFDevice
 
 		// Because the random numbers are sorted in ascending order, the left index can be reused from random number to the next random number
 		unsigned int current_left = 0;
+
 		for (int i = 0; i < 8; ++i)
 		{
 			float random_value = random_numbers[i];
@@ -100,7 +101,6 @@ struct CDFDevice
 			// Binary search
 			unsigned int left  = current_left;
 			unsigned int right = size;
-
 			while (left < right)
 			{
 				unsigned int mid = (left + right) / 2;
@@ -111,6 +111,7 @@ struct CDFDevice
 					cdf_value = 0.0f;
 				else
 					cdf_value = cdf[mid];
+
 				if (cdf_value < random_value)
 					left = mid + 1;
 				else
@@ -142,12 +143,11 @@ struct CDFDeviceWithLUT
 
 		LUTIndexType left  = cdf_lut[lut_bin_index];
 		LUTIndexType right = (lut_bin_index < LUTSize - 1 ? cdf_lut[lut_bin_index + 1] : size - 1) + 1;
-
 		while (left < right)
 		{
 			LUTIndexType mid = (left + right) / 2;
-			float cdf_value	 = mid == 0 ? 0.0f : cdf[mid];
 
+			float cdf_value = mid == 0 ? 0.0f : cdf[mid];
 			if (cdf_value < random_value)
 				left = mid + 1;
 			else
@@ -175,7 +175,6 @@ struct CDFDeviceU16
 		// Binary search
 		unsigned int left  = 0;
 		unsigned int right = size;
-
 		while (left < right)
 		{
 			unsigned int mid = (left + right) / 2;
@@ -186,6 +185,7 @@ struct CDFDeviceU16
 				cdf_value = 0;
 			else
 				cdf_value = cdf_u16[mid];
+
 			if (cdf_value < random_value)
 				left = mid + 1;
 			else

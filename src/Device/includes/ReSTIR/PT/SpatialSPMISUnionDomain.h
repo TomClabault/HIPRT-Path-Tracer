@@ -95,6 +95,7 @@ struct ReSTIRPTSPMISUnionDomain
 		confidence_sum += spmis_settings.cell_confidence_sums[cell_index];
 		pixel_count += cell_pixel_count;
 		non_zero_count += spmis_settings.cell_non_zero_reservoir_counters[cell_index];
+
 		if (spmis_settings.cell_non_zero_reservoir_counters[cell_index] > 0)
 			// SPMIS CDF layout: cdf[0] holds the sum of the importances c W p_hat of the cell
 			importance_sum += spmis_settings.cell_cdfs[cell_offset];
@@ -166,10 +167,12 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_search_union_domain(const HIPRTRende
 
 	// Cells already in the domain, excluded from the next searches
 	unsigned int domain_cells[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS];
+
 	for (int search = 0; search < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELL_SEARCHES && domain.cell_count < RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS; search++)
 	{
 		unsigned int selected_pixel_index;
 		unsigned int selected_cell_confidence_sum;
+
 		unsigned int cell_index = spmis_search_reuse_cell_index(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface, center_cell_index,
 																center_cell_weight, radius, max_search_iterations, distance_scaling, selected_pixel_index,
 																selected_cell_confidence_sum, rng, domain_cells, domain.cell_count);
@@ -212,9 +215,11 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_get_union_domain(const HIPRTRenderDa
 	unsigned int cached_cell_count = domain_cache[0];
 
 	ReSTIRPTSPMISUnionDomain domain;
+
 	if (cached_cell_count != HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX && cached_cell_count <= RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS)
 	{
 		unsigned int domain_cells[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_CELLS];
+
 		for (unsigned int cached_index = 0; cached_index < cached_cell_count; cached_index++)
 		{
 			unsigned int cached_pixel_index = domain_cache[1 + cached_index];
@@ -224,8 +229,10 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_get_union_domain(const HIPRTRenderDa
 			unsigned int cell_index = spmis_settings.all_pixel_hashes[cached_pixel_index];
 			if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX || cell_index >= spmis_settings.pixel_hashes_count)
 				continue;
+
 			if (spmis_settings.cell_pixels_counters[cell_index] == 0)
 				continue;
+
 			if (spmis_cell_in_list(cell_index, domain_cells, domain.cell_count))
 				// Two cached pixels can fall in the same cell this frame
 				continue;
@@ -243,6 +250,7 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_get_union_domain(const HIPRTRenderDa
 	domain = spmis_search_union_domain(render_data, center_pixel_index, center_pixel_coords, center_pixel_surface, representative_pixels, rng);
 
 	domain_cache[0] = static_cast<unsigned int>(domain.cell_count);
+
 	for (int cell = 0; cell < domain.cell_count; cell++)
 		domain_cache[1 + cell] = representative_pixels[cell];
 
@@ -372,6 +380,7 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomainCenterBSDF spmis_union_domain_center_bsdf_s
 	center_bsdf.analytic_lobe = material_class != RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE &&
 								center_bsdf.view_cosine > RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD &&
 								!center_surface.ray_volume_state.inside_material;
+
 	if (center_bsdf.analytic_lobe)
 	{
 		center_bsdf.lobe = ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(render_data, center_surface.material, material_class,
@@ -436,6 +445,7 @@ HIPRT_DEVICE float spmis_neighbor_record_target(const HIPRTRenderData& render_da
 	Octahedral24BitNormalPadded32b packed_rc_normal = spmis_neighbor_record_read_normal(record_first.w);
 
 	float shifted_target_times_jacobian;
+
 	if (packed_rc_normal.get_padding() == 1)
 	{
 		// Envmap path, 'rc_vertex' is the direction of the path
@@ -454,6 +464,7 @@ HIPRT_DEVICE float spmis_neighbor_record_target(const HIPRTRenderData& render_da
 		bool backfacing_light  = signed_qk < 0.0f && cosine_rc_signed <= 0.0f;
 
 		shifted_target_times_jacobian = 0.0f;
+
 		if (cosine_center > 0.0f && !backfacing_light)
 		{
 			float3_t direction_to_rc_vertex = to_rc_vertex * inverse_distance;
@@ -475,13 +486,14 @@ HIPRT_DEVICE float spmis_neighbor_record_target(const HIPRTRenderData& render_da
 HIPRT_DEVICE unsigned int spmis_sample_cell_cdf(const float* cdf, const unsigned short int* cdf_lut, unsigned int size, float random_value)
 {
 	unsigned int lut_bin_index = hippt::min(ReSTIR_PT_SPMISCDFLUTSize - 1u, static_cast<unsigned int>(random_value * ReSTIR_PT_SPMISCDFLUTSize));
-	unsigned int left		   = cdf_lut[lut_bin_index];
-	unsigned int right		   = (lut_bin_index < ReSTIR_PT_SPMISCDFLUTSize - 1u ? cdf_lut[lut_bin_index + 1] : size - 1) + 1;
 
+	unsigned int left  = cdf_lut[lut_bin_index];
+	unsigned int right = (lut_bin_index < ReSTIR_PT_SPMISCDFLUTSize - 1u ? cdf_lut[lut_bin_index + 1] : size - 1) + 1;
 	while (left < right)
 	{
 		unsigned int middle = (left + right) / 2;
-		float cdf_value		= middle == 0 ? 0.0f : cdf[middle];
+
+		float cdf_value = middle == 0 ? 0.0f : cdf[middle];
 		if (cdf_value < random_value)
 			left = middle + 1;
 		else
@@ -594,6 +606,7 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 		}
 
 		float target_sum = 0.0f;
+
 		for (int cell = 0; cell < domain.cell_count; cell++)
 		{
 			unsigned int cell_index			= domain.get_cell(cell);
@@ -831,6 +844,7 @@ HIPRT_DEVICE int spmis_union_domain_select_neighbors(const HIPRTRenderData& rend
 	const ReSTIRPTReservoir* input_reservoirs = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs;
 	int visible_picks[RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE];
 	int visible_pick_count = 0;
+
 	for (int pick = 0; pick < pool_size; pick++)
 	{
 		if (pool_selection_targets[pick] <= 0.0f || pool_selection_probabilities[pick] <= 0.0f)
@@ -847,6 +861,7 @@ HIPRT_DEVICE int spmis_union_domain_select_neighbors(const HIPRTRenderData& rend
 	// min(N, n_vis) visible picks chosen uniformly without replacement (partial Fisher-Yates shuffle)
 	int chosen_count			= hippt::min(neighbor_count, visible_pick_count);
 	float inclusion_probability = visible_pick_count > neighbor_count ? neighbor_count / static_cast<float>(visible_pick_count) : 1.0f;
+
 	for (int chosen = 0; chosen < chosen_count; chosen++)
 	{
 		int swapped_index			 = chosen + static_cast<int>(rng.random_index(visible_pick_count - chosen));

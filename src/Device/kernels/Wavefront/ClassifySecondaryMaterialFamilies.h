@@ -11,12 +11,14 @@
 HIPRT_DEVICE static void wavefront_classify_secondary_material_family(HIPRTRenderData& render_data, unsigned int queue_slot, unsigned int input_count)
 {
 	WavefrontDataDevice& wavefront_data = render_data.wavefront_data;
+
 	if (queue_slot >= input_count)
 		return;
 
 	unsigned int path_index = wavefront_data.path_queues[0][queue_slot];
 	if (path_index >= wavefront_data.path_capacity)
 		return;
+
 	if (wavefront_data.path_state_flags[path_index] & WAVEFRONT_PATH_STATE_TERMINAL)
 		return;
 

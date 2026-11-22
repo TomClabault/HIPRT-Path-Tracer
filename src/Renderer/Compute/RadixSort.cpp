@@ -76,7 +76,8 @@ void RadixSort::resize(unsigned int element_count)
 	m_values_buffer.resize(m_size);
 	m_temp_values_buffer.resize(m_size);
 
-	unsigned int chunk_count				= (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
+	unsigned int chunk_count = (m_size + RADIX_SORT_INPUT_CHUNK_SIZE - 1) / RADIX_SORT_INPUT_CHUNK_SIZE;
+
 	unsigned int per_block_count_table_size = chunk_count * RADIX_SORT_RADIX_SIZE;
 	if (m_per_block_count_tables_buffer.size() != per_block_count_table_size)
 	{
@@ -306,6 +307,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 
 		int iteration_count	   = 10;
 		double average_time_ms = 0.0;
+
 		// Tests with random sizes ascending order
 		for (int i = 0; i < iteration_count; i++)
 		{
@@ -320,11 +322,11 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 			std::transform(input_keys.begin(), input_keys.end(), input_keys.begin(), [&rng](unsigned int) { return rng(); });
 
 			std::vector<std::pair<unsigned int, unsigned int>> key_value_pairs(test_size);
-
 			for (size_t j = 0; j < test_size; j++)
 				key_value_pairs[j] = { input_keys[j], input_values[j] };
 
 			auto start = std::chrono::high_resolution_clock::now();
+
 			if (order == RadixSort::Ordering::ASCENDING)
 				std::stable_sort(key_value_pairs.begin(), key_value_pairs.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
 			else
@@ -338,6 +340,7 @@ void RadixSort::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, oroStream_t
 			OROCHI_CHECK_ERROR(oroStreamSynchronize(stream));
 
 			OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
+
 			unsigned int repeats = 10;
 			for (int j = 0; j < repeats; j++)
 			{

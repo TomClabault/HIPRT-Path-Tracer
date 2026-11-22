@@ -177,6 +177,7 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_dat
 	m_size = element_count;
 
 	m_input_data_pointer = device_data_pointer;
+
 	if (device_flags_pointer)
 		m_flags_data_pointer = device_flags_pointer;
 	m_segment_ids_prefix_scan.set_data_pointers(device_flags_pointer, element_count);
@@ -456,6 +457,7 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_te
 		unsigned int segment_length				= reducer.get_segment_length();
 
 		std::transform(input.begin(), input.end(), input.begin(), [&rng](InputDataType) { return rng(); });
+
 		if (evenly_spaced_segment_size == 0)
 			std::transform(flags.begin(), flags.end(), flags.begin(), [&engine_uint](unsigned int) { return engine_uint(); });
 		else
@@ -501,6 +503,7 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_te
 
 		auto start				= std::chrono::high_resolution_clock::now();
 		unsigned int segment_id = 0;
+
 		for (size_t j = 0; j < test_size; j++)
 		{
 			if (j > 0)
@@ -527,6 +530,7 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_te
 		reducer.upload_input_data(input, flags);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
+
 		unsigned int repeats = 5;
 		for (int j = 0; j < repeats; j++)
 			reducer.reduce();

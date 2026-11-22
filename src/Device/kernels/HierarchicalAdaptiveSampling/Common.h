@@ -80,8 +80,8 @@ HIPRT_DEVICE float hierarchical_adaptive_sampling_find_split(const HIPRTRenderDa
 	while (lower_boundary < upper_boundary)
 	{
 		unsigned int middle_boundary = lower_boundary + (upper_boundary - lower_boundary) / 2u;
-		float prefix_error			 = hierarchical_adaptive_sampling_split_prefix_sum(render_data, node, split_x, middle_boundary);
 
+		float prefix_error = hierarchical_adaptive_sampling_split_prefix_sum(render_data, node, split_x, middle_boundary);
 		if (prefix_error < target_error)
 			lower_boundary = middle_boundary + 1u;
 		else

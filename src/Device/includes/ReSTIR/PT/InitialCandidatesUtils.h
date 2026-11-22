@@ -176,16 +176,19 @@ HIPRT_DEVICE void ReSTIR_PT_add_candidate(int bounce,
 {
 	if (bounce == 0)
 		ReSTIR_PT_rc_di_vertex_fill_information(light_point, light_geometric_normal, light_primitive_index, incident_light_info, restir_pt_initial_sample);
+
 	if (bounce == 1)
 	{
 		restir_pt_initial_sample.incident_light_info_at_sample_point	   = incident_light_info;
 		restir_pt_initial_sample.bsdf_throughput_luminance_at_sample_point = bsdf_throughput.luminance();
 	}
+
 	if (bounce <= 1)
 		restir_pt_initial_sample.rc_vertex_incident_light_direction = incident_light_direction;
 
 	restir_pt_initial_sample.di_sample					 = bounce == 0;
 	restir_pt_initial_sample.rc_vertex_incident_radiance = light_emission * path_weighted_throughput_after_rc_vertex;
+
 	if (bounce >= 2)
 		restir_pt_initial_sample.rc_vertex_incident_radiance *= bsdf_throughput;
 	restir_pt_initial_sample.target_function =
@@ -266,6 +269,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	{
 		float envmap_pdf_solid_angle;
 		ColorRGB32F envmap_emission;
+
 		// The white furnace mode replaces the envmap with the uniform sky, as path_tracing_miss_gather_envmap() does
 		if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode)
 		{
@@ -277,6 +281,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 			envmap_emission = envmap_eval(render_data, sampled_bsdf_direction, envmap_pdf_solid_angle);
 
 		float nee_mis_weight;
+
 		if (render_data.kd_tree_device.learning_to_cluster.envmap_cluster_enabled)
 		{
 			// The envmap is a cluster of the lightcuts: the learning-to-cluster light candidate of the previous vertex samples it
@@ -305,6 +310,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_deferred_NEE_MIS(HIPRTRenderData& render_data,
 	if (bsdf_sample_pdf > 0.0f)
 	{
 		float nee_mis_weight = 1.0f;
+
 		if (render_data.buffers.emissive_triangles_count > 0)
 		{
 			float light_sampler_solid_angle_pdf = ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(render_data, nee_deferred_MIS_context, light_hit_info);
@@ -338,6 +344,7 @@ HIPRT_DEVICE void ReSTIR_PT_do_last_deferred_NEE_MIS(HIPRTRenderData& render_dat
 	// We will have one more bounce than necessary when getting here and this can throw off the 'max bounce' of alpha testing so we need to substract one bounce
 	// here
 	ray_payload.bounce--;
+
 	bool intersection_found;
 	if (last_intersection_found)
 		// If the last ray was a hit and we're doing deferred NEE, this means that we sampled the ray in the main loop but we need to trace it here to see if it

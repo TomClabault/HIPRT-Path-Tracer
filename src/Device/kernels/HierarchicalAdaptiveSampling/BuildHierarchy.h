@@ -36,9 +36,9 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_process_node(const HIPRTRenderD
 
 	float region_error_sum = hierarchical_adaptive_sampling_region_sum(render_data, minimum_x, minimum_y, maximum_x, maximum_y);
 	float raster_area	   = static_cast<float>((maximum_x - minimum_x) * (maximum_y - minimum_y));
-	float region_noise	   = region_error_sum / raster_area;
-	float noise_threshold  = render_data.render_settings.hierarchical_adaptive_sampling_target_error;
 
+	float region_noise	  = region_error_sum / raster_area;
+	float noise_threshold = render_data.render_settings.hierarchical_adaptive_sampling_target_error;
 	if (region_noise <= noise_threshold)
 	{
 		node.state = HierarchicalAdaptiveSamplingNodeState::COMPLETE;
@@ -46,9 +46,10 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_process_node(const HIPRTRenderD
 		return;
 	}
 
-	float extent_x	   = node.maximum_x - node.minimum_x;
-	float extent_y	   = node.maximum_y - node.minimum_y;
-	bool split_x	   = extent_x >= extent_y;
+	float extent_x = node.maximum_x - node.minimum_x;
+	float extent_y = node.maximum_y - node.minimum_y;
+	bool split_x   = extent_x >= extent_y;
+
 	float split_extent = split_x ? extent_x : extent_y;
 	if (split_extent <= 1.0f || node.depth >= static_cast<unsigned int>(render_data.render_settings.hierarchical_adaptive_sampling_max_depth))
 	{
@@ -67,9 +68,10 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_process_node(const HIPRTRenderD
 		return;
 	}
 
-	float perpendicular_extent		 = split_x ? extent_y : extent_x;
-	float left_child_split_extent	 = split_position - split_minimum;
-	float right_child_split_extent	 = split_maximum - split_position;
+	float perpendicular_extent	   = split_x ? extent_y : extent_x;
+	float left_child_split_extent  = split_position - split_minimum;
+	float right_child_split_extent = split_maximum - split_position;
+
 	float left_child_largest_extent	 = left_child_split_extent > perpendicular_extent ? left_child_split_extent : perpendicular_extent;
 	float right_child_largest_extent = right_child_split_extent > perpendicular_extent ? right_child_split_extent : perpendicular_extent;
 	float minimum_cell_extent		 = render_data.render_settings.hierarchical_adaptive_sampling_minimum_cell_extent;
@@ -101,6 +103,7 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_process_node(const HIPRTRenderD
 	nodes[right_child].depth = node.depth + 1u;
 	nodes[left_child].state	 = HierarchicalAdaptiveSamplingNodeState::ACTIVE;
 	nodes[right_child].state = HierarchicalAdaptiveSamplingNodeState::ACTIVE;
+
 	if (split_x)
 	{
 		nodes[left_child].maximum_x	 = split_position;
@@ -160,7 +163,8 @@ HIPRT_DEVICE void hierarchical_adaptive_sampling_build_hierarchy(const HIPRTRend
 		return;
 	}
 
-	unsigned int node_capacity		  = render_data.aux_buffers.hierarchical_adaptive_sampling_node_capacity;
+	unsigned int node_capacity = render_data.aux_buffers.hierarchical_adaptive_sampling_node_capacity;
+
 	unsigned int usable_node_capacity = (node_capacity & 1u) == 0u ? node_capacity - 1u : node_capacity;
 	if (thread_index >= usable_node_capacity)
 		return;

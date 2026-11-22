@@ -12,6 +12,7 @@
 HIPRT_DEVICE static float compute_adaptive_sampling_display_luminance(float linear_luminance, const DisplayPostProcessSettings& display_settings)
 {
 	float clamped_luminance = hippt::clamp(0.0f, 1.0e35f, linear_luminance);
+
 	if (display_settings.do_tonemapping == 1)
 		return tonemap_exponential(ColorRGB32F(clamped_luminance), display_settings.exposure, display_settings.gamma).luminance();
 

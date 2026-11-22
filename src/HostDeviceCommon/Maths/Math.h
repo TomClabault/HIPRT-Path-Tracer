@@ -434,7 +434,6 @@ namespace hippt
 	__device__ static float expm1_over_x_precise(const float x)
 	{
 		const float u = hippt::intrin_expf(x);
-
 		if (u == 1.0f)
 			return 1.0f;
 
@@ -473,8 +472,8 @@ namespace hippt
 	__device__ static float erfcf_fast(float x)
 	{
 		constexpr float TWO_OVER_ROOT_PI = 1.1283791670955125738961589031215f;
-		constexpr float ERFC_SMALL		 = 0.0053854f;
 
+		constexpr float ERFC_SMALL = 0.0053854f;
 		if (hippt::abs(x) < ERFC_SMALL)
 			return 1.0f - TWO_OVER_ROOT_PI * x;
 
@@ -827,7 +826,6 @@ namespace hippt
 		else
 		{
 			unsigned int overflow = ((long_old & 0xffff) + long_val) & 0xffff0000;
-
 			if (overflow)
 				atomicSub(base_address, overflow);
 
@@ -1521,7 +1519,6 @@ namespace hippt
 	static float expm1_over_x_precise(const float x)
 	{
 		const float u = hippt::intrin_expf(x);
-
 		if (u == 1.0f)
 			return 1.0f;
 
@@ -1559,8 +1556,8 @@ namespace hippt
 	static constexpr float erfcf_fast(float x)
 	{
 		constexpr float TWO_OVER_ROOT_PI = 1.1283791670955125738961589031215f;
-		constexpr float ERFC_SMALL		 = 0.0053854f;
 
+		constexpr float ERFC_SMALL = 0.0053854f;
 		if (hippt::abs(x) < ERFC_SMALL)
 			return 1.0f - TWO_OVER_ROOT_PI * x;
 

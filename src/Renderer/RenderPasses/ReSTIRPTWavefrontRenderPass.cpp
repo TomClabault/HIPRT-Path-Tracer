@@ -61,7 +61,6 @@ ReSTIRPTWavefrontRenderPass::ReSTIRPTWavefrontRenderPass(GPURenderer* renderer, 
 	{
 		std::string shade_primary_kernel_id = get_material_family_kernel_id(RESTIR_PT_WAVEFRONT_SHADE_PRIMARY_KERNEL_ID, family_index);
 		std::string shade_kernel_id			= get_material_family_kernel_id(RESTIR_PT_WAVEFRONT_SHADE_KERNEL_ID, family_index);
-
 		for (const std::string& kernel_id : { shade_primary_kernel_id, shade_kernel_id })
 		{
 			GPUKernelCompilerOptions& kernel_options = m_kernels[kernel_id]->get_kernel_options();
@@ -102,6 +101,7 @@ std::string ReSTIRPTWavefrontRenderPass::get_material_family_kernel_id(const std
 std::vector<std::string> ReSTIRPTWavefrontRenderPass::get_wavefront_kernel_ids(unsigned int material_family_count)
 {
 	std::vector<std::string> kernel_ids;
+
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 	{
 		kernel_ids.push_back(get_material_family_kernel_id(RESTIR_PT_WAVEFRONT_SHADE_PRIMARY_KERNEL_ID, family_index));
@@ -133,6 +133,7 @@ bool ReSTIRPTWavefrontRenderPass::pre_render_compilation_check(std::shared_ptr<H
 															   bool use_cache)
 {
 	bool updated = ReSTIRPTRenderPass::pre_render_compilation_check(hiprt_orochi_ctx, func_name_sets, silent, use_cache);
+
 	if (!is_render_pass_used(*m_compiler_options))
 
 		return updated;
@@ -242,6 +243,7 @@ void ReSTIRPTWavefrontRenderPass::launch_initial_candidates_pass(HIPRTRenderData
 
 	// With several path trees, the primary hits material family queues must be kept for the path trees after the first one
 	bool primary_material_family_queues_kept = m_path_tree_count == 1 || m_primary_material_family_indices_backup.size() > 0;
+
 	if (!kernels_ready() || !m_wavefront_common.are_staging_buffers_allocated() || m_restir_pt_wavefront_data.path_capacity() == 0 ||
 		!primary_material_family_queues_kept)
 	{
@@ -256,7 +258,8 @@ void ReSTIRPTWavefrontRenderPass::launch_initial_candidates_pass(HIPRTRenderData
 	render_data.restir_pt_wavefront_data = m_restir_pt_wavefront_data.to_device();
 
 	unsigned int path_capacity = static_cast<unsigned int>(m_wavefront_common.get_wavefront_data().path_capacity());
-	unsigned int bounce_count  = static_cast<unsigned int>(render_data.render_settings.nb_bounces);
+
+	unsigned int bounce_count = static_cast<unsigned int>(render_data.render_settings.nb_bounces);
 	if (render_data.render_settings.do_render_low_resolution())
 		// Reducing the number of bounces to 3 if rendering at low resolution
 		// for better interactivity, as the initial candidates megakernel does
@@ -273,6 +276,7 @@ void ReSTIRPTWavefrontRenderPass::launch_initial_candidates_pass(HIPRTRenderData
 	m_wavefront_common.upload_main_stream_render_data(*m_kernels[RESTIR_PT_WAVEFRONT_TRACE_KERNEL_ID], "RESTIR_PT_WAVEFRONT_TRACE_RENDER_DATA", main_stream);
 	m_wavefront_common.upload_main_stream_render_data(*m_kernels[RESTIR_PT_WAVEFRONT_COMPLETE_KERNEL_ID], "RESTIR_PT_WAVEFRONT_COMPLETE_RENDER_DATA",
 													  main_stream);
+
 	for (unsigned int family_index = 0; family_index < material_family_count; family_index++)
 	{
 		m_wavefront_common.upload_material_family_render_data(
@@ -301,12 +305,14 @@ void ReSTIRPTWavefrontRenderPass::launch_initial_candidates_pass(HIPRTRenderData
 			m_wavefront_common.reset_queue_count_async(WAVEFRONT_COMPLETION_QUEUE_INDEX, main_stream);
 
 			void* shade_launch_args[] = { &bounce_count, &path_tree_index };
+
 			if (bounce_index == 0)
 			{
 				// The camera rays pass has appended the primary hits to the material family queues
 				m_wavefront_common.launch_material_family_kernels_async(
 					shade_primary_kernels, WavefrontRenderPassCommon::MaterialFamilyCountReadbackSlot::PRIMARY_HITS, shade_launch_args, material_family_count,
 					family_block_count, overlap_family_kernels, main_stream);
+
 				if (read_back_material_family_counts && path_tree_index == 0)
 					m_wavefront_common.read_back_material_family_counts_async(WavefrontRenderPassCommon::MaterialFamilyCountReadbackSlot::PRIMARY_HITS,
 																			  main_stream);
@@ -316,6 +322,7 @@ void ReSTIRPTWavefrontRenderPass::launch_initial_candidates_pass(HIPRTRenderData
 				m_wavefront_common.launch_material_family_kernels_async(
 					shade_kernels, WavefrontRenderPassCommon::MaterialFamilyCountReadbackSlot::SECONDARY_HITS, shade_launch_args, material_family_count,
 					family_block_count, overlap_family_kernels, main_stream);
+
 				// The first secondary bounce is representative of the following ones
 				if (read_back_material_family_counts && path_tree_index == 0 && bounce_index == 1)
 					m_wavefront_common.read_back_material_family_counts_async(WavefrontRenderPassCommon::MaterialFamilyCountReadbackSlot::SECONDARY_HITS,
@@ -360,6 +367,7 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRPTWavefrontRenderPass::g
 
 	// The kernels of the material families that the BSDF model does not have are not compiled
 	std::map<std::string, std::shared_ptr<GPUKernel>> active_kernels = m_kernels;
+
 	for (const std::string& kernel_id : get_wavefront_kernel_ids(KernelMaterialSpecializationCount))
 		active_kernels.erase(kernel_id);
 

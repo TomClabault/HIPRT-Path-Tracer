@@ -28,9 +28,11 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelGenerateQueries(HIPRTRenderD
 		return;
 
 	unsigned int pixel_index = x + y * render_data.render_settings.render_resolution.x;
+
 	if (stage_index == 0)
 	{
 		nisml_megakernel_initialize_path(render_data, pixel_index);
+
 		if (render_data.nisml_mega_kernel.path_states[pixel_index] == NISMLMegaKernelPathState::FINISHED)
 			return;
 	}
@@ -56,9 +58,9 @@ GLOBAL_KERNEL_SIGNATURE(void) inline NISMLMegaKernelGenerateQueries(HIPRTRenderD
 	bool direct_lighting_enabled = ray_payload.bounce > 0 || render_data.render_settings.enable_direct_lighting;
 	Xorshift32Generator random_number_generator(render_data.nisml_mega_kernel.path_data[pixel_index].rng_state);
 	unsigned int query_index = 0;
-	bool query_enqueued		 = direct_lighting_enabled &&
-						  append_nisml_query(render_data, pixel_index, ray_payload, closest_hit_info, -ray.direction, random_number_generator, query_index);
 
+	bool query_enqueued = direct_lighting_enabled &&
+						  append_nisml_query(render_data, pixel_index, ray_payload, closest_hit_info, -ray.direction, random_number_generator, query_index);
 	if (query_enqueued)
 	{
 		render_data.nisml_mega_kernel.path_data[pixel_index].query_index = query_index;

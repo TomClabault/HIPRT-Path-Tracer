@@ -135,11 +135,13 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 					fp16x16 activation_tiles[BlockSize_ / 16] = {};
 
 					unsigned int current_neuron_base = (warp_first_tile + tile) * 16;
+
 					for (unsigned int previous_neuron_tile_index = 0; previous_neuron_tile_index < previous_neurons_tile_count; previous_neuron_tile_index++)
 					{
 						fp16x16 neuron_weights_fragment;
 
 						unsigned int previous_neuron_base = previous_neuron_tile_index * 16;
+
 						for (unsigned int weight_index = 0; weight_index < 16; weight_index++)
 							neuron_weights_fragment[weight_index] =
 								connection_weights_fp16[layer_connection_offset + (current_neuron_base + lane_id_wmma) * neurons_previous_layer +
@@ -150,6 +152,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 							fp16x16 previous_activations_fragment;
 
 							unsigned int sample_base = sample_tile_index * 16;
+
 							for (unsigned int activation_index = 0; activation_index < 16; activation_index++)
 								previous_activations_fragment[activation_index] =
 									activations_buffer[in_shared_mem_ping_pong_offset + previous_neuron_base + activation_index][sample_base + lane_id_wmma];
@@ -170,6 +173,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 							float value = activation_tiles[neuron_tile][element * 2];
 							if constexpr (USE_BIASES)
 								value += neurons_biases[layer_neuron_offset + neuron];
+
 							if (layer_index < LAYER_COUNT - 1)
 								value = this->activation_function(value);
 							else if constexpr (USE_OUTPUT_ACTIVATION)
@@ -213,16 +217,15 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			unsigned int in_shared_mem_ping_pong_offset	 = ((layer_index - 1) & 1) * ACTIVATION_WIDTH;
 			unsigned int out_shared_mem_ping_pong_offset = (layer_index & 1) * ACTIVATION_WIDTH;
 
-			constexpr unsigned int tiles_per_warp  = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
+			constexpr unsigned int tiles_per_warp = HiddenLayerSize_ / 16 / (BlockSize_ / 32);
+
 			unsigned int current_neuron_tile_count = PAD_SIZE_WMMA(neurons_current_layer) / 16;
 			unsigned int warp_first_tile		   = warp_id * tiles_per_warp;
-
 			if (warp_first_tile < current_neuron_tile_count)
 			{
 				for (unsigned int tile = 0; tile < tiles_per_warp && warp_first_tile + tile < current_neuron_tile_count; tile++)
 				{
 					unsigned int neuron_base = (warp_first_tile + tile) * 16;
-
 					for (unsigned int neuron_offset = 0; neuron_offset < 16 && neuron_base + neuron_offset < neurons_current_layer; neuron_offset++)
 					{
 						unsigned int neuron_index = neuron_base + neuron_offset;
@@ -241,6 +244,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 
 							if constexpr (USE_BIASES)
 								activation += neurons_biases[layer_neuron_offset + neuron_index];
+
 							if (layer_index < LAYER_COUNT - 1)
 								activation = this->activation_function(activation);
 							else if constexpr (USE_OUTPUT_ACTIVATION)
@@ -296,7 +300,6 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 				unsigned int output_neuron = linear_index / BlockSize_;
 				unsigned int sample_index  = linear_index % BlockSize_;
 				fp16 error				   = static_cast<fp16>(0.0f);
-
 				if (output_neuron < OutputSize_ && sample_index == threadIdx.x)
 					error = static_cast<fp16>(output_gradient[output_neuron] * error_scale);
 
@@ -305,6 +308,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		}
 		__syncthreads();
 		unsigned int activation_index_block_base = sample_offset * NEURON_COUNT;
+
 		for (unsigned int layer_index = output_layer_index; layer_index > 0; layer_index--)
 		{
 			unsigned int current_neurons		 = get_layer_neuron_count(layer_index);
@@ -338,13 +342,13 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 				for (unsigned int i = 0; i < ITEMS_PER_THREAD; ++i)
 				{
 					unsigned int index = base + i;
-
 					if (index < activation_count)
 						destination[index] = source[index];
 				}
 			}
 
 			__syncthreads();
+
 			for (unsigned int current_tile = warp_id; current_tile < current_tile_count; current_tile += warp_count)
 			{
 				unsigned int current_neuron_base = current_tile * 16;
@@ -373,7 +377,6 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 					{
 						unsigned int current_neuron	 = current_neuron_base + element * 2 + lane_high;
 						unsigned int previous_neuron = previous_neuron_base + lane_id_wmma;
-
 						if (current_neuron < current_neurons && previous_neuron < previous_neurons)
 						{
 							unsigned int connection_index = connection_offset + current_neuron * previous_neurons + previous_neuron;
@@ -382,6 +385,7 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 					}
 				}
 			}
+
 			if constexpr (USE_BIASES)
 			{
 				for (unsigned int neuron_index = threadIdx.x; neuron_index < current_neurons; neuron_index += BlockSize_)
@@ -399,8 +403,8 @@ struct MLPFullyFusedDeviceGPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			if (layer_index > 1 || propagate_input_gradients)
 			{
 				unsigned int propagated_previous_neuron_count = layer_index > 1 ? previous_neurons : input_gradient_count;
-				unsigned int propagated_previous_tile_count	  = PAD_SIZE_WMMA(propagated_previous_neuron_count) / 16;
 
+				unsigned int propagated_previous_tile_count = PAD_SIZE_WMMA(propagated_previous_neuron_count) / 16;
 				for (unsigned int previous_tile = warp_id; previous_tile < propagated_previous_tile_count; previous_tile += warp_count)
 				{
 					unsigned int previous_neuron_base		   = previous_tile * 16;

@@ -98,7 +98,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuseSPMISUnionDomainShado
 	unsigned int duplicate_map = has_duplicates ? shadow_split_buffers.selection_visibility[center_pixel_index] : 0u;
 
 	unsigned int visible_mask = spmis_union_domain_shadow_split_trace_rays_block<false>(render_data, center_pixel_index, ray_mask, prepare_flags);
-
 	if (has_duplicates)
 		visible_mask = spmis_union_domain_shadow_split_copy_duplicate_visibility(visible_mask, duplicate_map);
 

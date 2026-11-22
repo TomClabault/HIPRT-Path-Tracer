@@ -40,6 +40,7 @@ HIPRT_DEVICE ColorRGB32F map_0_1_to_heatmap_color(float scalar_0_1)
 	unsigned int color_count	   = sizeof...(heatmap_colors);
 	float color_position		   = scalar_0_1 * static_cast<float>(color_count - 1);
 	unsigned int lower_color_index = static_cast<unsigned int>(color_position);
+
 	unsigned int upper_color_index = lower_color_index + 1;
 	if (upper_color_index >= color_count)
 		upper_color_index = color_count - 1;

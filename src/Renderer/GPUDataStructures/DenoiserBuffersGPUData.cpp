@@ -64,7 +64,6 @@ void DenoiserBuffersGPUData::set_use_interop_AOV_buffers(GPURenderer* renderer, 
 	renderer->synchronize_all_kernels();
 
 	use_interop_AOVs = use_interop;
-
 	if (use_interop_AOVs)
 	{
 		m_normals_AOV_interop_buffer->resize(m_normals_AOV_no_interop_buffer->size());

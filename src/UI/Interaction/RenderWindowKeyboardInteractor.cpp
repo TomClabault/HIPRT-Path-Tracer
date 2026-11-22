@@ -17,6 +17,7 @@ void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int k
 	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
 
 	ImGuiIO& io = ImGui::GetIO();
+
 	if (io.WantCaptureKeyboard && !(action == GLFW_RELEASE) && !render_window_hovered)
 
 		// We always want to handle release key otherwise we could press a key while
@@ -42,6 +43,7 @@ void RenderWindowKeyboardInteractor::glfw_key_callback(GLFWwindow* window, int k
 	// Now handling viewport controls below
 
 	RenderWindowKeyboardInteractor& interactor_instance = render_window->get_keyboard_interactor();
+
 	switch (key)
 	{
 	case GLFW_KEY_W:
@@ -93,14 +95,19 @@ void RenderWindowKeyboardInteractor::poll_keyboard_inputs()
 
 	if (m_z_pressed)
 		zoom += 1.0f;
+
 	if (m_q_pressed)
 		translation.first += 1.0f;
+
 	if (m_s_pressed)
 		zoom -= 1.0f;
+
 	if (m_d_pressed)
 		translation.first -= 1.0f;
+
 	if (m_space_pressed)
 		translation.second += 1.0f;
+
 	if (m_lshift_pressed)
 		translation.second -= 1.0f;
 

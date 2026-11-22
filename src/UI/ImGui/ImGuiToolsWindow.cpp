@@ -95,6 +95,7 @@ void ImGuiToolsWindow::draw_ggx_energy_compensation_panel()
 						m_render_window->get_screenshoter()->write_to_png(filename);
 
 						next_step_ready = true;
+
 						if (step == nb_steps - 1)
 							cooking = false;
 					}
@@ -131,6 +132,7 @@ void ImGuiToolsWindow::draw_GGX_conductors()
 					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
 
@@ -144,6 +146,7 @@ void ImGuiToolsWindow::draw_GGX_conductors()
 
 		static bool bake_started_at_least_once = false;
 		ImGui::BeginDisabled(!baker->is_ggx_conductor_directional_albedo_bake_complete() && bake_started_at_least_once);
+
 		if (ImGui::Button("Bake!"))
 		{
 			bake_started_at_least_once = true;
@@ -190,6 +193,7 @@ void ImGuiToolsWindow::draw_GGX_fresnel()
 					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
 
@@ -204,6 +208,7 @@ void ImGuiToolsWindow::draw_GGX_fresnel()
 
 		static bool bake_started_at_least_once = false;
 		ImGui::BeginDisabled(!baker->is_ggx_fresnel_directional_albedo_bake_complete() && bake_started_at_least_once);
+
 		if (ImGui::Button("Bake!"))
 		{
 			bake_started_at_least_once = true;
@@ -251,6 +256,7 @@ void ImGuiToolsWindow::draw_GGX_glass()
 					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
 
@@ -265,6 +271,7 @@ void ImGuiToolsWindow::draw_GGX_glass()
 
 		static bool bake_started_at_least_once = false;
 		ImGui::BeginDisabled(!baker->is_ggx_glass_directional_albedo_bake_complete() && bake_started_at_least_once);
+
 		if (ImGui::Button("Bake!"))
 		{
 			bake_started_at_least_once = true;
@@ -308,6 +315,7 @@ void ImGuiToolsWindow::draw_GGX_thin_glass()
 					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
 
@@ -322,6 +330,7 @@ void ImGuiToolsWindow::draw_GGX_thin_glass()
 
 		static bool bake_started_at_least_once = false;
 		ImGui::BeginDisabled(!baker->is_ggx_glass_directional_albedo_bake_complete() && bake_started_at_least_once);
+
 		if (ImGui::Button("Bake!"))
 		{
 			bake_started_at_least_once = true;
@@ -368,6 +377,7 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 					 masking_shadowing_items.size());
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (ImGui::InputText("Output Texture Filename", &output_filename))
 			filename_modified = true;
 
@@ -382,6 +392,7 @@ void ImGuiToolsWindow::draw_glossy_dielectric()
 
 		static bool bake_started_at_least_once = false;
 		ImGui::BeginDisabled(!baker->is_glossy_dielectric_directional_albedo_bake_complete() && bake_started_at_least_once);
+
 		if (ImGui::Button("Bake!"))
 		{
 			bake_started_at_least_once = true;
@@ -424,11 +435,13 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		static Image32Bit subject_image;
 
 		ImGui::Text("Step 1 - Select a reference image");
+
 		if (ImGui::Button("Select reference image"))
 		{
 			reference_image_path = Utils::open_file_dialog(filters, 2);
 			reference_image		 = Image32Bit::read_image(reference_image_path, 3, false);
 		}
+
 		if (reference_image_path != "")
 		{
 			ImGui::TreePush("Reference image text tree");
@@ -446,6 +459,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Text("Step 2 - Select a subject image");
 		static std::string subject_image_text = "";
+
 		if (ImGui::Button("Select subject image"))
 		{
 			subject_image_path = Utils::open_file_dialog(filters, 2);
@@ -454,11 +468,13 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			subject_image_text = std::filesystem::path(subject_image_path).filename().string();
 		}
 		ImGui::SameLine();
+
 		if (ImGui::Button("Use viewport"))
 		{
 			subject_image	   = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
 			subject_image_text = USING_VIEWPORT_TEXT;
 		}
+
 		if (subject_image_text != "")
 		{
 			ImGui::TreePush("Subject image text tree");
@@ -477,12 +493,12 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::Text("Step 3 - Compute a difference metric");
 		ImGui::BeginDisabled(!ready_to_compute);
+
 		if (ImGui::Button("Compute MSE"))
 		{
 			if (subject_image_text == USING_VIEWPORT_TEXT)
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
-
 			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
 				status_text = "Error: Images must have the same dimensions!";
 			else
@@ -498,7 +514,6 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 			if (subject_image_text == USING_VIEWPORT_TEXT)
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
-
 			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
 				status_text = "Error: Images must have the same dimensions!";
 			else
@@ -510,12 +525,12 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		}
 
 		static bool output_flip_error_map = false;
+
 		if (ImGui::Button("Compute FLIP"))
 		{
 			if (subject_image_text == USING_VIEWPORT_TEXT)
 				// Updating the subject image with the viewport
 				subject_image = Image32Bit(m_render_window->get_screenshoter()->get_image(), 3);
-
 			if (reference_image.width != subject_image.width || reference_image.height != subject_image.height)
 			{
 				status_text = "Error: Images must have the same dimensions!";
@@ -539,6 +554,7 @@ void ImGuiToolsWindow::draw_image_difference_panel()
 		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (status_text != "")
 		{
 			if (ImGui::Button("C"))
@@ -570,6 +586,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		static Image32Bit ref_image;
 		static std::string ref_image_text = "";
+
 		if (ImGui::Button("Select reference image"))
 		{
 			const char* filters[]	   = { "*.png", "*.jpg" };
@@ -577,6 +594,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ref_image				   = Image32Bit::read_image(ref_image_path, 3, true);
 			ref_image_text			   = std::filesystem::path(ref_image_path).filename().string();
 		}
+
 		if (ref_image_text != "")
 		{
 			ImGui::TreePush("Reference image text tree");
@@ -594,12 +612,15 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static int capture_interval_type	= 0;
 		static float capture_interval_value = 1.0f;
 		ImGui::SeparatorText("Capture interval type");
+
 		if (ImGui::RadioButton("Every N seconds", &capture_interval_type, 0))
 			capture_interval_value = 1.0f;
+
 		if (ImGui::RadioButton("Every N samples", &capture_interval_type, 1))
 			capture_interval_value = 16;
 
 		ImGui::InputFloat("Capture interval value", &capture_interval_value);
+
 		if (capture_interval_type == 1)
 			// We want an integer number of samples
 			capture_interval_value = std::roundf(capture_interval_value);
@@ -613,6 +634,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		std::vector<std::vector<float>>& recorded_ys_list = m_convergence_graph_widget.get_recorded_ys_list();
 		std::vector<int>& recorded_line_styles			  = m_convergence_graph_widget.get_recorded_line_styles();
 		std::vector<int>& recorded_color_indices		  = m_convergence_graph_widget.get_recorded_color_indices();
+
 		if (ImGui::InputInt("Number of captures", &number_of_captures))
 		{
 			if (recorded_xs_list.size() > 0)
@@ -676,6 +698,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.0f, 0.0f, 1.0f));		   // Red
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.2f, 0.2f, 1.0f)); // Lighter red when hovered
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.5f, 0.0f, 0.0f, 1.0f));  // Darker red when clicked
+
 			if (ImGui::Button("Stop capturing"))
 				capture_started = false;
 			ImGui::PopStyleColor(3);
@@ -694,6 +717,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.2f, 1.0f, 0.2f, 1.0f)); // Lighter green when hovered
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.5f, 0.0f, 1.0f));  // Darker green when clicked
 			}
+
 			if (ImGui::Button("Start capture"))
 			{
 				if (capture_interval_type == 0)
@@ -731,6 +755,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				// but the render window will only really reset once the current frame has finished rendering)
 				capture_requested = true;
 			}
+
 			if (!capture_impossible)
 				ImGui::PopStyleColor(3); // Start capture button
 
@@ -775,6 +800,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			Image32Bit current_image(m_render_window->get_screenshoter()->get_image(false), 3);
 
 			float error;
+
 			switch (error_metric_type)
 			{
 			case 0:
@@ -825,6 +851,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		static std::string legend = "Data legend";
 		ImGui::InputText("Legend", &legend);
 		ImGui::BeginDisabled(current_recorded_xs.size() == 0 || capture_started);
+
 		if (ImGui::Button("Add Step 4 captured data"))
 		{
 			recorded_legends.push_back(legend);
@@ -850,6 +877,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
 		ImGui::SeparatorText("Recorded data");
 		ImGui::TreePush("Recorded data tree");
+
 		for (int i = 0; i < recorded_legends.size(); i++)
 		{
 			std::string& leg = recorded_legends.at(i);
@@ -857,6 +885,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ImGui::SameLine();
 			ImGui::InputText(std::string("##" + std::to_string(i)).c_str(), &leg);
 			ImGui::SameLine();
+
 			if (ImGui::Button(std::string("Delete##" + std::to_string(i)).c_str()))
 			{
 				recorded_legends.erase(recorded_legends.begin() + i);
@@ -869,6 +898,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 			ImGui::BeginDisabled(i == 0);
 			ImGui::SameLine();
+
 			if (ImGui::ArrowButton(std::string("Up##" + std::to_string(i)).c_str(), ImGuiDir_Up))
 			{
 				std::swap(recorded_legends.at(i), recorded_legends.at(i - 1));
@@ -881,6 +911,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 			ImGui::BeginDisabled(i == recorded_legends.size() - 1);
 			ImGui::SameLine();
+
 			if (ImGui::ArrowButton(std::string("Down##" + std::to_string(i)).c_str(), ImGuiDir_Down))
 			{
 				std::swap(recorded_legends.at(i), recorded_legends.at(i + 1));
@@ -899,6 +930,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 			ImGui::SameLine();
 			ImGui::RadioButton(std::string("Dashed##" + std::to_string(i)).c_str(), &recorded_line_styles.at(i), 1);
 			ImGui::InputInt(std::string("Color index override##" + std::to_string(i)).c_str(), &recorded_color_indices.at(i));
+
 			if (recorded_color_indices.at(i) < -1)
 				recorded_color_indices.at(i) = -1;
 
@@ -913,6 +945,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 				g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Failed to save convergence graph screenshot to file.");
 		}
 		ImGui::SameLine();
+
 		if (ImGui::Button("Copy graph to clipboard"))
 			m_convergence_graph_widget.screenshot_graph_to_clipboard();
 
@@ -921,6 +954,7 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 		if (m_convergence_graph_widget.get_log_x_axis())
 			x_axis_name += " (logarithmic)";
+
 		if (m_convergence_graph_widget.get_log_y_axis())
 			y_axis_name += " (logarithmic)";
 

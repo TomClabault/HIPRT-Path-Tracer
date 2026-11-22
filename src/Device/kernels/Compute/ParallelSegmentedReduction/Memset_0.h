@@ -12,8 +12,9 @@
 GLOBAL_KERNEL_SIGNATURE(void)
 ParallelSegmentedReduction_Memset_0(OutputDataType* __restrict__ buffer, unsigned int element_count)
 {
-	unsigned int tid		= threadIdx.x;
-	unsigned int bid		= blockIdx.x;
+	unsigned int tid = threadIdx.x;
+	unsigned int bid = blockIdx.x;
+
 	unsigned int global_tid = bid * blockDim.x + tid;
 	if (global_tid < element_count)
 		buffer[global_tid] = 0;

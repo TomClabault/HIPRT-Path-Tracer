@@ -84,6 +84,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 	// Because we're copying to a CUDA/HIP array, we need the input data
 	// to be in a single linear block of data
 	std::vector<float> linear_image_data(width * height * depth);
+
 	for (int i = 0; i < images.size(); i++)
 		std::copy(images[i].data().begin(), images[i].data().end(), linear_image_data.begin() + width * height * i);
 
@@ -150,6 +151,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 	// Because we're copying to a CUDA/HIP array, we need the input data
 	// to be in a single linear block of data
 	std::vector<float> linear_image_data(width * height * depth * channels);
+
 	for (int i = 0; i < images.size(); i++)
 		std::copy(images[i].data().begin(), images[i].data().end(), linear_image_data.begin() + width * height * i * channels);
 

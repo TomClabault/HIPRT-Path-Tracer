@@ -125,6 +125,7 @@ struct HIPRTOrochiCtx
 
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "HIPRT ver.%s", HIPRT_VERSION_STR);
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "Executing on '%s'\n", device_properties.name);
+
 		if (std::string(device_properties.name).find("NVIDIA") != std::string::npos)
 			hiprt_ctx_input.deviceType = hiprtDeviceNVIDIA;
 		else
@@ -144,6 +145,7 @@ struct HIPRTOrochiCtx
 		std::string archName   = device_properties.gcnArchName;
 
 		uint32_t archNumber = 0;
+
 		if (archName.substr(0, 3) == "gfx")
 		{
 			std::string numberPart = archName.substr(3);

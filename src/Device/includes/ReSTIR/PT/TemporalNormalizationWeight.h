@@ -148,6 +148,7 @@ struct ReSTIRPTTemporalNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_LIKE>
 			ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, center_pixel_surface, random_number_generator);
 
 		float temporal_neighbor_target_function = 0.0f;
+
 		if (temporal_neighbor_confidence > 0)
 		{
 			// Only evaluating the target function if we actually have a temporal neighbor because if we don't,

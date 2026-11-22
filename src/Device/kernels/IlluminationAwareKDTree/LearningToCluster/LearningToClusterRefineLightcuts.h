@@ -164,6 +164,7 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_count > kd_tree.learning_to_cluster.lightcut_capacity)
 		lightcut_count = kd_tree.learning_to_cluster.lightcut_capacity;
+
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity ||
 		!light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
 		return;
@@ -181,6 +182,7 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned char split_flags[LearningToClusterMaximumLightCutSize];
 
 	float total_variance = 0.0f;
+
 	for (unsigned int slot = 0; slot < old_lightcut_size; slot++)
 	{
 		unsigned int offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
@@ -195,11 +197,13 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	unsigned int maximum_lightcut_size = LearningToClusterMaximumLightCutSize;
 	unsigned int remaining_capacity	   = maximum_lightcut_size - old_lightcut_size;
 	unsigned int accepted_split_count  = 0u;
+
 	for (unsigned int slot = 0; slot < old_lightcut_size; slot++)
 	{
 		// The envmap cluster has no node in the light tree and is never split: it stays the slot 0 of the cut
 		bool is_envmap_cluster = old_node_indices[slot] == IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
-		bool can_split		   = !is_envmap_cluster && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_statistics[slot].visit_count > 1u;
+
+		bool can_split = !is_envmap_cluster && light_tree_sg.nodes[old_node_indices[slot]].triangle_count == 0 && old_statistics[slot].visit_count > 1u;
 		float split_probability = 0.0f;
 		if (can_split)
 			split_probability =
@@ -250,6 +254,7 @@ HIPRT_DEVICE void refine_light_clustering_cpu(IlluminationAwareKDTreeDevice kd_t
 	}
 
 	lightcut_data.lightcut_size = new_lightcut_size;
+
 	if (accepted_split_count > 0u)
 	{
 		lightcut_data.last_refinement_iteration	   = lightcut_data.iteration;
@@ -268,6 +273,7 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 {
 #ifdef __KERNELCC__
 	unsigned int slot = threadIdx.x;
+
 	if (lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity || !light_clustering_refinement_is_eligible(kd_tree, lightcut_index))
 		return;
 
@@ -376,6 +382,7 @@ HIPRT_DEVICE void refine_light_clustering_gpu(IlluminationAwareKDTreeDevice kd_t
 	if (slot == 0u)
 	{
 		lightcut_data.lightcut_size = new_lightcut_size;
+
 		if (accepted_split_count > 0u)
 		{
 			lightcut_data.last_refinement_iteration	   = lightcut_data.iteration;

@@ -27,6 +27,7 @@ void ImGuiConvergenceGraphWidgetScreenshotter::init()
 std::vector<unsigned char> ImGuiConvergenceGraphWidgetScreenshotter::screenshot_graph_to_memory(int screenshot_width, int screenshot_height, bool flip_y)
 {
 	regenerate_capture_fbo(screenshot_width, screenshot_height);
+
 	if (m_capture_fbo == 0)
 
 		return {};

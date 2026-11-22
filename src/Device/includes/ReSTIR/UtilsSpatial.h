@@ -19,7 +19,6 @@ HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& rend
 														   Xorshift32Generator& random_number_generator)
 {
 	ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
-
 	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
 	{
 		spatial_pass_settings.reuse_radius = spatial_pass_settings.per_pixel_spatial_reuse_radius[center_pixel_index];
@@ -64,6 +63,7 @@ HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPR
 	int sector_index = 0;
 
 	unsigned char bit_count_so_far = 0;
+
 	if (hippt::popc(directions_mask) == ReSTIR_PT_SpatialDirectionalReuseBitCount)
 		// Fast path if all the directions are allowed
 		sector_index = random_sector_index;
@@ -154,6 +154,7 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 	const ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
 
 	int neighbor_pixel_index;
+
 	if (neighbor_index == spatial_pass_settings.reuse_neighbor_count)
 	{
 		// If this is the last neighbor, we set it to ourselves
@@ -178,6 +179,7 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 		int2_t neighbor_offset_int = make_int2(static_cast<int>(roundf(neighbor_offset_in_disk.x)), static_cast<int>(roundf(neighbor_offset_in_disk.y)));
 
 		int2_t neighbor_pixel_coords;
+
 		if (spatial_pass_settings.debug_neighbor_location)
 		{
 			int2_t offset;
@@ -202,6 +204,7 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 			return -1;
 
 		neighbor_pixel_index = neighbor_pixel_coords.x + neighbor_pixel_coords.y * render_data.render_settings.render_resolution.x;
+
 		if (render_data.render_settings.adaptive_sampling_enabled() &&
 			render_data.render_settings.sample_number >= render_data.render_settings.adaptive_sampling_min_samples)
 		{
@@ -242,9 +245,9 @@ HIPRT_DEVICE void count_valid_spatial_neighbors(const HIPRTRenderData& render_da
 	const ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
 	Xorshift32Generator spatial_neighbors_rng(spatial_pass_settings.spatial_neighbors_rng_seed);
 
-	int center_pixel_index	   = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
-	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;
+	int center_pixel_index = center_pixel_coords.x + center_pixel_coords.y * render_data.render_settings.render_resolution.x;
 
+	int reused_neighbors_count = spatial_pass_settings.reuse_neighbor_count;
 	for (int neighbor_index = 0; neighbor_index < reused_neighbors_count; neighbor_index++)
 	{
 		unsigned long long int* spatial_reuse_hit_rate_hits	 = nullptr;

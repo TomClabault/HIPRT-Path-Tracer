@@ -42,6 +42,7 @@ private:
 
 			return;
 		}
+
 		if (axis_b.x == LIGHT_TREE_ATS_NODE_UNINITIALIZED_AXIS)
 		{
 			this->axis	  = axis_a;

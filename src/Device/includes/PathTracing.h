@@ -246,6 +246,7 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 
 	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, closest_hit_info.primitive_index,
 													   closest_hit_info.texcoords, primary_gbuffer_path_index, ray_payload.throughput);
+
 	if constexpr (MaterialTraits<MaterialType>::is_principled && MaterialTraits<MaterialType>::family == KernelMaterialSpecializationAll)
 	{
 		LightProposalInputs proposal_inputs			 = make_light_proposal_inputs(bsdf_material);
@@ -275,6 +276,7 @@ HIPRT_DEVICE bool path_tracing_compute_next_indirect_bounce(HIPRTRenderData& ren
 	ray_payload.throughput =
 		path_tracing_update_ray_throughput(render_data, ray_payload, closest_hit_info, ray_payload.throughput, bsdf_color_cos_theta, bounce_direction, bsdf_pdf,
 										   random_number_generator, nee_deferred_MIS_context, dispersion_scale);
+
 	if (ray_payload.throughput.is_black())
 		// Killed by russian roulette
 		return false;
@@ -300,6 +302,7 @@ HIPRT_DEVICE void store_denoiser_AOVs(HIPRTRenderData& render_data, uint32_t pix
 	{
 		float3_t accumulated_normal = (render_data.aux_buffers.denoiser_normals[pixel_index] * static_cast<float>(accumulation_count_before) + shading_normal) /
 									  (accumulation_count_before + 1.0f);
+
 		float normal_length = hippt::length(accumulated_normal);
 		if (!hippt::is_zero(normal_length))
 			// Checking that it is non-zero otherwise we would accumulate a persistent NaN in the buffer when normalizing by the 0-length
@@ -315,7 +318,6 @@ HIPRT_DEVICE ColorRGB32F path_tracing_miss_gather_envmap(HIPRTRenderData& render
 														 ColorRGB32F* out_raw_envmap_emission = nullptr)
 {
 	ColorRGB32F skysphere_color;
-
 	if (render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode)
 		skysphere_color = render_data.world_settings.uniform_light_color;
 	else if (render_data.world_settings.ambient_light_type == AmbientLightType::ENVMAP && render_data.world_settings.envmap_intensity == 0.0f)

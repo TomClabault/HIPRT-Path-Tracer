@@ -128,8 +128,8 @@ struct NEEPlusPlusDevice
 
 		if (visible)
 			increment_buffer<BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT>(hash_grid_index, 1);
-		unsigned int total_count_before = increment_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, 1);
 
+		unsigned int total_count_before = increment_buffer<BufferNames::VISIBILITY_MAP_TOTAL_COUNT>(hash_grid_index, 1);
 		if (total_count_before == 0)
 			// If we just inserted a new cell in the hash grid, that's one more cell alive
 			hippt::atomic_fetch_add(m_total_cells_alive_count, 1u);
@@ -248,6 +248,7 @@ private:
 	{
 		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_UNOCCLUDED_COUNT)
 			return hippt::atomic_fetch_add(&m_entries_buffer.total_unoccluded_rays[hash_grid_index], value);
+
 		if constexpr (bufferName == BufferNames::VISIBILITY_MAP_TOTAL_COUNT)
 			return hippt::atomic_fetch_add(&m_entries_buffer.total_num_rays[hash_grid_index], value);
 	}

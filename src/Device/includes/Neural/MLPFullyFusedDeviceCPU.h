@@ -76,7 +76,6 @@ struct MLPFullyFusedDeviceCPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			for (unsigned int neuron = 0; neuron < current_count; ++neuron)
 			{
 				float value = 0.0f;
-
 				if constexpr (USE_BIASES)
 					value += neurons_biases[current_offset + neuron];
 
@@ -112,6 +111,7 @@ struct MLPFullyFusedDeviceCPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 			float output_error					   = output_gradient[neuron_index_in_output_layer];
 
 			neurons_errors[current_neuron_data_index] = output_error;
+
 			if constexpr (USE_BIASES)
 				hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], output_error);
 
@@ -144,6 +144,7 @@ struct MLPFullyFusedDeviceCPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 				d_cost_d_z *= this->activation_function_derivative(current_activation);
 
 				neurons_errors[current_neuron_data_index] = d_cost_d_z;
+
 				if constexpr (USE_BIASES)
 					hippt::atomic_fetch_add(&gradient_biases[current_neuron_data_index], d_cost_d_z);
 
@@ -162,9 +163,11 @@ struct MLPFullyFusedDeviceCPU : public MLPFullyFusedDeviceCommon<InputSizeEncode
 		{
 			unsigned int first_hidden_layer_offset	   = get_neuron_data_index(1, 0);
 			unsigned int first_layer_connection_offset = get_connection_data_index(1, 0, 0);
+
 			for (unsigned int input_index = 0; input_index < input_gradient_count; input_index++)
 			{
 				float input_gradient = 0.0f;
+
 				for (unsigned int hidden_index = 0; hidden_index < HIDDEN_LAYER_SIZE; hidden_index++)
 				{
 					unsigned int connection_index = first_layer_connection_offset + hidden_index * INPUT_SIZE_PADDED_WMMA + input_index;

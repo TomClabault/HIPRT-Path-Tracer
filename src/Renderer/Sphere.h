@@ -37,10 +37,10 @@ struct Sphere
 
 				float t1 = (-b - sqrt_delta) / a2;
 				float t2 = (-b + sqrt_delta) / a2;
-
 				if (t1 < t2)
 				{
 					hit_info.t = t1;
+
 					if (hit_info.t < 0.0f)
 						hit_info.t = t2;
 				}

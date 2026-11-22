@@ -56,6 +56,7 @@ HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRende
 																Xorshift32Generator& random_number_generator)
 {
 	float target_function_sum = 0.0f;
+
 	for (int draw = 0; draw < draw_count; draw++)
 	{
 		unsigned int pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
@@ -147,6 +148,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 		// The subsets of the U-statistic are enumerated by up to 3 nested loops below
 		float bracket_sum		  = 0.0f;
 		unsigned int subset_count = 0;
+
 		for (int first = 0; first < probe_count; first++)
 		{
 			if (group_size == 1)
@@ -235,7 +237,6 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	{
 		float denominator = target_function_at_center * center_pixel_reservoir_confidence;
 		denominator += domain_confidence_sum / group_size * group_target_function_sum;
-
 		if (denominator > 0.0f)
 			return neighbor_reservoir_confidence * target_function_at_neighbor / denominator / (reused_neighbors_count * neighbor_selection_probability);
 		else

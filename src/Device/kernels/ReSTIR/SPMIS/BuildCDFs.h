@@ -41,6 +41,7 @@ HIPRT_DEVICE void spmis_build_cell_cdf(unsigned short int* cell_non_zero_reservo
 	unsigned int index		   = cell_offset + index_in_cell;
 
 	float pixel_importance = 0.0f;
+
 	if (index_in_cell < non_zero_count)
 	{
 		unsigned int pixel_index		  = pixel_indices_sorted[index];
@@ -140,7 +141,8 @@ inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_r
 	// Completely different path for the CPU
 	for (int cell_alive_index = 0; cell_alive_index < cell_alive_count; cell_alive_index++)
 	{
-		unsigned int cell_index		= cell_alive_list[cell_alive_index];
+		unsigned int cell_index = cell_alive_list[cell_alive_index];
+
 		unsigned int non_zero_count = cell_non_zero_reservoir_counters[cell_index];
 		if (non_zero_count > 0)
 		{
@@ -167,10 +169,10 @@ inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_r
 
 			// Now computing the LUT
 			unsigned int current_cdf_index = 0;
+
 			for (unsigned int bin = 0; bin < ReSTIR_PT_SPMISCDFLUTSize; bin++)
 			{
 				float bin_lower_bound = bin / static_cast<float>(ReSTIR_PT_SPMISCDFLUTSize);
-
 				while (current_cdf_index < non_zero_count - 1 && out_cdfs[cell_offset + current_cdf_index + 1] <= bin_lower_bound)
 					current_cdf_index++;
 

@@ -39,6 +39,7 @@ template <typename MaterialType>
 HIPRT_DEVICE void wavefront_copy_compact_principled_material(const DeviceUnpackedPrincipledFullMaterial& source, MaterialType& destination)
 {
 	destination.emission = source.get_emission();
+
 	if (source.is_emissive())
 		destination.emission_flags |= EffectiveMaterialEmissionIsEmissive;
 	destination.base_color = source.base_color;
@@ -174,6 +175,7 @@ HIPRT_DEVICE HIPRT_INLINE bool wavefront_load_and_shade_hit(HIPRTRenderData& ren
 	static_cast<RayPayloadCommon&>(typed_ray_payload) = ray_payload;
 	wavefront_load_current_bsdf_material<initialize_primary_path>(render_data, pixel_index, closest_hit_info, resolved_user_controls,
 																  typed_ray_payload.material);
+
 	NEEDeferredLightProposalState proposal_state{};
 	if constexpr (initialize_primary_path)
 		proposal_state = load_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDF_MODEL)>(
@@ -213,6 +215,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 
 	Xorshift32Generator random_number_generator(initialize_primary_path ? render_data.get_updated_random_seed(pixel_index)
 																		: render_data.wavefront_data.path_rng_states[pixel_index]);
+
 	if constexpr (initialize_primary_path)
 		wavefront_initialize_path(render_data, pixel_index, ray_payload, ray, closest_hit_info, intersection_found);
 
@@ -230,6 +233,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 			EffectiveMaterialEmission current_hit_emission;
 			current_hit_emission.emission		= ColorRGB32F(0.0f);
 			current_hit_emission.emission_flags = 0u;
+
 			if (intersection_found)
 			{
 				int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
@@ -241,6 +245,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 
 			ResolvedMaterialUserControlsCache previous_resolved_user_controls;
 			previous_resolved_user_controls.validity_mask = 0;
+
 			// Stored light candidates are evaluated at the previous vertex even when the continuation ray misses or hits nonemissive geometry.
 			if (previous_nee_deferred_MIS_context.last_primary_gbuffer_path_index == NEE_DEFERRED_INVALID_PATH_INDEX)
 				previous_resolved_user_controls = wavefront_load_resolved_material_user_controls(render_data, pixel_index, previous_resolved_user_controls);
@@ -280,6 +285,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 		}
 
 		current_material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
+
 		bool classification_cache_loaded =
 			wavefront_load_current_material_classification(render_data, pixel_index, resolved_user_controls, classification_inputs);
 		if (!classification_cache_loaded)

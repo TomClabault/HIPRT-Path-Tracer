@@ -142,6 +142,7 @@ LightTreeATSBuilderDeviceData<DataContainer> LightTreeATSBuilder::compute_device
 		device_data_out.nodes_device[i].bounds_min			  = m_nodes[i].node_bounds.mini;
 		device_data_out.nodes_device[i].bounds_max			  = m_nodes[i].node_bounds.maxi;
 		device_data_out.nodes_device[i].triangle_count		  = m_nodes[i].triangle_count;
+
 		if (m_nodes[i].triangle_count == 0)
 			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].left_child_index;
 		else
@@ -158,11 +159,11 @@ void LightTreeATSBuilder::to_device(HIPRTRenderData& render_data,
 									LightTreeATSBuildResult<DataContainer>& build_result)
 {
 	LightTreeATSBuilderDeviceData<DataContainer>& device_data = build_result.device_data;
-
 	if (device_data.nodes_device.size() == 0)
 		return;
 
 	std::vector<unsigned int> converted_bit_trails(total_scene_triangle_count, 0xFFFFFFFF);
+
 	for (int i = 0; i < m_bit_trails.size(); i++)
 		converted_bit_trails[emissive_triangles_primitive_indices[m_triangle_indices[i]]] = m_bit_trails[i];
 

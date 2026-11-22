@@ -439,7 +439,6 @@ bool GPUKernelCompilerOptions::has_macro(const std::string& name)
 int GPUKernelCompilerOptions::get_macro_value(const std::string& name) const
 {
 	auto find = m_options_macro_map.find(name);
-
 	if (find == m_options_macro_map.end())
 	{
 		// Wasn't found in the options-macro, trying in the custom macros
@@ -470,7 +469,6 @@ std::string GPUKernelCompilerOptions::get_string_macro_value(const std::string& 
 const std::shared_ptr<int> GPUKernelCompilerOptions::get_pointer_to_macro_value(const std::string& name) const
 {
 	auto find = m_options_macro_map.find(name);
-
 	if (find == m_options_macro_map.end())
 	{
 		// Wasn't found in the options-macro, trying in the custom macros
@@ -521,7 +519,6 @@ std::string* GPUKernelCompilerOptions::get_raw_pointer_to_string_macro_value(con
 void GPUKernelCompilerOptions::set_pointer_to_macro(const std::string& name, std::shared_ptr<int> pointer_to_value)
 {
 	auto find = m_options_macro_map.find(name);
-
 	if (find == m_options_macro_map.end())
 		// Wasn't found in the options-macro, adding/setting it in the custom macro map
 		m_custom_macro_map[name] = pointer_to_value;

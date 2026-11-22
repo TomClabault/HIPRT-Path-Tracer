@@ -64,8 +64,8 @@ void LinuxRenderWindowMouseInteractor::glfw_mouse_cursor_callback(GLFWwindow* wi
 	bool render_window_hovered_when_clicked = interactor_instance->render_window_hovered_on_click;
 
 	bool render_window_hovered = render_window->get_imgui_renderer()->get_imgui_render_window().is_hovered();
-	bool imgui_wants_mouse	   = io.WantCaptureMouse && !render_window_hovered && !render_window_hovered_when_clicked;
 
+	bool imgui_wants_mouse = io.WantCaptureMouse && !render_window_hovered && !render_window_hovered_when_clicked;
 	if (!imgui_wants_mouse)
 	{
 		float xposf = static_cast<float>(xpos);

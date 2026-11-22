@@ -38,6 +38,7 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 
 	unsigned int lightcut_size = lightcut_data.lightcut_size;
 	unsigned int cdf_offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0);
+
 	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
 	{
 		kd_tree.learning_to_cluster.lightcut_cdfs[cdf_offset] = 0u;
@@ -48,6 +49,7 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 	}
 
 	float total_weight = 0.0f;
+
 	for (unsigned int slot = 0; slot < lightcut_size; slot++)
 	{
 		unsigned int cluster_offset		= kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
@@ -60,6 +62,7 @@ HIPRT_DEVICE void build_light_cluster_sampling_cdf_cpu(IlluminationAwareKDTreeDe
 	kd_tree.learning_to_cluster.lightcut_cdfs[cdf_offset] = total_weight > 0.0f ? 65535u : 0u;
 
 	float cumulative_weight = 0.0f;
+
 	for (unsigned int slot = 1; slot < lightcut_size; slot++)
 	{
 		unsigned int cluster_offset				 = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
@@ -91,6 +94,7 @@ IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(IlluminationA
 {
 	unsigned int lightcut_index = blockIdx.x;
 	unsigned int slot			= threadIdx.x;
+
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;
@@ -101,6 +105,7 @@ IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(IlluminationA
 
 	unsigned int lightcut_size = lightcut_data.lightcut_size;
 	unsigned int cdf_offset	   = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0);
+
 	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
 	{
 		if (slot == 0u)
@@ -113,6 +118,7 @@ IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(IlluminationA
 	}
 
 	float weight = 0.0f;
+
 	if (slot < lightcut_size)
 	{
 		unsigned int cluster_offset		= kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
@@ -123,6 +129,7 @@ IlluminationAwareKDTree_LearningToClusterBuildLightcutSamplingCDFs(IlluminationA
 
 	__shared__ float total_weight;
 	float exclusive_prefix_weight = block_prefix_scan_exclusive<LearningToClusterMaximumLightCutSize>(weight);
+
 	if (slot == lightcut_size - 1u)
 		total_weight = exclusive_prefix_weight + weight;
 

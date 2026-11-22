@@ -26,8 +26,8 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t
 	int thread_index_in_block = threadIdx.x;
 
 	__shared__ int invalid_values_count;
-	__shared__ int values_counts[256];
 
+	__shared__ int values_counts[256];
 	for (int i = thread_index_in_block; i < 256; i += blockDim.x * blockDim.y)
 		values_counts[i] = 0;
 	invalid_values_count = 0;
@@ -65,6 +65,7 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t
 
 			// The first thread scans the values written so far by the warps
 			int warps_per_block = (blockDim.x * blockDim.y) >> 5;
+
 			if (thread_index_in_block == 0)
 			{
 				for (int w = warp_offset; w < warp_offset + warps_per_block && w < 8; ++w)
@@ -187,6 +188,7 @@ inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	int thread_index_in_block = threadIdx.x;
 
 	int hash_grid_cell_offset = in_hash_grid_cell_offsets_buffer[blockIdx.x];
+
 	int end_of_current_hash_grid_cell;
 	if (blockIdx.x == gridDim.x - 1)
 		end_of_current_hash_grid_cell = resolution_x * resolution_y;
@@ -196,6 +198,7 @@ inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
 	unsigned int pixel_hash = 0;
 	int pixel_x				= 0;
 	int pixel_y				= 0;
+
 	if (hash_grid_cell_offset + thread_index_in_block < end_of_current_hash_grid_cell)
 	{
 		uint3_t pixel_hash_grid_data = render_data.ssbn_settings.screen_space_hash_grid[hash_grid_cell_offset + thread_index_in_block];

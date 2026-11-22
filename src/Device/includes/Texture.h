@@ -43,6 +43,7 @@ HIPRT_DEVICE static ColorRGBA32F sample_texture_rgba(const void* texture_buffer,
 #ifdef __KERNELCC__
 	// We're doing the UV addressing ourselves since it seems to be broken in Orochi...
 	float u = uv.x;
+
 	float v = uv.y;
 	if (flip_uv_y)
 		v = -v;

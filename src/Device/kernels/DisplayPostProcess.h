@@ -42,6 +42,7 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 	unsigned int output_pixel_index = x + y * resolution_width;
 
 	ColorRGB32F final_color;
+
 	switch (display_settings.display_view)
 	{
 	case DISPLAY_POST_PROCESS_DENOISER_ALBEDO:
@@ -74,8 +75,8 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 			unsigned int sample_count = static_cast<unsigned int>(hippt::max(1, display_settings.white_furnace_sample_count));
 			final_color				  = source_framebuffer[source_pixel_index] / static_cast<float>(sample_count);
 		}
-		final_color = display_view_apply_white_furnace_threshold(final_color, display_settings);
 
+		final_color = display_view_apply_white_furnace_threshold(final_color, display_settings);
 		if (display_settings.do_tonemapping == 1)
 			final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
 		break;

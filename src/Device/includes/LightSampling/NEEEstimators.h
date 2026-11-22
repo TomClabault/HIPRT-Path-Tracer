@@ -43,6 +43,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_one_light_no_mis_without_visibility(HIPRTRende
 												incident_light_info, ray_payload.volume_state, false, bsdf_material, ray_payload.accumulated_roughness,
 												MicrofacetRegularization::RegularizationMode::REGULARIZATION_CLASSIC);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
 	if (bsdf_pdf == 0.0f)
 		return ColorRGB32F(0.0f);
 
@@ -78,7 +79,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 	for (int i = 0; i < DirectLightSampleCount<DirectLightSamplingStrategy>(); i++)
 	{
 		LightSamplePointInformation& light_sample = light_samples[i];
-
 		if (light_sample.area_measure_pdf <= 0.0f)
 			// Can happen for very small triangles or the light
 			// sampling technique couldn't sample a triangle
@@ -95,7 +95,6 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 
 		// abs() here to allow backfacing light sources
 		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
-
 		if (dot_light_source > 0.0f)
 		{
 			if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
@@ -112,9 +111,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS(HIPRTRenderData& render_data,
 				NEEPlusPlusContext nee_plus_plus_context;
 				nee_plus_plus_context.point_on_light = light_sample.point_on_light;
 				nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+
 				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 																   nee_plus_plus_context, random_number_generator);
-
 				if (!in_shadow)
 					light_source_radiance +=
 						evaluate_one_light_no_mis_without_visibility(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, light_sample,
@@ -144,6 +143,7 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_bsdf(const HIPRTRenderData& render_dat
 	ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
 	ColorRGB32F bsdf_radiance = ColorRGB32F(0.0f);
+
 	if (bsdf_sample_pdf > 0.0f)
 	{
 		hiprtRay new_ray;
@@ -187,6 +187,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_one_light_mis_without_visibility(HIPRTRenderDa
 												incident_light_info, ray_payload.volume_state, false, bsdf_material, ray_payload.accumulated_roughness,
 												MicrofacetRegularization::RegularizationMode::REGULARIZATION_MIS);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
 	if (!(bsdf_pdf > 0.0f))
 		return ColorRGB32F(0.0f);
 
@@ -248,9 +249,9 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_deferred_BSDF(HIPRTRenderData& ren
 					NEEPlusPlusContext nee_plus_plus_context;
 					nee_plus_plus_context.point_on_light = light_sample.point_on_light;
 					nee_plus_plus_context.shaded_point	 = shadow_ray.origin;
+
 					bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 																	   nee_plus_plus_context, random_number_generator);
-
 					if (!in_shadow)
 						light_source_radiance_mis +=
 							evaluate_one_light_mis_without_visibility(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, light_sample,
@@ -316,12 +317,14 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F evaluate_learning_to_cluster_without_visib
 												incident_light_info, ray_payload.volume_state, false, bsdf_material, ray_payload.accumulated_roughness,
 												regularization_mode);
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
+
 	if (bsdf_pdf == 0.0f)
 		return ColorRGB32F(0.0f);
 
 	float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
 	ColorRGB32F estimator = light_sample.emission * cosine_term * bsdf_color / solid_angle_pdf;
-	float mis_weight	  = 1.0f;
+
+	float mis_weight = 1.0f;
 	if constexpr (use_MIS)
 		mis_weight = balance_heuristic(solid_angle_pdf, 1, bsdf_pdf, 1);
 
@@ -354,6 +357,7 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 
 	float solid_angle_pdf = envmap_pdf_solid_angle * cluster_sample.cluster_probability;
 	float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, sampled_direction));
+
 	if (!(solid_angle_pdf > 0.0f) || !hippt::is_finite(solid_angle_pdf) || cosine_term <= 0.0f)
 	{
 		// Keep a failed direction proposal observable to learning-to-cluster as a zero-reward observation, as for the emissive clusters
@@ -378,6 +382,7 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 	ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 
 	ColorRGB32F mis_estimator(0.0f);
+
 	if (bsdf_pdf > 0.0f)
 	{
 		float mis_weight = 1.0f;
@@ -422,7 +427,6 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 
 		bool shadow_ray_occluded = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, 1.0e35f, closest_hit_info.primitive_index, nee_plus_plus_context,
 																	 random_number_generator);
-
 		if (!shadow_ray_occluded)
 		{
 			spatial_training_sample.spatial_radiance_weight			 = spatial_radiance_weight_if_visible;
@@ -453,13 +457,13 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 
 	IlluminationAwareKDTreeSGShadingContext shading_context = build_light_clustering_shading_context(
 		closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, static_cast<const LightTreeSGProposalState&>(proposal_state));
+
 	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
 		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
 
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
 		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, mesh_id, random_number_generator);
-
 	if (!triangle_sample.valid())
 	{
 		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);
@@ -575,7 +579,8 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 						float cosine_term	  = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_direction));
 						ColorRGB32F numerator = light_sample.emission * cosine_term * bsdf_color;
 						ColorRGB32F estimator = numerator / solid_angle_pdf;
-						float mis_weight	  = 1.0f;
+
+						float mis_weight = 1.0f;
 						if constexpr (use_MIS)
 							mis_weight = balance_heuristic(solid_angle_pdf, 1, bsdf_pdf, 1);
 
@@ -645,6 +650,7 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 								   nisml_sample.emissive_triangle_pdf > 0.0f;
 
 	NISMLTrainingSample training_record{};
+
 	if (collect_training_record)
 	{
 		training_record.position		   = closest_hit_info.inter_point;
@@ -674,10 +680,10 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 
 	ColorRGB32F numerator(0.0f);
 	float visibility = 0.0f;
+
 	for (int i = 0; i < 1; i++)
 	{
 		LightSamplePointInformation& light_sample = light_samples[i];
-
 		if (light_sample.area_measure_pdf <= 0.0f)
 			// Can happen for very small triangles or the light
 			// sampling technique couldn't sample a triangle
@@ -695,7 +701,6 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 
 		// abs() here to allow backfacing light sources
 		float dot_light_source = compute_cosine_term_at_light_source(light_sample.light_source_normal, -shadow_ray.direction);
-
 		if (dot_light_source > 0.0f)
 		{
 			if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
@@ -717,6 +722,7 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 					ColorRGB32F bsdf_color = bsdf_dispatcher_eval(render_data, bsdf_context, bsdf_pdf, random_number_generator);
 					ColorRGB32F contribution_if_visible(0.0f);
 					ColorRGB32F numerator_if_visible(0.0f);
+
 					if (bsdf_pdf != 0.0f)
 					{
 						float cosine_term	 = hippt::abs(hippt::dot(closest_hit_info.shading_normal, shadow_ray.direction));
@@ -750,15 +756,16 @@ HIPRT_DEVICE ColorRGB32F shade_one_light_no_MIS_neural_many_lights(HIPRTRenderDa
 				NEEPlusPlusContext nee_plus_plus_context;
 				nee_plus_plus_context.point_on_light = light_sample.point_on_light;
 				nee_plus_plus_context.shaded_point	 = shadow_ray_origin;
+
 				bool in_shadow = evaluate_shadow_ray_nee_plus_plus(render_data, shadow_ray, distance_to_light, closest_hit_info.primitive_index,
 																   nee_plus_plus_context, random_number_generator);
-
 				if (!in_shadow)
 				{
 					visibility = 1.0f;
 
 					// Conversion to solid angle from surface area measure
 					float light_sample_solid_angle_pdf = area_to_solid_angle_pdf(light_sample.area_measure_pdf, distance_to_light, dot_light_source);
+
 					if (collect_training_record)
 						training_record.point_on_light_pdf_solid_angle = area_to_solid_angle_pdf(point_on_light_area_pdf, distance_to_light, dot_light_source);
 
@@ -1159,12 +1166,14 @@ HIPRT_DEVICE ColorRGB32F deferred_NEE_MIS_envmap_miss_learning_to_cluster(HIPRTR
 	ColorRGB32F envmap_radiance = envmap_eval(render_data, bsdf_sampled_direction, envmap_pdf_solid_angle);
 
 	float light_sampler_solid_angle_pdf = 0.0f;
+
 	if (nee_deferred_MIS_context.last_can_do_light_sampling)
 	{
 		const NEEDeferredLightProposalState& proposal_state = nee_deferred_MIS_context.get_last_light_proposal_state();
 		IlluminationAwareKDTreeSGShadingContext shading_context =
 			build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 												   nee_deferred_MIS_context.last_shading_normal, static_cast<const LightTreeSGProposalState&>(proposal_state));
+
 		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && nee_deferred_MIS_context.last_primitive_index >= 0)
 			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
@@ -1248,11 +1257,13 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 	float light_sampler_solid_angle_pdf = 0.0f;
+
 	if (nee_deferred_MIS_context.last_can_do_light_sampling)
 	{
 		IlluminationAwareKDTreeSGShadingContext shading_context =
 			build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 												   nee_deferred_MIS_context.last_shading_normal, static_cast<const LightTreeSGProposalState&>(proposal_state));
+
 		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
 		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && nee_deferred_MIS_context.last_primitive_index >= 0)
 			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
@@ -1361,6 +1372,7 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 	ray_payload.bounce++;
 
 	EffectiveMaterialEmission current_hit_emission;
+
 	if (intersection_found)
 	{
 		int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];

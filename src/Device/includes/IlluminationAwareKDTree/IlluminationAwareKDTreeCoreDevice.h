@@ -73,7 +73,8 @@ struct IlluminationAwareKDTreeCoreDevice
 		float second_count = static_cast<float>(second.valid_observation_count);
 		float first_mean   = first_coefficient * first.scalar_radiance_sum / first_count;
 		float second_mean  = second_coefficient * second.scalar_radiance_sum / second_count;
-		float difference   = first_mean - second_mean;
+
+		float difference = first_mean - second_mean;
 		if (!hippt::is_finite(first_mean) || !hippt::is_finite(second_mean) || !hippt::is_finite(difference) || !(difference > 0.0f))
 			return false;
 
@@ -83,10 +84,12 @@ struct IlluminationAwareKDTreeCoreDevice
 		second_numerator		 = second_numerator > 0.0f ? second_numerator : 0.0f;
 		float first_denominator	 = first_count * first_count * first_count;
 		float second_denominator = second_count * second_count * second_count;
-		float variance			 = first_coefficient * first_coefficient * first_numerator / first_denominator +
+
+		float variance = first_coefficient * first_coefficient * first_numerator / first_denominator +
 						 second_coefficient * second_coefficient * second_numerator / second_denominator;
 		if (!hippt::is_finite(variance))
 			return false;
+
 		if (variance <= 1.0e-30f)
 			return true;
 
@@ -119,12 +122,14 @@ struct IlluminationAwareKDTreeCoreDevice
 			guiding_signature_float.squared_scalar_radiance_sum - lookahead_signature_float.squared_scalar_radiance_sum > 0.0f
 				? guiding_signature_float.squared_scalar_radiance_sum - lookahead_signature_float.squared_scalar_radiance_sum
 				: 0.0f;
+
 		if (difference_cell.valid_observation_count < static_cast<float>(user_settings.minimum_sample_count_for_splitting))
 			return false;
 
-		float guiding_sample_count			  = static_cast<float>(guiding_signature_float.valid_observation_count);
-		float lookahead_sample_count		  = static_cast<float>(lookahead_signature_float.valid_observation_count);
-		float threshold						  = user_settings.mean_radiance_split_threshold;
+		float guiding_sample_count	 = static_cast<float>(guiding_signature_float.valid_observation_count);
+		float lookahead_sample_count = static_cast<float>(lookahead_signature_float.valid_observation_count);
+		float threshold				 = user_settings.mean_radiance_split_threshold;
+
 		float positive_difference_coefficient = (1.0f - threshold) * (guiding_sample_count - lookahead_sample_count);
 		float positive_lookahead_coefficient  = guiding_sample_count - (1.0f - threshold) * lookahead_sample_count;
 		if (normal_difference_exceeds_threshold_fp32(difference_cell, positive_difference_coefficient, lookahead_signature_float,
@@ -161,11 +166,13 @@ struct IlluminationAwareKDTreeCoreDevice
 
 		float b1 = signature.scalar_radiance_sum;
 		float b2 = signature.squared_scalar_radiance_sum;
+
 		if (!hippt::is_finite(b1) || !hippt::is_finite(b2) || !hippt::is_finite(signature.weighted_direction_sum.x) ||
 			!hippt::is_finite(signature.weighted_direction_sum.y) || !hippt::is_finite(signature.weighted_direction_sum.z) || !(b1 > 0.0f) || !(b2 > 0.0f))
 			return result;
 
-		float3_t direction_sum	   = signature.weighted_direction_sum;
+		float3_t direction_sum = signature.weighted_direction_sum;
+
 		float direction_sum_length = hippt::length(direction_sum);
 		if (!hippt::is_finite(direction_sum_length) || !(direction_sum_length > 1.0e-20f))
 			return result;
@@ -177,10 +184,12 @@ struct IlluminationAwareKDTreeCoreDevice
 		// The exact value lies in [0,1]. Keep the clamp below one representable in FP32 so the denominator remains positive.
 		if (resultant_length < 0.0f)
 			resultant_length = 0.0f;
+
 		if (resultant_length > FLOAT_RESULTANT_LENGTH_BELOW_ONE)
 			resultant_length = FLOAT_RESULTANT_LENGTH_BELOW_ONE;
 
-		float resultant_length_squared	   = resultant_length * resultant_length;
+		float resultant_length_squared = resultant_length * resultant_length;
+
 		float resultant_length_denominator = 1.0f - resultant_length_squared;
 		if (!hippt::is_finite(resultant_length_denominator) || !(resultant_length_denominator > 0.0f))
 			return result;
@@ -199,13 +208,15 @@ struct IlluminationAwareKDTreeCoreDevice
 		float y_cubed	  = y_squared * y;
 		float numerator	  = y_cubed + 1.69934861f * y_squared + 5.38753272f * y + 9.85021305f;
 		float denominator = y_squared + 0.67453491f * y + 4.31180006f;
+
 		if (!hippt::is_finite(y) || !hippt::is_finite(y_squared) || !hippt::is_finite(y_cubed) || !hippt::is_finite(numerator) ||
 			!hippt::is_finite(denominator) || !(denominator != 0.0f))
 			return result;
 
 		// Eq. 4 of the paper
 		float concentration_argument = (y - 1.0f) * numerator / denominator;
-		float concentration			 = hippt::sqrt(concentration_argument > 0.0f ? concentration_argument : 0.0f);
+
+		float concentration = hippt::sqrt(concentration_argument > 0.0f ? concentration_argument : 0.0f);
 		if (!hippt::is_finite(concentration))
 			return result;
 
@@ -318,7 +329,6 @@ struct IlluminationAwareKDTreeCoreDevice
 
 			unsigned int left_child_index  = node.left_child_index;
 			unsigned int right_child_index = left_child_index + 1;
-
 			if (node.flags & IlluminationAwareKDTreeNodeFlag_Lookahead &&
 				(left_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX || right_child_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX))
 				// We found the deepest lookahead cell which doesn't have children so we stop here
@@ -418,6 +428,7 @@ struct IlluminationAwareKDTreeCoreDevice
 			node_index						 = find_guiding_cell(position);
 			sample.cached_guiding_node_index = node_index;
 		}
+
 		if (node_index == IlluminationAwareKDTreeNode::INVALID_NODE_INDEX)
 			return;
 
@@ -441,6 +452,7 @@ struct IlluminationAwareKDTreeCoreDevice
 
 			unsigned int left_child_index  = node.left_child_index;
 			unsigned int right_child_index = left_child_index + 1;
+
 			// Follow exactly one child because the sample position belongs to
 			// exactly one k-d cell at this level.
 			float position_component = node.split_axis == 0 ? position.x : (node.split_axis == 1 ? position.y : position.z);
@@ -474,8 +486,8 @@ struct IlluminationAwareKDTreeCoreDevice
 		}
 
 		float3_t mean_position = moments.position_sum / countf;
-		float3_t variance	   = (moments.position_squared_sum / countf) - (mean_position * mean_position);
 
+		float3_t variance = (moments.position_squared_sum / countf) - (mean_position * mean_position);
 		if (variance.x >= variance.y && variance.x >= variance.z)
 		{
 			out_split_axis	   = 0;
@@ -511,9 +523,9 @@ struct IlluminationAwareKDTreeCoreDevice
 			if (current_count + amount_to_reserve > node_capacity)
 				return IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
 
-			unsigned int desired_count	= current_count + amount_to_reserve;
-			unsigned int observed_count = hippt::atomic_compare_exchange(node_count, current_count, desired_count);
+			unsigned int desired_count = current_count + amount_to_reserve;
 
+			unsigned int observed_count = hippt::atomic_compare_exchange(node_count, current_count, desired_count);
 			if (observed_count == current_count)
 				// The compare-and-swap succeeded.
 				return current_count;

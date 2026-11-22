@@ -18,12 +18,14 @@ GLOBAL_KERNEL_SIGNATURE(void) inline HierarchicalAdaptiveSamplingBuildRows(HIPRT
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(HIERARCHICAL_ADAPTIVE_SAMPLING_RENDER_DATA);
 	unsigned int y				 = blockIdx.x * blockDim.x + threadIdx.x;
 #endif // #ifdef __KERNELCC__
-	int width  = render_data.render_settings.render_resolution.x;
+	int width = render_data.render_settings.render_resolution.x;
+
 	int height = render_data.render_settings.render_resolution.y;
 	if (y >= height)
 		return;
 
 	float row_sum = 0.0f;
+
 	for (int x = 0; x < width; x++)
 	{
 		unsigned int pixel_index = x + y * width;

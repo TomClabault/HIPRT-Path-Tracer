@@ -33,6 +33,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline TraceTest(HIPRTRenderData render_data, int2
 	// Direction to the center of the pixel
 	float x_ray_point_direction = (x + 0.5f);
 	float y_ray_point_direction = (y + 0.5f);
+
 	if (render_data.current_camera.do_jittering)
 	{
 		// Jitter randomly around the center

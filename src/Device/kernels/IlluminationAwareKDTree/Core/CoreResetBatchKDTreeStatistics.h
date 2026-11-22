@@ -24,6 +24,7 @@ IlluminationAwareKDTree_CoreResetBatchKDTreeStatistics(IlluminationAwareKDTreeDe
 #endif
 
 	unsigned int node_count = *kd_tree_device.core.node_count;
+
 	if (reset_index == 0)
 		*kd_tree_device.core.training_sample_count = 0;
 

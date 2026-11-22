@@ -77,6 +77,7 @@ void Utils::compute_prefix_sum(const std::vector<T>& input, std::vector<T>& out_
 		return;
 
 	T sum = 0;
+
 	for (int i = 0; i < input.size(); i++)
 	{
 		sum += input[i];

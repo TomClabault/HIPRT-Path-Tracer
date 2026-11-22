@@ -40,7 +40,6 @@ inline ReSTIR_PT_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 		return;
 
 	unsigned int cell_index = all_pixel_hashes[linear_pixel_index];
-
 	if (cell_index == HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX)
 		return;
 
@@ -52,6 +51,7 @@ inline ReSTIR_PT_SPMIS_CountCells(unsigned int* all_pixel_hashes,
 	{
 		unsigned short int index_in_cell = hippt::atomic_fetch_add(&cell_counters[cell_index], (unsigned short int)1);
 		hippt::atomic_fetch_add(&cell_confidence_sums[cell_index], (unsigned int)reservoirs[linear_pixel_index].confidence);
+
 		if (important)
 			hippt::atomic_fetch_add(&cell_non_zero_reservoir_counters[cell_index], (unsigned short int)1);
 

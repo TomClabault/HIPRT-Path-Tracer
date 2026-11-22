@@ -114,7 +114,6 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_1_OVER_Z>
 
 			float target_function_at_neighbor =
 				jacobian * ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
-
 			if (target_function_at_neighbor > 0.0f)
 				// If the neighbor could have produced this sample...
 				out_normalization_denom += render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].confidence;
@@ -166,14 +165,12 @@ struct ReSTIRPTSpatialNormalizationWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_MIS_LIKE>
 
 			float target_function_at_neighbor =
 				ReSTIR_PT_evaluate_target_function<true>(render_data, final_reservoir_sample, neighbor_surface, random_number_generator);
-
 			if (!final_reservoir_sample.is_envmap_path())
 				// Applying the jacobian to get "p_hat_from_i"
 				target_function_at_neighbor *= hippt::max(
 					0.0f, get_jacobian_determinant_reconnection_shift(
 							  final_reservoir_sample.rc_vertex, final_reservoir_sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
 							  neighbor_surface.shading_point, render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold()));
-
 			if (target_function_at_neighbor > 0.0f)
 			{
 				int M = render_data.render_settings.restir_pt_settings.spatial_pass.input_reservoirs[neighbor_pixel_index].confidence;

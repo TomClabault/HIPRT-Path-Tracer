@@ -266,6 +266,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	int bsdf_model_index											= 2;
+
 	switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL))
 	{
 	case BSDF_LAMBERTIAN:
@@ -284,6 +285,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 	if (ImGui::Combo("Global BSDF model", &bsdf_model_index, bsdf_model_items, IM_ARRAYSIZE(bsdf_model_items)))
 	{
 		int bsdf_model_value = BSDF_PRINCIPLED;
+
 		switch (bsdf_model_index)
 		{
 		case 0:
@@ -320,6 +322,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 		std::memset(&override_state, override_all, sizeof(MaterialOverrideState));
 		material_override_changed = true;
 	}
+
 	if (ImGui::CollapsingHeader("Base Layer"))
 	{
 		ImGui::TreePush("Base layer material tree");
@@ -358,6 +361,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 5:
 					material_override_changed |= draw_material_override_line("IOR", override_state.override_IOR, material_override.ior, 1.0f, 3.0f);
+
 					if (material_override.ior < 1.0f ||
 						material_override.ior > 3.0f && (material_override.do_glass_energy_compensation || material_override.do_specular_energy_compensation))
 					{
@@ -668,6 +672,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 
 				case 3:
 					material_override_changed |= draw_material_override_line("IOR", override_state.override_IOR, material_override.ior, 1.0f, 3.0f);
+
 					if (material_override.ior < 1.0f ||
 						material_override.ior > 3.0f && (material_override.do_glass_energy_compensation || material_override.do_specular_energy_compensation))
 					{
@@ -1086,15 +1091,16 @@ void ImGuiObjectsWindow::draw_objects_panel()
 	}
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 	if (materials.size() > 0)
 	{
 		std::shared_ptr<GPUKernelCompilerOptions> kernel_options = m_renderer->get_global_compiler_options();
 		CPUMaterial& material									 = materials[currently_selected_material_index];
 
 		bool emission_changed;
+
 		material_changed |=
 			ImGuiObjectsWindow::draw_material_editor(material, material_names[currently_selected_material_index], kernel_options, emission_changed);
-
 		if (material_changed)
 		{
 			material.make_safe();
@@ -1142,6 +1148,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 		material_changed |= ImGui::SliderFloat("Anisotropy", &material.anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Anisotropy rotation", &material.anisotropy_rotation, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
+
 		if (material.ior < 1.0f || material.ior > 3.0f)
 		{
 			ImGui::SameLine();
@@ -1163,6 +1170,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 		material_changed |= ImGui::SliderFloat("Specular darkening", &material.specular_darkening, 0.0f, 1.0f);
 		ImGuiRenderer::show_help_marker("Same as coat darkening but for total internal reflection inside the specular layer "
 										"that sits on top of the diffuse base.");
+
 		if (material.do_specular_energy_compensation &&
 			kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
 		{
@@ -1228,6 +1236,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 		ImGui::EndDisabled();
 
 		ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 		if (material.do_metallic_energy_compensation &&
 			kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
 		{
@@ -1287,6 +1296,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 		material_changed |= ImGui::SliderFloat("Coat anisotropy", &material.coat_anisotropy, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat anisotropy rotation", &material.coat_anisotropy_rotation, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Coat IOR", &material.coat_ior, 1.0f, 3.0f);
+
 		if (material.do_coat_energy_compensation &&
 			kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
 		{
@@ -1317,6 +1327,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 		material_changed |= ImGui::SliderFloat("Diffuse transmission", &material.diffuse_transmission, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("Specular transmission", &material.specular_transmission, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderFloat("IOR", &material.ior, 1.0f, 3.0f);
+
 		if (material.ior < 1.0f || material.ior > 3.0f && (material.do_glass_energy_compensation || material.do_specular_energy_compensation))
 		{
 			ImGui::SameLine();
@@ -1329,6 +1340,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 		material_changed |= ImGui::SliderFloat("Dispersion scale", &material.dispersion_scale, 0.0f, 1.0f);
 		material_changed |= ImGui::SliderInt("Dielectric priority", &material.dielectric_priority, 1, StackPriorityEntry::PRIORITY_MAXIMUM);
 		material_changed |= ImGui::Checkbox("Thin walled", &material.thin_walled);
+
 		if (material.do_glass_energy_compensation &&
 			kernel_options->get_macro_value(GPUKernelCompilerOptions::PRINCIPLED_BSDF_DO_ENERGY_COMPENSATION) == KERNEL_OPTION_FALSE)
 		{
@@ -1377,6 +1389,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 	}
 
 	bool emission_changed = false;
+
 	if (ImGui::CollapsingHeader("Emission Properties"))
 	{
 		ImGui::TreePush("Emission material tree");
@@ -1387,6 +1400,7 @@ bool ImGuiObjectsWindow::draw_material_editor(CPUMaterial& material,
 		// TODO we would need to recompute the alias table for the emissive lights here
 		emission_changed |= ImGui::ColorEdit3("Emission", (float*)&material.emission, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 		ImGui::EndDisabled();
+
 		if (emission_controlled_by_texture)
 			ImGuiRenderer::show_help_marker("Disabled because the emission of this material is controlled by a texture");
 
@@ -1425,6 +1439,7 @@ std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int mater
 																	   const std::string& filter_string) const
 {
 	std::unordered_set<int> accepted_material_indices;
+
 	if (filter_string == "")
 	{
 		// If no filter, all materials are accepted so we're adding them all to the set
@@ -1451,6 +1466,7 @@ std::unordered_set<int> ImGuiObjectsWindow::filter_displayed_materials(int mater
 		// material_index, so we scan all meshes to find those referencing this material.
 		bool material_matches = case_insensitive_string_find(material_names[material_index], filter_string);
 		bool mesh_matches	  = false;
+
 		for (int mi = 0; mi < mesh_names.size(); mi++)
 		{
 			if (mesh_material_indices[mi] == material_index && case_insensitive_string_find(mesh_names[mi], filter_string))
@@ -1472,6 +1488,7 @@ bool ImGuiObjectsWindow::draw_material_presets(CPUMaterial& material)
 	bool material_changed = false;
 
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
 	if (!ImGui::CollapsingHeader("Material presets"))
 
 		return false;
@@ -1498,6 +1515,7 @@ bool ImGuiObjectsWindow::draw_material_presets(CPUMaterial& material)
 	};
 
 	int line_count = 0;
+
 	for (int i = 0; i < names_to_f0_f82.size(); i++)
 	{
 		ColorRGB32F F0 = names_to_f0_f82[i].second.first;
@@ -1525,6 +1543,7 @@ bool ImGuiObjectsWindow::draw_material_presets(CPUMaterial& material)
 		ImGui::PopStyleColor();
 
 		line_count++;
+
 		if (line_count == 5)
 			line_count = 0;
 		else

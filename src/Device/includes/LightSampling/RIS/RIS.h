@@ -44,6 +44,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 	float3_t shadow_ray_direction_normalized = shadow_ray_direction / (distance_to_light = hippt::length(shadow_ray_direction));
 
 	NEEPlusPlusContext nee_plus_plus_context;
+
 	if (sample.is_bsdf_sample)
 		// A BSDF sample that has been picked by RIS cannot be occluded otherwise
 		// it would have a weight of 0 and would never be picked by RIS
@@ -86,6 +87,7 @@ HIPRT_DEVICE ColorRGB32F evaluate_RIS_reservoir_sample(HIPRTRenderData& render_d
 		}
 
 		final_color = bsdf_color * reservoir.UCW * sample.emission * cosine_at_evaluated_point;
+
 		if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 		{
 			if (!sample.is_bsdf_sample && !final_color.is_black())
@@ -129,6 +131,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir_for_deferred_NEE_
 
 	// Sampling candidates with weighted reservoir sampling
 	RISReservoir reservoir;
+
 	for (int light_candidate = 0; light_candidate < nb_light_candidates; light_candidate++)
 	{
 		LightSamplePointArray<DirectLightSampleCount<DirectLightSamplingStrategy>()> light_samples = sample_one_point_on_light(
@@ -141,6 +144,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir_for_deferred_NEE_
 
 			float target_function  = 0.0f;
 			float candidate_weight = 0.0f;
+
 			if (light_sample_info.area_measure_pdf > 0.0f)
 			{
 				float3_t to_light_direction = light_sample_info.point_on_light - closest_hit_info.inter_point;
@@ -214,6 +218,7 @@ HIPRT_DEVICE RISReservoir sample_bsdf_and_lights_RIS_reservoir_for_deferred_NEE_
 		ColorRGB32F bsdf_color = bsdf_dispatcher_sample(render_data, bsdf_context, sampled_bsdf_direction, bsdf_sample_pdf, random_number_generator);
 
 		RISSample bsdf_RIS_sample;
+
 		if (bsdf_sample_pdf > 0.0f)
 		{
 			hiprtRay bsdf_ray;

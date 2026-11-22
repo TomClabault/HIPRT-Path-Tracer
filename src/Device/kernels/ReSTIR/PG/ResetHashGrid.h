@@ -41,6 +41,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PG_ResetHashGrid(HIPRTRenderData ren
 
 	const ReSTIRPGDistributionSufficientStatisticsSoADevice& soa_device =
 		render_data.render_settings.restir_pg_settings.hash_grid_distributions_sufficient_statistics_soa;
+
 	for (unsigned int i = 0; i < ReSTIRPGDistributionComponentCount; i++)
 	{
 		unsigned int index = i * render_data.render_settings.restir_pg_settings.hash_grid_total_number_of_cells + cell_index;

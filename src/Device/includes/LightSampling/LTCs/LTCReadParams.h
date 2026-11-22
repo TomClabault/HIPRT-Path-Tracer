@@ -71,6 +71,7 @@ template <typename ProposalMaterialType>
 HIPRT_DEVICE float read_ltc_amplitude(void* ltcs_data_amplitude_texture, float cos_theta_v, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
+
 	switch (ltc_lobe)
 	{
 	case DIFFUSE_LOBE:
@@ -108,6 +109,7 @@ template <typename ProposalMaterialType>
 HIPRT_DEVICE float read_ltc_fresnel(void* ltcs_data_fresnel_texture, float cos_theta_v, const ProposalMaterialType& material, LTCLobe ltc_lobe)
 {
 	float roughness = 0.0f;
+
 	switch (ltc_lobe)
 	{
 	case DIFFUSE_LOBE:

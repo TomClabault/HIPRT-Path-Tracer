@@ -63,8 +63,8 @@ HIPRT_DEVICE HIPRT_INLINE bool filter_function(const hiprtRay&, const void*, voi
 	unsigned short int base_color_texture_index = payload->render_data->buffers.materials_buffer[material_index].get_base_color_texture_index();
 	float base_color_alpha						= get_hit_base_color_alpha(*payload->render_data, base_color_texture_index, global_triangle_index_hit, hit.uv);
 	float alpha_opacity							= payload->render_data->buffers.materials_buffer[material_index].get_alpha_opacity();
-	float composited_alpha						= alpha_opacity * base_color_alpha;
 
+	float composited_alpha = alpha_opacity * base_color_alpha;
 	if ((*payload->random_number_generator)() < composited_alpha)
 		// Alpha test not passing, the ray is blocked
 		return false;

@@ -310,7 +310,8 @@ private:
 	HIPRT_DEVICE float2_t octahedral_encode(float3_t v)
 	{
 		float l1norm_inv = 1.0f / (abs(v.x) + abs(v.y) + abs(v.z));
-		float2_t result	 = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
+
+		float2_t result = make_float2(v.x * l1norm_inv, v.y * l1norm_inv);
 		if (v.z < 0.0f)
 			result = (make_float2(1.0f) - make_float2(hippt::abs(result.y), hippt::abs(result.x))) * sign_not_zero(make_float2(result.x, result.y));
 

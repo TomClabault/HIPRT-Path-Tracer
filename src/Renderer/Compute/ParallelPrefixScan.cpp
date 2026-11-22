@@ -69,6 +69,7 @@ void ParallelPrefixScan::upload_input_data(const std::vector<unsigned int>& data
 	m_input_buffer.upload_data(data);
 
 	m_hierarchy_levels_used = 0;
+
 	if (padded_size > PARALLEL_PREFIX_SCAN_CHUNK_SIZE)
 	{
 		m_level_0_block_sums.resize(std::max(PARALLEL_PREFIX_SCAN_CHUNK_SIZE, padded_divided_once_size));
@@ -225,10 +226,11 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 
 	// 100 Tests for the block scan
 	std::mt19937 rng(42);
+
 	for (int i = 0; i < 100; i++)
 	{
-		unsigned int input_size_original = std::max((unsigned int)PARALLEL_PREFIX_SCAN_CHUNK_SIZE,
-													static_cast<unsigned int>(PARALLEL_PREFIX_SCAN_CHUNK_SIZE * (rng() % 100u)));
+		unsigned int input_size_original =
+			std::max((unsigned int)PARALLEL_PREFIX_SCAN_CHUNK_SIZE, static_cast<unsigned int>(PARALLEL_PREFIX_SCAN_CHUNK_SIZE * (rng() % 100u)));
 
 		unsigned int padded_size = ((input_size_original + PARALLEL_PREFIX_SCAN_CHUNK_SIZE - 1) / PARALLEL_PREFIX_SCAN_CHUNK_SIZE) *
 								   PARALLEL_PREFIX_SCAN_CHUNK_SIZE;
@@ -240,6 +242,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		unsigned int running_sum = 0;
 		std::vector<unsigned int> expected_output(input_size);
 		std::vector<unsigned int> expected_block_sums(input_size / PARALLEL_PREFIX_SCAN_CHUNK_SIZE);
+
 		for (size_t j = 0; j < input_size_original; j++)
 		{
 			if (j % PARALLEL_PREFIX_SCAN_CHUNK_SIZE == 0)
@@ -264,6 +267,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 
 		std::vector<unsigned int> output			= output_buffer.download_data();
 		std::vector<unsigned int> block_sums_output = block_sums.download_data();
+
 		if (!std::equal(output.begin(), output.begin() + input_size_original, expected_output.begin()))
 		{
 			g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "ParallelPrefixScan unit test failed for block scan test %d, size = %u", i,
@@ -301,6 +305,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		std::transform(input.begin(), input.end(), input.begin(), [&rng](unsigned int) { return rng() % 3; });
 
 		auto start = std::chrono::high_resolution_clock::now();
+
 		for (size_t j = 0; j < test_size; j++)
 		{
 			expected_output[j] = running_sum;
@@ -313,6 +318,7 @@ void ParallelPrefixScan::unit_test(std::shared_ptr<HIPRTOrochiCtx> hiprt_ctx, or
 		scanner.upload_input_data(input);
 
 		OROCHI_CHECK_ERROR(oroEventRecord(scan_start, stream));
+
 		unsigned int repeats = 3;
 		for (int i = 0; i < repeats; i++)
 		{

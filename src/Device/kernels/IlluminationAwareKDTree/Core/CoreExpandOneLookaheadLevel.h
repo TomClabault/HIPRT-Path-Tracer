@@ -27,9 +27,9 @@ IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevic
 	if (frontier_index >= current_frontier_count)
 		return;
 
-	unsigned int parent_index			= kd_tree_device.core.current_frontier[frontier_index];
-	IlluminationAwareKDTreeNode& parent = kd_tree_device.core.nodes[parent_index];
+	unsigned int parent_index = kd_tree_device.core.current_frontier[frontier_index];
 
+	IlluminationAwareKDTreeNode& parent = kd_tree_device.core.nodes[parent_index];
 	if (parent.flags & IlluminationAwareKDTreeNodeFlag_HasChildren)
 	{
 		// Existing physical children still form the next lookahead frontier.
@@ -51,6 +51,7 @@ IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevic
 	IlluminationAwareKDTreeNodeBounds& parent_bounds = kd_tree_device.core.node_bounds[parent_index];
 	float minimum_split_extent = split_axis == 0 ? parent_bounds.minimum.x : (split_axis == 1 ? parent_bounds.minimum.y : parent_bounds.minimum.z);
 	float maximum_split_extent = split_axis == 0 ? parent_bounds.maximum.x : (split_axis == 1 ? parent_bounds.maximum.y : parent_bounds.maximum.z);
+
 	if (split_axis > 2 || !hippt::is_finite(split_position) || split_position <= minimum_split_extent || split_position >= maximum_split_extent)
 		return;
 
@@ -63,6 +64,7 @@ IlluminationAwareKDTree_CoreExpandOneLookaheadLevel(IlluminationAwareKDTreeDevic
 
 	IlluminationAwareKDTreeNodeBounds left_bounds  = parent_bounds;
 	IlluminationAwareKDTreeNodeBounds right_bounds = parent_bounds;
+
 	if (split_axis == 0)
 	{
 		left_bounds.maximum.x  = split_position;

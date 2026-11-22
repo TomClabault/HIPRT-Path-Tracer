@@ -98,12 +98,11 @@ struct MLPFullyFusedDeviceCommon
 		for (unsigned int layer = 1; layer < LAYER_COUNT; ++layer)
 		{
 			unsigned int previous_count = get_layer_neuron_count(layer - 1);
-			unsigned int current_count	= get_layer_neuron_count(layer);
 
+			unsigned int current_count = get_layer_neuron_count(layer);
 			for (unsigned int neuron = 0; neuron < current_count; ++neuron)
 			{
 				float value = 0.0f;
-
 				if constexpr (USE_BIASES)
 					value += neurons_biases[get_neuron_data_index(layer, neuron)];
 
@@ -143,19 +142,18 @@ struct MLPFullyFusedDeviceCommon
 		float activations_b[ACTIVATION_WIDTH];
 		load_input_ref(input.input, activations_a);
 
-		float* previous			  = activations_a;
-		float* current			  = activations_b;
-		unsigned int target_layer = hidden_layer_index + 1;
+		float* previous = activations_a;
+		float* current	= activations_b;
 
+		unsigned int target_layer = hidden_layer_index + 1;
 		for (unsigned int layer = 1; layer <= target_layer; ++layer)
 		{
 			unsigned int previous_count = get_layer_neuron_count(layer - 1);
-			unsigned int current_count	= get_layer_neuron_count(layer);
 
+			unsigned int current_count = get_layer_neuron_count(layer);
 			for (unsigned int neuron = 0; neuron < current_count; ++neuron)
 			{
 				float value = 0.0f;
-
 				if constexpr (USE_BIASES)
 					value += neurons_biases[get_neuron_data_index(layer, neuron)];
 

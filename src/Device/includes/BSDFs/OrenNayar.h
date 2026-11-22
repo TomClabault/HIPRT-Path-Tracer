@@ -22,6 +22,7 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const MaterialType& materia
 													 float& pdf)
 {
 	pdf = 0.0f;
+
 	if (local_view_direction.z <= 0.0f || local_to_light_direction.z <= 0.0f)
 		return ColorRGB32F(0.0f);
 
@@ -33,6 +34,7 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const MaterialType& materia
 	// but computed as cos(phi_light) * cos(phi_view) + sin(phi_light) * sin(phi_view)
 	// according to cos(a - b) = cos(a) * cos(b) + sin(a) * sin(b)
 	float max_cos = 0;
+
 	if (sin_theta_i > 1.0e-4f && sin_theta_o > 1.0e-4f)
 	{
 		float sin_phi_i = local_to_light_direction.y / sin_theta_i;
@@ -47,6 +49,7 @@ HIPRT_DEVICE static ColorRGB32F oren_nayar_brdf_eval(const MaterialType& materia
 	}
 
 	float sin_alpha, tan_beta;
+
 	if (hippt::abs(local_to_light_direction.z) > hippt::abs(local_view_direction.z))
 	{
 		sin_alpha = sin_theta_o;

@@ -126,6 +126,7 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const InputDataType* __restric
 	int tid = threadIdx.x;
 
 	__shared__ unsigned int block_index;
+
 	if (tid == 0)
 		block_index = hippt::atomic_fetch_add_gpu(g_global_block_index_counter, 1u);
 	__syncthreads();
@@ -143,6 +144,7 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const InputDataType* __restric
 
 	unsigned int warp_id = global_tid >> 5;
 	unsigned int lane_id = global_tid & 31;
+
 	unsigned int flag;
 	if (evenly_spaced_segment_size > 0)
 		// If we have evenly spaced segments, we can calculate the flag without reading from memory by checking if the global thread ID is a multiple of the
@@ -152,7 +154,6 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const InputDataType* __restric
 		// Otherwise, we read the flag from memory. Each unsigned int in 'flags' contains 32 flags for 32 consecutive threads, so we need to extract the
 		// relevant bit.
 		flag = (global_tid < input_size) ? flags[warp_id] & (1u << lane_id) : 0;
-
 	if (tid == 0 && bid == 0)
 		flag = 1; // Ensure the very first element of the array is a head / segment start
 
@@ -163,10 +164,11 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const InputDataType* __restric
 	bool thread_needs_block_prefix;
 	bool block_is_open;
 	TransformedDataType inclusive_sum =
-							block_segmented_scan_early_publish(thread_input_value, flag, bid, tid, thread_needs_block_prefix, block_is_open, block_descs);
+		block_segmented_scan_early_publish(thread_input_value, flag, bid, tid, thread_needs_block_prefix, block_is_open, block_descs);
 
 	__shared__ TransformedDataType block_prefix;
 	__shared__ int base_lookback_block_index;
+
 	if (tid == 0)
 	{
 		block_prefix			  = 0;

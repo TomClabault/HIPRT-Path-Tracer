@@ -71,6 +71,7 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
 	// normalized such that the average of the elements of this vector is 'width*height'
 	double input_total_sum_double = in_input_total_sum;
 	std::vector<double> normalized_elements(input.size());
+
 	for (int i = 0; i < input.size(); i++)
 	{
 		// Normalized
@@ -107,6 +108,7 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
 		out_alias.at(small_index)  = large_index;
 
 		normalized_elements.at(large_index) = (normalized_elements.at(large_index) + normalized_elements.at(small_index)) - 1.0f;
+
 		if (normalized_elements.at(large_index) > 1.0f)
 			larges.push_back(large_index);
 		else
@@ -133,6 +135,7 @@ void Utils::compute_alias_table(const std::vector<float>& input, float in_input_
 std::vector<unsigned int> Utils::compute_triangles_opaque_bitfield(const std::vector<int>& material_indices, const std::vector<unsigned char>& material_opaque)
 {
 	std::vector<unsigned int> bitfield((material_indices.size() + 31) / 32, 0u);
+
 	for (size_t triangle_index = 0; triangle_index < material_indices.size(); triangle_index++)
 	{
 		int material_index = material_indices[triangle_index];
@@ -210,6 +213,7 @@ bool Utils::is_file_on_ssd(const char* file_path)
 	return false;
 #else
 	bool is_ssd{ false };
+
 	HANDLE volume = get_volume_handle_for_file(file_path);
 	if (volume == INVALID_HANDLE_VALUE)
 	{
@@ -219,6 +223,7 @@ bool Utils::is_file_on_ssd(const char* file_path)
 	STORAGE_PROPERTY_QUERY query{};
 	query.PropertyId = StorageDeviceSeekPenaltyProperty;
 	query.QueryType	 = PropertyStandardQuery;
+
 	DWORD count;
 	DEVICE_SEEK_PENALTY_DESCRIPTOR result{};
 	if (DeviceIoControl(volume, IOCTL_STORAGE_QUERY_PROPERTY, &query, sizeof(query), &result, sizeof(result), &count, nullptr))
@@ -308,8 +313,8 @@ void Utils::copy_u8_image_data_to_clipboard(const std::vector<unsigned char>& da
 	spec.green_shift	= 8;
 	spec.blue_shift		= 16;
 	spec.alpha_shift	= 24;
-	clip::image img(data.data(), spec);
 
+	clip::image img(data.data(), spec);
 	if (!clip::set_image(img))
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_ERROR, "Failed to copy image to clipboard.");
 }
@@ -343,6 +348,7 @@ void Utils::copy_image_to_clipboard(const Image8Bit& image, bool flip_y)
 void Utils::copy_image_to_clipboard(const Image32Bit& image, bool flip_y)
 {
 	std::vector<unsigned char> image_data_8u(image.width * image.height * 4);
+
 	for (int y = 0; y < image.height; y++)
 	{
 		for (int x = 0; x < image.width; x++)
@@ -365,6 +371,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 	// Create an Open Image Denoise device
 	static bool device_done = false;
 	static oidn::DeviceRef device;
+
 	if (!device_done)
 	{
 		// We're going to create a CPU device as there seems to be some issues with the GPU (HIP at least)
@@ -423,6 +430,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 	filter.commit();
 	// Fill the input image buffers
 	float* colorPtr = (float*)colorBuf.getData();
+
 	for (int y = 0; y < height; y++)
 		for (int x = 0; x < width; x++)
 		{
@@ -439,6 +447,7 @@ Image32Bit Utils::OIDN_denoise(const Image32Bit& image, int width, int height, f
 	float* denoised_ptr = (float*)colorBuf.getData();
 	Image32Bit output_image(width, height, 3);
 	ColorRGB32F* output_pixels = output_image.get_data_as_ColorRGB32F();
+
 	for (int y = 0; y < height; y++)
 		for (int x = 0; x < width; x++)
 		{
@@ -498,7 +507,8 @@ Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_
 		constexpr auto* const environmentVariableName			   = L"PATH";
 		DWORD codeUnitCountOfExistingPath_includingTerminatingNull = 0;
 		{
-			constexpr DWORD returnRequiredSize					 = 0;
+			constexpr DWORD returnRequiredSize = 0;
+
 			codeUnitCountOfExistingPath_includingTerminatingNull = GetEnvironmentVariableW(environmentVariableName, nullptr, returnRequiredSize);
 			if (codeUnitCountOfExistingPath_includingTerminatingNull == 0)
 			{
@@ -543,6 +553,7 @@ Utils::AddEnvVarError Utils::windows_add_ENV_var_to_PATH(const wchar_t* env_var_
 
 		// Append the new path
 		path.append(pathToAdd);
+
 		// Set the updated $PATH
 		if (!SetEnvironmentVariableW(environmentVariableName, path.c_str()))
 		{

@@ -14,7 +14,8 @@ HIPRT_DEVICE void merge_replayed_light_cluster_batch_statistics(const Illuminati
 																unsigned int slot,
 																IlluminationAwareKDTreeStatisticsUpdateMode update_mode)
 {
-	unsigned int offset													= kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+	unsigned int offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, slot);
+
 	IlluminationAwareKDTreeLightClusterBatchStatistics batch_statistics = kd_tree.learning_to_cluster.lightcut_batch_statistics.read(offset);
 	if (batch_statistics.selected_count == 0u)
 		return;
@@ -22,7 +23,8 @@ HIPRT_DEVICE void merge_replayed_light_cluster_batch_statistics(const Illuminati
 	IlluminationAwareKDTreeLightClusterStatistics& statistics = kd_tree.learning_to_cluster.lightcut_statistics[offset];
 	float batch_mean										  = batch_statistics.contribution_sum / static_cast<float>(batch_statistics.selected_count);
 	float batch_M2											  = batch_statistics.squared_contribution_sum - batch_statistics.contribution_sum * batch_mean;
-	unsigned int previous_count								  = statistics.visit_count;
+
+	unsigned int previous_count = statistics.visit_count;
 	if (update_mode == IlluminationAwareKDTreeStatisticsUpdateMode::INITIALIZE_EMPTY_ONLY && previous_count != 0u)
 		return;
 
@@ -55,6 +57,7 @@ IlluminationAwareKDTree_LearningToClusterStatisticsUpdates(IlluminationAwareKDTr
 #ifdef __KERNELCC__
 	unsigned int lightcut_index = blockIdx.x;
 	unsigned int slot			= threadIdx.x;
+
 	unsigned int lightcut_count = *kd_tree.learning_to_cluster.lightcut_count;
 	if (lightcut_index >= lightcut_count || lightcut_index >= kd_tree.learning_to_cluster.lightcut_capacity)
 		return;

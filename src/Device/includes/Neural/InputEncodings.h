@@ -71,9 +71,9 @@ HIPRT_DEVICE void encode_one_blob(float input, float* encoded_input)
 		else
 		{
 			float support_radius = bin_width;
-			float support_lower	 = input - support_radius;
-			float support_upper	 = input + support_radius;
 
+			float support_lower = input - support_radius;
+			float support_upper = input + support_radius;
 			if (bin_upper <= support_lower || bin_lower >= support_upper)
 			{
 				encoded_input[bin_index] = 0.0f;

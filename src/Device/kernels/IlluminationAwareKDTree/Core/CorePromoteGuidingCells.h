@@ -20,14 +20,16 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 #endif // #ifndef __KERNELCC__
 {
 #ifdef __KERNELCC__
-	unsigned int guiding_list_index	  = blockIdx.x;
-	unsigned int thread_slot		  = threadIdx.x;
+	unsigned int guiding_list_index = blockIdx.x;
+	unsigned int thread_slot		= threadIdx.x;
+
 	unsigned int active_guiding_count = *illumination_aware_kd_tree.core.active_guiding_node_count;
 	if (guiding_list_index >= active_guiding_count)
 		return;
 #else  // #ifdef __KERNELCC__
 	unsigned int guiding_list_index = static_cast<unsigned int>(x);
 	unsigned int thread_slot		= 0;
+
 	if (guiding_list_index >= original_guiding_node_count)
 		return;
 #endif // #ifdef __KERNELCC__
@@ -68,6 +70,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 	}
 
 	__syncthreads();
+
 	if (!active_guiding_allocation_valid)
 		return;
 
@@ -99,10 +102,12 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 		unsigned int normal_face		   = thread_slot / IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
 		unsigned int lightcut_variant	   = thread_slot % IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
 		unsigned int parent_lightcut_index = IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX;
+
 		if (parent_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		{
 			const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& parent_face =
 				illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[parent_set_index].face_lightcuts[normal_face];
+
 			if (lightcut_variant == 0u)
 				parent_lightcut_index = parent_face.shared_lightcut_index;
 			else
@@ -112,7 +117,6 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 		if (parent_lightcut_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		{
 			unsigned int right_lightcut_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.lightcut_count, 1u);
-
 			if (right_lightcut_index < illumination_aware_kd_tree.learning_to_cluster.lightcut_capacity)
 			{
 				if (lightcut_variant == 0u)
@@ -197,9 +201,11 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 				if (parent_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 					parent_lightcut_index =
 						illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[parent_set_index].face_lightcuts[normal_face].shared_lightcut_index;
+
 				const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts* parent_face = nullptr;
 				if (parent_set_index != IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 					parent_face = &illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[parent_set_index].face_lightcuts[normal_face];
+
 				if (parent_face == nullptr)
 				{
 					unsigned int right_observation_offset =
@@ -293,9 +299,10 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 
 	__syncthreads();
 
-#else  // #ifdef __KERNELCC__
+#else // #ifdef __KERNELCC__
 
-	unsigned int right_set_index			 = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_set_count, 1u);
+	unsigned int right_set_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_set_count, 1u);
+
 	unsigned int active_guiding_output_index = hippt::atomic_fetch_add(illumination_aware_kd_tree.core.active_guiding_node_count, 1u);
 	if (active_guiding_output_index >= illumination_aware_kd_tree.core.node_capacity)
 		return;
@@ -344,6 +351,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 		{
 			const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& parent_face =
 				illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[parent_set_index].face_lightcuts[normal_face];
+
 			for (unsigned int per_mesh_id_lightcut_slot = 0;
 				 per_mesh_id_lightcut_slot < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_MESH_ID_LIGHTCUT_COUNT; per_mesh_id_lightcut_slot++)
 			{
@@ -392,6 +400,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 
 			const IlluminationAwareKDTreeLearningToClusterLightcutSet::PerNormalFaceLightcuts& parent_face =
 				illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[parent_set_index].face_lightcuts[normal_face];
+
 			for (unsigned int lightcut_variant = 0; lightcut_variant < IlluminationAwareKDTreeLearningToClusterLightcutSet::PER_FACE_NORMAL_LIGHTCUT_COUNT;
 				 lightcut_variant++)
 			{
@@ -465,6 +474,7 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 	if (right_set_allocation_valid)
 	{
 		illumination_aware_kd_tree.learning_to_cluster.normal_lightcut_sets[right_set_index] = right_set;
+
 		if (parent_set_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 		{
 			for (unsigned int normal_face = 0; normal_face < SurfaceNormalFace_Count; normal_face++)
@@ -508,11 +518,13 @@ IlluminationAwareKDTree_CorePromoteGuidingCells(IlluminationAwareKDTreeDevice il
 	unsigned int stack_size = 0;
 	stack[stack_size++]		= left_child_index;
 	stack[stack_size++]		= right_child_index;
+
 	while (stack_size > 0)
 	{
 		unsigned int node_index										   = stack[--stack_size];
 		illumination_aware_kd_tree.core.history_signatures[node_index] = illumination_aware_kd_tree.core.batch_signatures[node_index];
-		const IlluminationAwareKDTreeNode& node						   = illumination_aware_kd_tree.core.nodes[node_index];
+
+		const IlluminationAwareKDTreeNode& node = illumination_aware_kd_tree.core.nodes[node_index];
 		if (node.flags & IlluminationAwareKDTreeNodeFlag_HasChildren)
 		{
 			unsigned int child_index = node.left_child_index;

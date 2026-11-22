@@ -1089,8 +1089,8 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 		{
 			unsigned int metallic_texture_index			  = this->get_metallic_texture_index();
 			unsigned int roughness_metallic_texture_index = this->get_roughness_metallic_texture_index();
-			bool use_metallic_texture					  = MaterialUtils::use_metallic_texture(metallic_texture_index, roughness_metallic_texture_index);
 
+			bool use_metallic_texture = MaterialUtils::use_metallic_texture(metallic_texture_index, roughness_metallic_texture_index);
 			if (use_metallic_texture)
 				out_material.metallic = this->get_metallic();
 
@@ -1129,6 +1129,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 			// Specular intensity
 			if (use_specular_texture)
 				out_material.specular = this->get_specular();
+
 			if (out_material.specular > 0.0f || !use_specular_texture)
 			{
 				// We only need to read the various specular parameters if the material actually has a specular lobe
@@ -1151,10 +1152,11 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 		{
 			unsigned int coat_texture_index = this->get_coat_texture_index();
-			bool use_coat_texture			= MaterialUtils::use_coat_texture(coat_texture_index);
 
+			bool use_coat_texture = MaterialUtils::use_coat_texture(coat_texture_index);
 			if (use_coat_texture)
 				out_material.coat = this->get_coat();
+
 			if (out_material.coat > 0.0f || !use_coat_texture)
 			{
 				// We only need to read the coat parameters if the material has a coat lobe
@@ -1187,10 +1189,11 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 		{
 			unsigned int sheen_texture_index = this->get_sheen_texture_index();
-			bool use_sheen_texture			 = MaterialUtils::use_sheen_texture(sheen_texture_index);
 
+			bool use_sheen_texture = MaterialUtils::use_sheen_texture(sheen_texture_index);
 			if (use_sheen_texture)
 				out_material.sheen = this->get_sheen(); // Sheen strength
+
 			if (out_material.sheen > 0.0f || !use_sheen_texture)
 			{
 				out_material.sheen_roughness = this->get_sheen_roughness();
@@ -1203,10 +1206,11 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 
 		{
 			unsigned int specular_transmission_texture_index = this->get_specular_transmission_texture_index();
-			bool use_specular_transmission_texture			 = MaterialUtils::use_specular_transmission_texture(specular_transmission_texture_index);
 
+			bool use_specular_transmission_texture = MaterialUtils::use_specular_transmission_texture(specular_transmission_texture_index);
 			if (use_specular_transmission_texture)
 				out_material.specular_transmission = this->get_specular_transmission();
+
 			if (out_material.specular_transmission > 0.0f || !use_specular_transmission_texture)
 			{
 				// This is all specific to specular transmission
@@ -1231,6 +1235,7 @@ struct DevicePackedTexturedMaterial : public DevicePackedEffectiveMaterial
 		}
 
 		out_material.thin_film = this->get_thin_film();
+
 		if (out_material.thin_film > 0.0f)
 		{
 			out_material.thin_film_ior		 = this->get_thin_film_ior();

@@ -71,7 +71,6 @@ public:
 			return m;
 
 		fp16 s = 0.0f;
-
 		for (int i = N - 1; i >= 0; i--)
 			s = get_e(i) * (s + get_g(i));
 
