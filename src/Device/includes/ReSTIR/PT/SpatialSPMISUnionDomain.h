@@ -8,6 +8,7 @@
 
 #include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
+#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/PT/UtilsSpatialSPMIS.h"
 #include "Device/includes/ReSTIR/Surface.h"
@@ -332,20 +333,101 @@ HIPRT_DEVICE Octahedral24BitNormalPadded32b spmis_neighbor_record_read_normal(fl
 }
 
 /**
+ * BSDF of the center pixel in the selection target of the neighbors (spmis_neighbor_record_target()), set up once per pixel by
+ * spmis_union_domain_center_bsdf_setup().
+ *
+ * With the principled BSDF and a center material in an analytic class of SpatialMISTargetFunctionBSDFApproximation.h, the BSDF term toward a reconnection
+ * vertex is the analytic lobe of the center material at the view direction of the pixel (specular GGX lobe + diffuse): the selection then favors the
+ * neighbors whose reconnection vertex lies in the glossy lobe of the center. Otherwise it is the Lambertian proxy: the center BSDF evaluated once with
+ * the incident direction along the shading normal, which ignores the direction of the reconnection vertex.
+ *
+ * The analytic lobe is non-zero for every incident direction above the shading normal, except for a perfectly smooth metal where it is zero everywhere.
+ * The Lambertian proxy of such a metal is zero too (a perfectly smooth lobe evaluated without incident light information is zero off its delta peak): the
+ * analytic lobe never selects fewer neighbors than the Lambertian proxy would
+ */
+struct ReSTIRPTSPMISUnionDomainCenterBSDF
+{
+	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe;
+
+	// Luminance of the center BSDF evaluated with the incident direction along the shading normal, only used without the analytic lobe
+	float lambertian_proxy_luminance = 0.0f;
+	// Cosine between the view direction and the shading normal of the center pixel, only used with the analytic lobe
+	float view_cosine  = 0.0f;
+	bool analytic_lobe = false;
+};
+
+HIPRT_DEVICE ReSTIRPTSPMISUnionDomainCenterBSDF spmis_union_domain_center_bsdf_setup(const HIPRTRenderData& render_data,
+																					 ReSTIRPTSurface& center_surface,
+																					 Xorshift32Generator& rng)
+{
+	ReSTIRPTSPMISUnionDomainCenterBSDF center_bsdf;
+
+#if BSDF_MODEL == BSDF_PRINCIPLED
+	center_bsdf.view_cosine = hippt::dot(center_surface.view_direction, center_surface.shading_normal);
+
+	bool smooth_lobe;
+	int material_class = ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class(center_surface.material, smooth_lobe);
+
+	// From inside an object, the principled BSDF only evaluates the glass lobe, which has no analytic class
+	center_bsdf.analytic_lobe = material_class != RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE &&
+								center_bsdf.view_cosine > RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD &&
+								!center_surface.ray_volume_state.inside_material;
+	if (center_bsdf.analytic_lobe)
+	{
+		center_bsdf.lobe = ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(render_data, center_surface.material, material_class,
+																							   smooth_lobe, true, center_bsdf.view_cosine);
+
+		return center_bsdf;
+	}
+#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+
+	// Exact for a Lambertian BSDF, albedo / pi, the cosine is applied per neighbor
+	float bsdf_pdf;
+	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
+	BSDFContext center_context(center_surface.view_direction, center_surface.shading_normal, center_surface.geometric_normal, center_surface.shading_normal,
+							   incident_light_info, center_surface.ray_volume_state, false, center_surface.material, 0.0f,
+							   MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
+	center_bsdf.lambertian_proxy_luminance = bsdf_dispatcher_eval(render_data, center_context, bsdf_pdf, rng).luminance();
+
+	return center_bsdf;
+}
+
+/**
+ * BSDF x cosine of the center pixel toward 'incident_direction' (cosine 'cosine_center' > 0 with the shading normal) in the selection target
+ */
+HIPRT_DEVICE float spmis_union_domain_center_bsdf_value(const HIPRTRenderData& render_data,
+														const ReSTIRPTSPMISUnionDomainCenterBSDF& center_bsdf,
+														const ReSTIRPTSurface& center_surface,
+														const float3_t& incident_direction,
+														float cosine_center)
+{
+	if (!center_bsdf.analytic_lobe)
+		return center_bsdf.lambertian_proxy_luminance * cosine_center;
+
+	return ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value(render_data, center_bsdf.lobe, center_surface.shading_normal,
+																	   center_surface.view_direction, incident_direction, center_bsdf.view_cosine,
+																	   cosine_center, false);
+}
+
+/**
  * Selection target t_i of a neighbor record at the center pixel, in closed form:
  *
  *		t_i = c_i W_i p_hat_i(X_i) T_i / (C p_hat_i(X_i) + c_c T_i)
  *
- * with T_i the visibility-free target function of the neighbor's sample shifted to the center pixel times the Jacobian of the shift (center BSDF luminance
- * x cosine at the center x |cosine at the reconnection vertex| / d^2 x Q_k) and C the confidence sum of the domain ('record_second.w' must be scaled
- * from the confidence sum of the record's cell to C by the caller). This is the full visibility-free shifted integrand of the neighbor: the pairwise MIS
- * weight x shifted target function x UCW x Jacobian.
+ * with T_i the visibility-free target function of the neighbor's sample shifted to the center pixel times the Jacobian of the shift (center BSDF term
+ * of spmis_union_domain_center_bsdf_value(), cosine at the center included, x |cosine at the reconnection vertex| / d^2 x Q_k) and C the confidence
+ * sum of the domain ('record_second.w' must be scaled from the confidence sum of the record's cell to C by the caller). This is the full visibility-free
+ * shifted integrand of the neighbor: the pairwise MIS weight x shifted target function x UCW x Jacobian.
  *
- * This target only drives the selection, the selection probabilities are exact for it: any error of the approximations (Lambertian center BSDF, no
- * visibility) costs variance, not bias
+ * This target only drives the selection, the selection probabilities are exact for it: any error of the approximations (analytic or Lambertian center
+ * BSDF, no BSDF at the reconnection vertex, no visibility) costs variance, not bias, as long as the target is non-zero wherever the shifted contribution is
  */
-HIPRT_DEVICE float spmis_neighbor_record_target(
-	const float4_t& record_first, const float4_t& record_second, const ReSTIRPTSurface& center_surface, float center_bsdf_luminance, float center_confidence)
+HIPRT_DEVICE float spmis_neighbor_record_target(const HIPRTRenderData& render_data,
+												const float4_t& record_first,
+												const float4_t& record_second,
+												const ReSTIRPTSurface& center_surface,
+												const ReSTIRPTSPMISUnionDomainCenterBSDF& center_bsdf,
+												float center_confidence)
 {
 	float3_t rc_vertex = make_float3(record_first.x, record_first.y, record_first.z);
 	float signed_qk	   = record_second.y;
@@ -357,8 +439,9 @@ HIPRT_DEVICE float spmis_neighbor_record_target(
 	if (packed_rc_normal.get_padding() == 1)
 	{
 		// Envmap path, 'rc_vertex' is the direction of the path
-		float cosine_center			  = hippt::dot(center_surface.shading_normal, rc_vertex);
-		shifted_target_times_jacobian = cosine_center > 0.0f ? center_bsdf_luminance * cosine_center * qk : 0.0f;
+		float cosine_center = hippt::dot(center_surface.shading_normal, rc_vertex);
+		shifted_target_times_jacobian =
+			cosine_center > 0.0f ? spmis_union_domain_center_bsdf_value(render_data, center_bsdf, center_surface, rc_vertex, cosine_center) * qk : 0.0f;
 	}
 	else
 	{
@@ -370,9 +453,14 @@ HIPRT_DEVICE float spmis_neighbor_record_target(
 		float cosine_rc_signed = -hippt::dot(rc_normal, to_rc_vertex) * inverse_distance;
 		bool backfacing_light  = signed_qk < 0.0f && cosine_rc_signed <= 0.0f;
 
-		shifted_target_times_jacobian = (cosine_center > 0.0f && !backfacing_light)
-											? center_bsdf_luminance * cosine_center * hippt::abs(cosine_rc_signed) * qk * (inverse_distance * inverse_distance)
-											: 0.0f;
+		shifted_target_times_jacobian = 0.0f;
+		if (cosine_center > 0.0f && !backfacing_light)
+		{
+			float3_t direction_to_rc_vertex = to_rc_vertex * inverse_distance;
+			float center_bsdf_value = spmis_union_domain_center_bsdf_value(render_data, center_bsdf, center_surface, direction_to_rc_vertex, cosine_center);
+
+			shifted_target_times_jacobian = center_bsdf_value * hippt::abs(cosine_rc_signed) * qk * (inverse_distance * inverse_distance);
+		}
 	}
 
 	float denominator = record_second.w + center_confidence * shifted_target_times_jacobian;
@@ -487,15 +575,10 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 	int total_neighbor_budget = hippt::max(1, union_domain_settings.total_neighbor_budget);
 	bool exact				  = domain.non_zero_count <= static_cast<unsigned int>(total_neighbor_budget);
 
-	// Luminance of the center BSDF, evaluated once (exact for a Lambertian BSDF, albedo / pi, the cosine is applied per neighbor)
-	float bsdf_pdf;
-	BSDFIncidentLightInfo incident_light_info = BSDFIncidentLightInfo::NO_INFO;
-	BSDFContext center_context(center_surface.view_direction, center_surface.shading_normal, center_surface.geometric_normal, center_surface.shading_normal,
-							   incident_light_info, center_surface.ray_volume_state, false, center_surface.material, 0.0f,
-							   MicrofacetRegularization::RegularizationMode::NO_REGULARIZATION);
-	float center_bsdf_luminance = bsdf_dispatcher_eval(render_data, center_context, bsdf_pdf, rng).luminance();
-	float center_confidence		= static_cast<float>(center_pixel_reservoir_confidence);
-	float domain_confidence_sum = static_cast<float>(domain.confidence_sum);
+	// Center BSDF of the selection target, set up once for all the candidates
+	ReSTIRPTSPMISUnionDomainCenterBSDF center_bsdf = spmis_union_domain_center_bsdf_setup(render_data, center_surface, rng);
+	float center_confidence						   = static_cast<float>(center_pixel_reservoir_confidence);
+	float domain_confidence_sum					   = static_cast<float>(domain.confidence_sum);
 
 	const float4_t* neighbor_records  = reinterpret_cast<const float4_t*>(union_domain_settings.neighbor_records);
 	const float2_t* cell_alias_tables = reinterpret_cast<const float2_t*>(union_domain_settings.cell_alias_tables);
@@ -525,7 +608,7 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 				float4_t record_second = neighbor_records[(cell_start_index + record) * 2 + 1];
 				record_second.w *= denominator_scale;
 
-				float target = spmis_neighbor_record_target(record_first, record_second, center_surface, center_bsdf_luminance, center_confidence);
+				float target = spmis_neighbor_record_target(render_data, record_first, record_second, center_surface, center_bsdf, center_confidence);
 				if (target <= 0.0f)
 					continue;
 
@@ -653,7 +736,7 @@ HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderDat
 		record_second.w *= selected_cell == 0 ? confidence_scale_0
 											  : (selected_cell == 1 ? confidence_scale_1 : (selected_cell == 2 ? confidence_scale_2 : confidence_scale_3));
 
-		float target = spmis_neighbor_record_target(record_first, record_second, center_surface, center_bsdf_luminance, center_confidence);
+		float target = spmis_neighbor_record_target(render_data, record_first, record_second, center_surface, center_bsdf, center_confidence);
 		if (target <= 0.0f)
 			continue;
 

@@ -18,7 +18,7 @@
  * Approximation of the BSDF in the target function of the MIS weights of the union domain reuse of ReSTIR PT (kernel option
  *ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation): canonical and reverse probes (ReSTIR_PT_evaluate_target_function_at_pixel()) and own terms
  *(ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(): a sample at its own pixel, a neighbor's sample at the center pixel, the canonical sample at the
- *center pixel). The resampling weights still use the target function.
+ *center pixel). The resampling weights still use the full target function.
  *
  * INVARIANT: for every sample and every pixel, the approximation is > 0 exactly when the target function is > 0, and the probes and the own terms use the same
  * function of (sample, pixel). The group-wise MIS weights then stay a partition of unity and the spatial reuse stays unbiased, whatever the approximation
@@ -32,7 +32,7 @@
  * The approximation is then:
  *	- Lambertian BSDF: the cosine at the pixel, zero when the pixel is below the shading normal of the reconnection vertex
  *	- principled BSDF: the analytic lobe value at the pixel (one 8-byte record per pixel, GBufferDevice::mis_target_function_bsdf_approximation_lobe_records)
- *times the analytic lobe value at the reconnection vertex (stored in the sample), 1 for DI samples. No material fetch, no BSDF evaluation
+ * times the analytic lobe value at the reconnection vertex (stored in the sample), 1 for DI samples. No material fetch, no BSDF evaluation
  *	- other BSDF models: no material is in the analytic class
  *
  * Every other pair takes the "fallback": the full target function evaluation, the value is then the full target function divided by the luminance of the
@@ -41,7 +41,7 @@
  * The analytic classes and lobes MIRROR THE ZERO CASES AND THE VALUES OF THE BSDF CODE BELOW. Any change to one of these functions or kernel options must
  * be checked against ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class(), ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(),
  * ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value() and ReSTIR_PT_MIS_target_function_bsdf_approximation_delta_peak_possible() (an approximation
- *that is zero where the target function is not, or the opposite, biases the spatial reuse):
+ * that is zero where the target function is not, or the opposite, biases the spatial reuse):
  *	- lambertian_brdf_eval()
  *	- principled_bsdf_eval(), internal_eval_glossy_base(), internal_eval_specular_layer()
  *	- principled_specular_eval(), principled_specular_fresnel(), principled_specular_compute_darkening()
@@ -449,7 +449,7 @@ ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_pixel_lobe(const ReSTIRP
 	ReSTIRPTMISTargetFunctionBSDFApproximationPixelLobeRecord record;
 	record.coefficients = specular_code | (diffuse_constant_code << 16);
 	record.parameters	= diffuse_fresnel_code | (ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_alpha(lobe.alpha) << 16) |
-						(ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_fresnel(lobe, 7) << 24) | (lobe.metal ? (1u << 31) : 0u);
+						  (ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_fresnel(lobe, 7) << 24) | (lobe.metal ? (1u << 31) : 0u);
 
 	return record;
 }
