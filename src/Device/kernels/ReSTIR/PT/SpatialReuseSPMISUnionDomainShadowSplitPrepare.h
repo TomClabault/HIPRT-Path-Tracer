@@ -220,7 +220,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 		{
 			unsigned int probe_pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
 
-			float probe_value = spmis_target_function_at_domain_pixel<false>(render_data, center_pixel_reservoir.sample, center_pixel_surface,
+			float probe_value = spmis_target_function_at_domain_pixel<false>(render_data, center_pixel_reservoir.sample, center_pixel_surface.shading_point,
 																			 probe_pixel_index, random_number_generator);
 			if (probe_value > 0.0f)
 			{

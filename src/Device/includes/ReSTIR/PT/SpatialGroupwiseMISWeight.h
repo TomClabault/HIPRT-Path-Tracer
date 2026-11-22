@@ -25,7 +25,7 @@
 template <bool withVisibility = true>
 HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& render_data,
 														 const ReSTIRPTReservoirSample& sample,
-														 const ReSTIRPTSurface& center_pixel_surface,
+														 float3_t center_pixel_shading_point,
 														 unsigned int pixel_index,
 														 Xorshift32Generator& random_number_generator)
 {
@@ -37,7 +37,7 @@ HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& 
 	{
 		// If this is an envmap path the jacobian is just 1
 		float jacobian	= get_jacobian_determinant_reconnection_shift(sample.rc_vertex, sample.rc_vertex_geometric_normal.unpack(), pixel_shading_point,
-																	  center_pixel_surface.shading_point,
+																	  center_pixel_shading_point,
 																	  render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 		target_function = jacobian == 0.0f ? 0.0f : target_function * jacobian;
 	}
@@ -60,7 +60,8 @@ HIPRT_DEVICE float spmis_union_domain_group_target_function_sum(const HIPRTRende
 	{
 		unsigned int pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
 
-		target_function_sum += spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_surface, pixel_index, random_number_generator);
+		target_function_sum +=
+			spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_surface.shading_point, pixel_index, random_number_generator);
 	}
 
 	return target_function_sum;

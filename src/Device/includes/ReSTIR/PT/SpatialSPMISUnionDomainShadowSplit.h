@@ -28,7 +28,7 @@
  *	  the M-cap and the output
  *
  * The state that crosses kernels is in ReSTIRPTSPMISUnionDomainShadowSplitBuffers. The surface of the center pixel does not cross kernels: the weights kernel
- * rebuilds it.
+ * only needs its shading point, read from the G-buffer.
  *
  * Same estimator as the single kernel: every random decision of the single kernel is made with the same probabilities, only the order in which the
  * random numbers of the pixel are drawn changes. The random numbers of a pixel come from ONE generator chain: the prepare kernel starts it from the
@@ -38,9 +38,9 @@
  *	  neighbors are chosen), which lets the weights kernel work without the domain
  *	- the Fisher-Yates shuffle draws its numbers in the weights kernel, after the visibility of the picks is known
  *	- the merge draws one uniform per candidate in the resolve kernel, after the visibility of the companions is known
- *	- the weights kernel rebuilds the surface of the center pixel from a SEPARATE generator started from the seed of the pixel (the seed buffer
- *	  is not written before the resolve kernel): its random decisions (the wavelength of a dispersive material) are then exactly those of the
- *	  prepare kernel, and the chain above is not disturbed
+ *	- the weights kernel builds no surface of the center pixel: building one draws random numbers (the wavelength of a dispersive material),
+ *	  which would have to come from a separate generator started from the seed of the pixel (the seed buffer is not written before the resolve
+ *	  kernel) to leave the chain above undisturbed and repeat the random decisions of the prepare kernel
  *
  * The rays are the rays of the single kernel (same origin, endpoint, distance, origin primitive and alpha test seed). A probe ray is traced when the
  * value of its probe without visibility is non-zero: same condition as the single kernel with the MIS target function BSDF approximation (except for a zero

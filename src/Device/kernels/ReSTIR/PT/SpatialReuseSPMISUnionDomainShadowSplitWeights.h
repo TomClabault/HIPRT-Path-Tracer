@@ -35,10 +35,9 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 	// Continues the generator chain of the prepare kernel
 	Xorshift32Generator random_number_generator(shadow_split_buffers.random_states[center_pixel_index]);
 
-	// The surface of the prepare kernel, rebuilt with a separate generator started from the same seed so that its random decisions are those of the
-	// prepare kernel, see the top of SpatialSPMISUnionDomainShadowSplit.h
-	Xorshift32Generator surface_random_number_generator(render_data.get_updated_random_seed(center_pixel_index));
-	ReSTIRPTSurface center_pixel_surface = get_pixel_surface(render_data, center_pixel_index, surface_random_number_generator);
+	// The target functions at the center pixel are the BSDF approximations of SpatialMISTargetFunctionBSDFApproximation.h: of the surface of the center
+	// pixel, they only need its shading point, see the top of SpatialSPMISUnionDomainShadowSplit.h
+	float3_t center_pixel_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
 
 	int reused_neighbors_count = hippt::clamp(1, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MAX_NEIGHBORS, union_domain_settings.neighbor_count);
 	int canonical_group_count  = hippt::max(1, union_domain_settings.canonical_group_count);
@@ -81,7 +80,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			float shift_mapping_jacobian = 1.0f;
 			if (neighbor_reservoir.UCW > 0.0f && !neighbor_reservoir.sample.is_envmap_path())
 				shift_mapping_jacobian = get_jacobian_determinant_reconnection_shift(
-					neighbor_reservoir.sample.rc_vertex, neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), center_pixel_surface.shading_point,
+					neighbor_reservoir.sample.rc_vertex, neighbor_reservoir.sample.rc_vertex_geometric_normal.unpack(), center_pixel_shading_point,
 					render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
 					render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
@@ -91,7 +90,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			float mis_target_at_center = 0.0f;
 			if (neighbor_reservoir.UCW > 0.0f)
 				mis_target_at_center = ReSTIR_PT_evaluate_target_function_at_pixel<false, true>(
-					render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_surface.shading_point, random_number_generator);
+					render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_shading_point, random_number_generator);
 			float resampling_target_function_at_center =
 				ReSTIR_PT_resampling_target_function_bsdf_approximation(neighbor_reservoir.sample, mis_target_at_center);
 
@@ -108,9 +107,9 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 
 			// The companion of the slot drawn by the prepare kernel and its value without visibility: its ray is traced by the resolve kernel
 			unsigned int companion_pixel_index = shadow_split_buffers.companions[chosen * pixel_count + center_pixel_index];
-			float companion_target_function	   = spmis_target_function_at_domain_pixel<false>(render_data, neighbor_reservoir.sample, center_pixel_surface,
-																							  companion_pixel_index, random_number_generator);
-			bool reverse_ray_needed			   = companion_target_function > 0.0f;
+			float companion_target_function = spmis_target_function_at_domain_pixel<false>(render_data, neighbor_reservoir.sample, center_pixel_shading_point,
+																						   companion_pixel_index, random_number_generator);
+			bool reverse_ray_needed			= companion_target_function > 0.0f;
 
 			// The MIS weight of get_resampling_MIS_weight_non_canonical() for both visibilities V of the companion: the group sum is p_i + V q_J
 			float mis_weight_companion_visible = mis_weight_function.get_MIS_weight_non_canonical_from_group_sum(
