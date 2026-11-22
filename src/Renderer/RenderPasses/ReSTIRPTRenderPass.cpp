@@ -13,30 +13,30 @@
 #include <cstdlib>
 #include <ranges>
 const std::string ReSTIRPTRenderPass::RESTIR_PT_RENDER_PASS_NAME						   = "ReSTIR PT Render pass";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID			   = "ReSTIR PT Initial candidates";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID				   = "ReSTIR PT Temporal reuse";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID					   = "ReSTIR PT Spatial reuse";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID			   = "ReSTIR PT Spatial reuse SPMIS";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID = "ReSTIR PT Spatial reuse SPMIS Union Domain";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID			   = "ReSTIR PT - Initial candidates";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_TEMPORAL_REUSE_KERNEL_ID				   = "ReSTIR PT - Temporal reuse";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID					   = "ReSTIR PT - Spatial reuse";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_KERNEL_ID			   = "ReSTIR PT - Spatial reuse SPMIS";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_KERNEL_ID = "ReSTIR PT - Spatial reuse SPMIS Union Domain";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_PREPARE_KERNEL_ID =
-	"ReSTIR PT Spatial reuse SPMIS Union Domain Shadow Split Prepare";
+	"ReSTIR PT - Spatial reuse SPMIS Union Domain Shadow Split Prepare";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_TRACE_SELECTION_KERNEL_ID =
-	"ReSTIR PT Spatial reuse SPMIS Union Domain Shadow Split Trace Selection";
+	"ReSTIR PT - Spatial reuse SPMIS Union Domain Shadow Split Trace Selection";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_WEIGHTS_KERNEL_ID =
-	"ReSTIR PT Spatial reuse SPMIS Union Domain Shadow Split Weights";
+	"ReSTIR PT - Spatial reuse SPMIS Union Domain Shadow Split Weights";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID =
-	"ReSTIR PT Spatial reuse SPMIS Union Domain Shadow Split Resolve";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID					   = "ReSTIR PT Shading";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID	   = "ReSTIR PT Directional reuse compute";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID		   = "ReSTIR PT SPMIS Reset Buffers";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID	   = "ReSTIR PT SPMIS Reset Cells Data";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID			   = "ReSTIR PT SPMIS Count Cells";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID		   = "ReSTIR PT SPMIS Compute Offsets";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				   = "ReSTIR PT SPMIS Sort";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID			   = "ReSTIR PT SPMIS Build CDFs";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID = "ReSTIR PT SPMIS Compute Per Cell Noise";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID = "ReSTIR PT SPMIS Build Neighbor Records";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID	   = "ReSTIR PT SPMIS Build Alias Tables";
+	"ReSTIR PT - Spatial reuse SPMIS Union Domain Shadow Split Resolve";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID					   = "ReSTIR PT - Shading";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID	   = "ReSTIR PT - Directional reuse compute";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID		   = "ReSTIR PT - SPMIS Reset Buffers";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID	   = "ReSTIR PT - SPMIS Reset Cells Data";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID			   = "ReSTIR PT - SPMIS Count Cells";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_OFFSETS_KERNEL_ID		   = "ReSTIR PT - SPMIS Compute Offsets";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_SORT_KERNEL_ID				   = "ReSTIR PT - SPMIS Sort";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID			   = "ReSTIR PT - SPMIS Build CDFs";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID = "ReSTIR PT - SPMIS Compute Per Cell Noise";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID = "ReSTIR PT - SPMIS Build Neighbor Records";
+const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID	   = "ReSTIR PT - SPMIS Build Alias Tables";
 
 const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES = {
 	{ RESTIR_PT_INITIAL_CANDIDATES_KERNEL_ID, "ReSTIR_PT_InitialCandidates" },

@@ -10,12 +10,12 @@
 #include <algorithm>
 
 const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_RENDER_PASS_NAME		   = "ReSTIR PT Wavefront Render pass";
-const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_SHADE_PRIMARY_KERNEL_ID = "ReSTIR PT Wavefront Initial candidates - Shade Primary";
-const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_SHADE_KERNEL_ID		   = "ReSTIR PT Wavefront Initial candidates - Shade";
-const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_TRACE_KERNEL_ID		   = "ReSTIR PT Wavefront Initial candidates - Trace";
-const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_COMPLETE_KERNEL_ID	   = "ReSTIR PT Wavefront Initial candidates - Complete";
+const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_SHADE_PRIMARY_KERNEL_ID = "ReSTIR PT - Wavefront Initial candidates - Shade Primary";
+const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_SHADE_KERNEL_ID		   = "ReSTIR PT - Wavefront Initial candidates - Shade";
+const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_TRACE_KERNEL_ID		   = "ReSTIR PT - Wavefront Initial candidates - Trace";
+const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_COMPLETE_KERNEL_ID	   = "ReSTIR PT - Wavefront Initial candidates - Complete";
 const std::string ReSTIRPTWavefrontRenderPass::RESTIR_PT_WAVEFRONT_NEE_DEFERRED_MIS_CONTEXT_SIZE_KERNEL_ID =
-	"ReSTIR PT Wavefront NEE Deferred MIS Context Size";
+	"ReSTIR PT - Wavefront NEE Deferred MIS Context Size";
 
 ReSTIRPTWavefrontRenderPass::ReSTIRPTWavefrontRenderPass(GPURenderer* renderer, std::shared_ptr<GPUKernelCompilerOptions> options)
 	: ReSTIRPTRenderPass(RESTIR_PT_WAVEFRONT_RENDER_PASS_NAME, renderer, options)
