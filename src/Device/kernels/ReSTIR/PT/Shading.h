@@ -27,7 +27,7 @@ extern "C"
 {
 	HIPRT_DEVICE __constant__ unsigned char RESTIR_PT_RENDER_DATA[sizeof(HIPRTRenderData)];
 }
-GLOBAL_KERNEL_SIGNATURE(void) __launch_bounds__(64) ReSTIR_PT_Shading()
+GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PT_Shading()
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_data, int x, int y)
 #endif // #ifdef __KERNELCC__
