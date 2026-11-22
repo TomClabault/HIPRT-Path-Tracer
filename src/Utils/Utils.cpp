@@ -29,19 +29,16 @@ extern ImGuiLogger g_imgui_logger;
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const Image32Bit& hdr_image, int sample_number, float gamma, float exposure)
 {
-
 	return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data().data()), hdr_image.width * hdr_image.height * 3, sample_number, gamma, exposure);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<ColorRGB32F>& hdr_image, int sample_number, float gamma, float exposure)
 {
-
 	return tonemap_hdr_image(reinterpret_cast<const float*>(hdr_image.data()), hdr_image.size() * 3, sample_number, gamma, exposure);
 }
 
 std::vector<unsigned char> Utils::tonemap_hdr_image(const std::vector<float>& hdr_image, int sample_number, float gamma, float exposure)
 {
-
 	return tonemap_hdr_image(hdr_image.data(), hdr_image.size(), sample_number, gamma, exposure);
 }
 
@@ -279,7 +276,6 @@ float Utils::compute_image_mse(const Image32Bit& reference, const Image32Bit& su
 
 float Utils::compute_image_root_mse(const Image32Bit& reference, const Image32Bit& subject)
 {
-
 	return sqrtf(Utils::compute_image_mse(reference, subject));
 }
 

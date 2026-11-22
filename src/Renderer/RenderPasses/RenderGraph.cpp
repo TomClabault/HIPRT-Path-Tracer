@@ -22,13 +22,11 @@ void RenderGraph::set_render_window(RenderWindow* render_window)
 
 std::shared_ptr<GPUKernelCompilerOptions> RenderGraph::get_compiler_options()
 {
-
 	return m_compiler_options;
 }
 
 const std::shared_ptr<GPUKernelCompilerOptions> RenderGraph::get_compiler_options() const
 {
-
 	return m_compiler_options;
 }
 
@@ -257,6 +255,5 @@ std::shared_ptr<RenderPass> RenderGraph::get_render_pass(const std::string& rend
 
 std::unordered_map<std::string, std::shared_ptr<RenderPass>> RenderGraph::get_render_passes()
 {
-
 	return m_render_passes;
 }

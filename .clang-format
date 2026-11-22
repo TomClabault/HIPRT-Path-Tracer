@@ -22,5 +22,7 @@ InsertNewlineAtEOF: true
 QualifierAlignment: Left
 TabWidth: '4'
 UseTab: Always
+KeepEmptyLines:
+  AtStartOfBlock: false
 
 ...

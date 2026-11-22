@@ -63,13 +63,11 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::initial
 	public:
 		virtual std::string emit_input_transform() const override
 		{
-
 			return "return ((value >> (global_element_id & 31)) & 1) && global_element_id != 0;";
 		}
 
 		virtual std::string emit_output_transform() const override
 		{
-
 			return "return value;";
 		}
 	};
@@ -187,7 +185,6 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_dat
 template <typename InputType, typename TransformedType, typename OutputType>
 unsigned int ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_evenly_spaced_segment_size() const noexcept
 {
-
 	return m_evenly_spaced_segment_size;
 }
 
@@ -200,7 +197,6 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::set_eve
 template <typename InputType, typename TransformedType, typename OutputType>
 unsigned int ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_segment_length() const noexcept
 {
-
 	return m_segment_length;
 }
 
@@ -328,14 +324,12 @@ constexpr std::string ParallelSegmentedReduction<InputType, TransformedType, Out
 template <typename InputType, typename TransformedType, typename OutputType>
 OrochiBuffer<OutputType>& ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_output_buffer()
 {
-
 	return m_output_buffer;
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>
 OrochiBuffer<unsigned int>& ParallelSegmentedReduction<InputType, TransformedType, OutputType>::get_segment_ids_buffer()
 {
-
 	return m_segment_ids_prefix_scan.get_output_buffer();
 }
 
@@ -377,14 +371,12 @@ void ParallelSegmentedReduction<InputType, TransformedType, OutputType>::unit_te
 	public:
 		virtual std::string emit_input_transform() const override
 		{
-
 			// Some random transform to take alternating bits: 0b1010101010101010 = 0xAAAA
 			return "return (float)(value & 0xAAAAAAAA);";
 		}
 
 		virtual std::string emit_output_transform() const override
 		{
-
 			return "return value;";
 		}
 	};

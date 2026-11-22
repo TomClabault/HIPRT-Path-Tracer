@@ -10,7 +10,6 @@
 
 int LightTreeATSBuilder::bvh_triangle_index_to_emissive_triangle_index(int bvh_triangle_index) const
 {
-
 	return m_triangle_indices[bvh_triangle_index];
 }
 
@@ -477,30 +476,25 @@ void LightTreeATSBuilder::cleanup()
 
 const std::vector<LightTreeATSNode>& LightTreeATSBuilder::get_nodes() const
 {
-
 	return m_nodes;
 }
 
 const std::vector<LightTreeATSBuilder::PrefetchedTriangle>& LightTreeATSBuilder::get_prefetched_triangles() const
 {
-
 	return m_prefetched_triangles;
 }
 
 const std::vector<unsigned int>& LightTreeATSBuilder::get_bit_trails() const
 {
-
 	return m_bit_trails;
 }
 
 const std::vector<int>& LightTreeATSBuilder::get_triangle_indices() const
 {
-
 	return m_triangle_indices;
 }
 
 LightTreeATSBuilderOptions& LightTreeATSBuilder::get_build_options()
 {
-
 	return m_build_options;
 }

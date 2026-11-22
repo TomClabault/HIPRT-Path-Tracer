@@ -106,14 +106,12 @@ std::map<std::string, std::shared_ptr<GPUKernel>> RenderPass::get_all_kernels()
 
 std::map<std::string, std::shared_ptr<GPUKernel>> RenderPass::get_tracing_kernels()
 {
-
 	// The default implementation just returns all the kernels (assumes that they are all tracing kernesl).
 	return get_all_kernels();
 }
 
 bool RenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return true;
 }
 
@@ -124,13 +122,11 @@ void RenderPass::add_dependency(std::shared_ptr<RenderPass> dependency)
 
 std::vector<std::shared_ptr<RenderPass>>& RenderPass::get_dependencies()
 {
-
 	return m_dependencies;
 }
 
 const std::string& RenderPass::get_name()
 {
-
 	return m_name;
 }
 

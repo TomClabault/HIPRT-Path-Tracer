@@ -141,6 +141,5 @@ void GPUBakerKernel::bake_internal(int3_t bake_resolution, const void* bake_sett
 
 bool GPUBakerKernel::is_complete() const
 {
-
 	return m_bake_complete;
 }

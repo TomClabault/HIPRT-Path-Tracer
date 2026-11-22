@@ -78,6 +78,5 @@ void OrochiEnvmap::free_alias_table()
 
 float OrochiEnvmap::get_luminance_total_sum() const
 {
-
 	return m_luminance_total_sum;
 }

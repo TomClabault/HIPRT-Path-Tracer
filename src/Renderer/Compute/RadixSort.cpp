@@ -56,7 +56,6 @@ void RadixSort::compile()
 
 bool RadixSort::has_been_compiled() const
 {
-
 	// Checking only one of the kernels is enough since they are all compiled together in compile()
 	return m_memset_0_kernel.has_been_compiled();
 }
@@ -262,13 +261,11 @@ void RadixSort::sort(bool auto_stream_synchronize)
 
 OrochiBuffer<unsigned int>& RadixSort::get_sorted_keys_buffer()
 {
-
 	return m_keys_buffer;
 }
 
 OrochiBuffer<unsigned int>& RadixSort::get_sorted_values_buffer()
 {
-
 	return m_values_buffer;
 }
 
@@ -279,7 +276,6 @@ void RadixSort::set_ordering(Ordering order)
 
 std::size_t RadixSort::get_byte_size() const
 {
-
 	return (m_keys_buffer.get_byte_size() + m_values_buffer.get_byte_size() + m_temp_keys_buffer.get_byte_size() + m_temp_values_buffer.get_byte_size() +
 			m_global_count_tables_buffer.get_byte_size() + m_per_block_count_tables_buffer.get_byte_size() +
 			m_per_block_count_tables_scanned_buffer.get_byte_size() + m_global_count_table_prefix_scan.get_byte_size() +

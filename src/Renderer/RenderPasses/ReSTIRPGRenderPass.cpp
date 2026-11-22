@@ -270,7 +270,6 @@ bool ReSTIRPGRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& com
 
 float ReSTIRPGRenderPass::get_VRAM_usage() const
 {
-
 	return (m_splatting_samples_soa_buffer.get_byte_size() + m_hash_grid_distributions_soa_buffer.get_byte_size() +
 			m_hash_grid_checksums_buffer.get_byte_size() + m_grid_cell_alive_buffer.get_byte_size() + m_grid_cell_alive_count_buffer.get_byte_size() +
 			m_grid_cell_alive_list_buffer.get_byte_size() + m_hash_grid_distributions_sufficient_statistics_soa_buffer.get_byte_size()) /

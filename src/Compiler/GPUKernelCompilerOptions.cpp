@@ -433,7 +433,6 @@ void GPUKernelCompilerOptions::remove_macro(const std::string& name)
 
 bool GPUKernelCompilerOptions::has_macro(const std::string& name)
 {
-
 	// Only checking the custom macro map because we cannot remove the options-macro so it makes
 	// no sense to check whether this instance has the macro "InteriorStackStrategy"
 	// for example, it will always be yes
@@ -541,19 +540,16 @@ void GPUKernelCompilerOptions::set_pointer_to_string_macro(const std::string& na
 
 const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_options_macro_map() const
 {
-
 	return m_options_macro_map;
 }
 
 const std::map<std::string, std::shared_ptr<int>>& GPUKernelCompilerOptions::get_custom_macro_map() const
 {
-
 	return m_custom_macro_map;
 }
 
 const std::map<std::string, std::pair<std::shared_ptr<std::string>, bool>>& GPUKernelCompilerOptions::get_custom_string_macro_map() const
 {
-
 	return m_custom_string_macro_map;
 }
 

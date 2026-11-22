@@ -97,12 +97,10 @@ bool LightTreeATSSamplingDataStructure::is_needed(unsigned int emissive_count, s
 
 size_t LightTreeATSSamplingDataStructure::get_VRAM_usage_bytes() const
 {
-
 	return m_light_tree_ats_build_result.get_VRAM_usage_bytes();
 }
 
 LightTreeATSBuilderOptions& LightTreeATSSamplingDataStructure::get_builder_options()
 {
-
 	return m_light_tree_builder.get_build_options();
 }

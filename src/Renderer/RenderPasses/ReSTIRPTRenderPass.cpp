@@ -1211,13 +1211,11 @@ void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 
 bool ReSTIRPTRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == get_path_sampling_strategy();
 }
 
 int ReSTIRPTRenderPass::get_path_sampling_strategy() const
 {
-
 	return PATH_SAMPLING_RESTIR_PT;
 }
 
@@ -1228,7 +1226,6 @@ void ReSTIRPTRenderPass::request_temporal_bufffers_clear()
 
 float ReSTIRPTRenderPass::get_VRAM_usage() const
 {
-
 	return (m_initial_candidates_buffer.get_byte_size() + m_initial_candidates_working_samples_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() +
 			m_spatial_buffer.get_byte_size() + m_directional_spatial_reuse_data.get_byte_size() + m_spmis_data.get_byte_size() +
 			m_spmis_union_domain_shadow_split_buffer.get_byte_size()) /

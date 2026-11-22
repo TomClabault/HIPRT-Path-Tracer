@@ -380,7 +380,6 @@ float ReSTIRPTWavefrontRenderPass::get_VRAM_usage() const
 
 int ReSTIRPTWavefrontRenderPass::get_path_sampling_strategy() const
 {
-
 	return PATH_SAMPLING_RESTIR_PT_WAVEFRONT;
 }
 

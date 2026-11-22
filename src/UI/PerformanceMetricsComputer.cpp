@@ -10,7 +10,6 @@
 
 float PerformanceMetricsComputer::data_getter(void* data, int index)
 {
-
 	return static_cast<double*>(data)[index];
 }
 
@@ -39,13 +38,11 @@ std::vector<double>& PerformanceMetricsComputer::get_data(const std::string& key
 
 int PerformanceMetricsComputer::get_value_count(const std::string& key)
 {
-
 	return m_values_count[key];
 }
 
 int PerformanceMetricsComputer::get_data_index(const std::string& key)
 {
-
 	return m_data_indices[key];
 }
 
@@ -171,13 +168,11 @@ double PerformanceMetricsComputer::get_max(const std::string& key)
 
 int PerformanceMetricsComputer::get_window_size() const
 {
-
 	return m_window_size;
 }
 
 int& PerformanceMetricsComputer::get_window_size()
 {
-
 	return m_window_size;
 }
 

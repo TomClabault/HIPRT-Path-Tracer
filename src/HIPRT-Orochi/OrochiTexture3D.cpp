@@ -178,6 +178,5 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 
 oroTextureObject_t OrochiTexture3D::get_device_texture()
 {
-
 	return m_texture;
 }

@@ -411,13 +411,11 @@ void LightTreeSGBuilder::cleanup()
 
 LightTreeSGBuilderNISML& LightTreeSGBuilder::get_nisml_data()
 {
-
 	return m_nisml;
 }
 
 const LightTreeSGBuilderNISML& LightTreeSGBuilder::get_nisml_data() const
 {
-
 	return m_nisml;
 }
 
@@ -433,13 +431,11 @@ void LightTreeSGBuilder::update_ats_builder_options()
 
 LightTreeSGBuilderOptions& LightTreeSGBuilder::get_build_options()
 {
-
 	return m_build_options;
 }
 
 int LightTreeSGBuilder::get_spatial_lobe_count() const
 {
-
 	return m_build_options.spatial_lobe_count;
 }
 
@@ -450,7 +446,6 @@ void LightTreeSGBuilder::set_spatial_lobe_count(int spatial_lobe_count)
 
 int LightTreeSGBuilder::get_tree_cut_size() const
 {
-
 	return m_build_options.tree_cut_size;
 }
 
@@ -461,7 +456,6 @@ void LightTreeSGBuilder::set_tree_cut_size(int tree_cut_size)
 
 int LightTreeSGBuilder::get_tree_cut_size_neural_many_lights() const
 {
-
 	return m_build_options.tree_cut_size_neural_many_lights;
 }
 
@@ -472,7 +466,6 @@ void LightTreeSGBuilder::set_tree_cut_size_neural_many_lights(int tree_cut_size_
 
 int LightTreeSGBuilder::get_second_tree_cut_size() const
 {
-
 	return m_second_tree_cut_size;
 }
 

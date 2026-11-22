@@ -67,7 +67,6 @@ void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::set_da
 template <typename InputType, typename TransformedType, typename OutputType>
 bool ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_exclusive_scan() const
 {
-
 	return m_exclusive_scan;
 }
 
@@ -283,14 +282,12 @@ constexpr std::string ParallelSegmentedPrefixScan<InputType, TransformedType, Ou
 template <typename InputType, typename TransformedType, typename OutputType>
 OrochiBuffer<OutputType>& ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_output_buffer()
 {
-
 	return m_output_buffer;
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>
 std::size_t ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::get_byte_size() const
 {
-
 	return m_input_buffer.get_byte_size() + m_flags_buffer.get_byte_size() + m_output_buffer.get_byte_size() +
 		   m_global_block_index_counter_buffer.get_byte_size() + m_block_descriptors_buffer.get_byte_size();
 }
@@ -332,14 +329,12 @@ void ParallelSegmentedPrefixScan<InputType, TransformedType, OutputType>::unit_t
 	public:
 		virtual std::string emit_input_transform() const override
 		{
-
 			// Some random transform to take alternating bits: 0b1010101010101010 = 0xAAAA
 			return "return (float)(value & 0xAAAAAAAA);";
 		}
 
 		virtual std::string emit_output_transform() const override
 		{
-
 			return "return value;";
 		}
 	};

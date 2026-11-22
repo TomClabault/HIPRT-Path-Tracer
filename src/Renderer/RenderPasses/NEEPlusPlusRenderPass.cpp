@@ -149,7 +149,6 @@ void NEEPlusPlusRenderPass::reset(bool reset_by_camera_movement)
 
 bool NEEPlusPlusRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	// Only active if we're not using ReSTIR PT because if we are using ReSTIR, the path tracing is done in
 	// the initial candidates kernel
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_USE_NEE_PLUS_PLUS) == KERNEL_OPTION_TRUE;
@@ -157,24 +156,20 @@ bool NEEPlusPlusRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& 
 
 NEEPlusPlusHashGridStorage& NEEPlusPlusRenderPass::get_nee_plus_plus_storage()
 {
-
 	return m_nee_plus_plus_storage;
 }
 
 float& NEEPlusPlusRenderPass::get_max_vram_usage()
 {
-
 	return m_max_vram_usage_megabytes;
 }
 
 std::size_t NEEPlusPlusRenderPass::get_vram_usage_bytes() const
 {
-
 	return m_nee_plus_plus_storage.get_byte_size();
 }
 
 float NEEPlusPlusRenderPass::get_load_factor() const
 {
-
 	return m_nee_plus_plus_storage.get_load_factor();
 }

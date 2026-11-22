@@ -845,55 +845,46 @@ void RenderWindow::change_resolution_scaling(float new_scaling)
 
 int RenderWindow::get_width()
 {
-
 	return m_viewport_width;
 }
 
 int RenderWindow::get_height()
 {
-
 	return m_viewport_height;
 }
 
 bool RenderWindow::is_interacting()
 {
-
 	return m_mouse_interactor->is_interacting() || m_keyboard_interactor.is_interacting();
 }
 
 RenderWindowKeyboardInteractor& RenderWindow::get_keyboard_interactor()
 {
-
 	return m_keyboard_interactor;
 }
 
 std::shared_ptr<RenderWindowMouseInteractor> RenderWindow::get_mouse_interactor()
 {
-
 	return m_mouse_interactor;
 }
 
 std::shared_ptr<ApplicationSettings> RenderWindow::get_application_settings()
 {
-
 	return m_application_settings;
 }
 
 std::shared_ptr<ApplicationState> RenderWindow::get_application_state()
 {
-
 	return m_application_state;
 }
 
 std::shared_ptr<DisplayViewSystem> RenderWindow::get_display_view_system()
 {
-
 	return m_display_view_system;
 }
 
 DisplaySettings& RenderWindow::get_display_settings()
 {
-
 	return m_display_settings;
 }
 
@@ -1102,13 +1093,11 @@ void RenderWindow::clear_ImGui_status_text()
 
 float& RenderWindow::get_current_render_time_ms()
 {
-
 	return m_application_state->current_render_time_ms;
 }
 
 float RenderWindow::get_samples_per_second()
 {
-
 	return m_application_state->samples_per_second;
 }
 
@@ -1145,43 +1134,36 @@ float RenderWindow::compute_GPU_stall_duration()
 
 float RenderWindow::get_UI_delta_time()
 {
-
 	return m_application_state->last_CPU_frame_delta_time_ms;
 }
 
 std::shared_ptr<OpenImageDenoiser> RenderWindow::get_denoiser()
 {
-
 	return m_denoiser;
 }
 
 std::shared_ptr<GPURenderer> RenderWindow::get_renderer()
 {
-
 	return m_renderer;
 }
 
 std::shared_ptr<GPUBaker> RenderWindow::get_baker()
 {
-
 	return m_gpu_baker;
 }
 
 std::shared_ptr<PerformanceMetricsComputer> RenderWindow::get_performance_metrics()
 {
-
 	return m_perf_metrics;
 }
 
 std::shared_ptr<Screenshoter> RenderWindow::get_screenshoter()
 {
-
 	return m_screenshoter;
 }
 
 std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 {
-
 	return m_imgui_renderer;
 }
 

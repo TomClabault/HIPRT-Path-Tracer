@@ -79,7 +79,6 @@ void ImGuiSettingsWindow::set_status_text(const std::string& new_status_text)
 
 std::string ImGuiSettingsWindow::get_status_text() const
 {
-
 	return m_status_text;
 }
 
@@ -1555,7 +1554,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 
 			switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY))
 			{
-
 			case LSS_BASE_LIGHT_TREE_ATS:
 				draw_light_tree_ATS_settings_panel();
 

@@ -42,13 +42,11 @@ std::string GPUKernel::get_kernel_name() const
 
 std::string GPUKernel::get_kernel_file_path() const
 {
-
 	return m_kernel_file_path;
 }
 
 std::string GPUKernel::get_kernel_function_name() const
 {
-
 	return m_kernel_function_name;
 }
 
@@ -190,13 +188,11 @@ int GPUKernel::get_max_active_blocks_per_multiprocessor(int block_size)
 
 GPUKernelCompilerOptions& GPUKernel::get_kernel_options()
 {
-
 	return m_compiler_options;
 }
 
 const GPUKernelCompilerOptions& GPUKernel::get_kernel_options() const
 {
-
 	return m_compiler_options;
 }
 
@@ -323,7 +319,6 @@ void GPUKernel::parse_option_macros_used()
 
 bool GPUKernel::uses_macro(const std::string& name) const
 {
-
 	return m_used_option_macros.find(name) != m_used_option_macros.end();
 }
 
@@ -363,13 +358,11 @@ float GPUKernel::get_last_execution_time() const
 
 bool GPUKernel::has_been_compiled() const
 {
-
 	return m_kernel_function != nullptr;
 }
 
 bool GPUKernel::is_precompiled() const
 {
-
 	return m_is_precompiled_kernel;
 }
 

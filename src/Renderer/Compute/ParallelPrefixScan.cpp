@@ -214,7 +214,6 @@ void ParallelPrefixScan::scan()
 
 OrochiBuffer<unsigned int>& ParallelPrefixScan::get_output_buffer()
 {
-
 	return m_output_buffer;
 }
 

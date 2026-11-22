@@ -257,6 +257,5 @@ void HierarchicalAdaptiveSamplingRenderPass::reset(bool reset_by_camera_movement
 
 bool HierarchicalAdaptiveSamplingRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return m_renderer != nullptr && m_renderer->get_render_data().render_settings.enable_hierarchical_adaptive_sampling;
 }

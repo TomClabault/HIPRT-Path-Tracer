@@ -448,14 +448,12 @@ void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData&
 
 bool IlluminationAwareKDTreeRenderPass::is_using_nisml(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 											   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 bool IlluminationAwareKDTreeRenderPass::is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return ILLUMINATION_AWARE_KD_TREE_IS_LEARNING_TO_CLUSTER(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
@@ -827,110 +825,92 @@ void IlluminationAwareKDTreeRenderPass::reset(bool reset_by_camera_movement)
 
 bool IlluminationAwareKDTreeRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return ILLUMINATION_AWARE_KD_TREE_IS_ENABLED(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 												 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_split_iterations_per_SPP()
 {
-
 	return m_split_iterations_per_SPP;
 }
 
 bool& IlluminationAwareKDTreeRenderPass::get_auto_split_iterations_per_SPP()
 {
-
 	return m_auto_split_iterations_per_SPP;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_lightcut_refinement_rounds_per_SPP()
 {
-
 	return m_lightcut_refinement_rounds_per_SPP;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_lightcut_refinement_rounds_SPP_limit()
 {
-
 	return m_lightcut_refinement_rounds_SPP_limit;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_training_sample_buffer_capacity()
 {
-
 	return m_training_sample_buffer_capacity;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_spp()
 {
-
 	return m_learning_to_cluster_learning_spp;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_learning_to_cluster_learning_seconds()
 {
-
 	return m_learning_to_cluster_learning_seconds;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_representative_capacity()
 {
-
 	return m_nisml_representative_capacity;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_size_mb()
 {
-
 	return m_nisml_hash_table_size_mb;
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_nisml_hash_normal_precision()
 {
-
 	return m_nisml_hash_normal_precision;
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_occupied_entry_count() const
 {
-
 	return m_nisml_hash_occupied_entry_count;
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_nisml_hash_table_capacity() const
 {
-
 	return static_cast<unsigned int>(m_illumination_aware_kd_tree.m_nisml_data.m_hash_table_capacity);
 }
 
 int& IlluminationAwareKDTreeRenderPass::get_current_node_buffer_capacity()
 {
-
 	return m_nodes_buffer_capacity;
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_current_node_count() const
 {
-
 	return m_cached_current_node_count.get_host_pinned_pointer()[0];
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_current_guiding_node_count() const
 {
-
 	return m_cached_current_guiding_node_count.get_host_pinned_pointer()[0];
 }
 
 unsigned int IlluminationAwareKDTreeRenderPass::get_current_allocated_lightcut_count() const
 {
-
 	return m_cached_current_allocated_lightcut_count.get_host_pinned_pointer()[0];
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_lightcut_capacity() const
 {
-
 	return m_illumination_aware_kd_tree.m_learning_to_cluster_data.maximum_size();
 }
 
@@ -941,13 +921,11 @@ void IlluminationAwareKDTreeRenderPass::mark_buffers_need_reallocation()
 
 bool& IlluminationAwareKDTreeRenderPass::get_frozen_tree()
 {
-
 	return m_frozen_tree;
 }
 
 std::size_t IlluminationAwareKDTreeRenderPass::get_vram_usage_bytes() const
 {
-
 	return get_vram_usage_breakdown().get_total_bytes();
 }
 

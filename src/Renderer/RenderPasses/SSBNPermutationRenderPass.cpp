@@ -193,7 +193,6 @@ bool SSBNPermutationRenderPass::pre_frame_render_update(float delta_time)
 
 bool SSBNPermutationRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
-
 	return is_render_pass_used(compiler_options);
 }
 
@@ -336,42 +335,35 @@ void SSBNPermutationRenderPass::update_render_data()
 
 bool SSBNPermutationRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return compiler_options.get_macro_value(GPUKernelCompilerOptions::SSBN_PERMUTATION_ENABLED) == KERNEL_OPTION_TRUE;
 }
 
 bool& SSBNPermutationRenderPass::get_do_retargeting()
 {
-
 	return m_do_retargeting;
 }
 
 std::map<std::string, std::shared_ptr<GPUKernel>> SSBNPermutationRenderPass::get_tracing_kernels()
 {
-
 	return {};
 }
 
 int& SSBNPermutationRenderPass::get_blue_noise_texture_width()
 {
-
 	return m_blue_noise_texture_width;
 }
 
 int& SSBNPermutationRenderPass::get_blue_noise_texture_height()
 {
-
 	return m_blue_noise_texture_height;
 }
 
 int& SSBNPermutationRenderPass::get_max_retargeting_radius()
 {
-
 	return m_max_retargeting_radius;
 }
 
 int& SSBNPermutationRenderPass::get_refresh_seeds_sample_interval()
 {
-
 	return m_refresh_seeds_sample_interval;
 }

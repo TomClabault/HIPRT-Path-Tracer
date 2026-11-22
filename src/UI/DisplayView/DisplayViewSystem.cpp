@@ -72,7 +72,6 @@ void DisplayViewSystem::configure_framebuffer()
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE)
 	{
-
 		// Procedes with a victory dance: Dance dance dance dance
 		return;
 	}
@@ -165,7 +164,6 @@ void DisplayViewSystem::display()
 
 DisplayViewType DisplayViewSystem::get_current_display_view_type()
 {
-
 	return m_current_display_view_type;
 }
 

@@ -115,6 +115,5 @@ void RenderWindowKeyboardInteractor::poll_keyboard_inputs()
 
 bool RenderWindowKeyboardInteractor::is_interacting()
 {
-
 	return m_z_pressed || m_q_pressed || m_s_pressed || m_d_pressed || m_space_pressed || m_lshift_pressed;
 }

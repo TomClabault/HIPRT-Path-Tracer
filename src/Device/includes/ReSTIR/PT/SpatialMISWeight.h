@@ -596,7 +596,6 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_
 
 																Xorshift32Generator& random_number_generator)
 	{
-
 		// The caller sums one return value per canonical estimate, even when no neighbor has confidence.
 		if (neighbors_confidence_sum == 0)
 			return 1.0f / render_data.render_settings.restir_pt_settings.spmis_settings.canonical_weight_estimation_count;
@@ -693,7 +692,6 @@ struct ReSTIRPTSpatialResamplingMISWeight<RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_
 
 																Xorshift32Generator& random_number_generator)
 	{
-
 		// The caller sums one return value per canonical estimate, even when no neighbor has confidence.
 		if (neighbors_confidence_sum == 0)
 			return 1.0f / render_data.render_settings.restir_pt_settings.spmis_settings.canonical_weight_estimation_count;

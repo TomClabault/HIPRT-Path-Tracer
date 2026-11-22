@@ -934,6 +934,5 @@ void ImGuiToolsWindow::draw_graph_convergence_panel()
 
 ImGuiConvergenceGraphWidget& ImGuiToolsWindow::get_convergence_graph_widget()
 {
-
 	return m_convergence_graph_widget;
 }

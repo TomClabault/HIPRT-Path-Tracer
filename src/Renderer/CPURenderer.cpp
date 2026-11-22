@@ -555,13 +555,11 @@ void CPURenderer::set_camera(Camera& camera)
 
 HIPRTRenderData& CPURenderer::get_render_data()
 {
-
 	return m_render_data;
 }
 
 HIPRTRenderSettings& CPURenderer::get_render_settings()
 {
-
 	return m_render_data.render_settings;
 }
 

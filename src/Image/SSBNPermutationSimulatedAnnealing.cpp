@@ -228,6 +228,5 @@ void SSBNPermutationSimulatedAnnealing::write_permutation_visualization_image(co
 
 std::vector<int>& SSBNPermutationSimulatedAnnealing::permuted_positions()
 {
-
 	return m_permuted_positions;
 }

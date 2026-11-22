@@ -272,7 +272,6 @@ std::unordered_set<std::string> GPUKernelCompiler::read_option_macro_of_file(con
 		auto cache_timestamp_find = m_filepath_to_options_macros_cache_timestamp.find(filepath);
 		if (cache_timestamp_find != m_filepath_to_options_macros_cache_timestamp.end() && cache_timestamp_find->second == file_modification_time)
 		{
-
 			// Cache hit
 			return m_filepath_to_option_macros_cache[filepath];
 		}
@@ -445,7 +444,6 @@ void GPUKernelCompiler::wait_compiler_file_operations()
 
 GPUKernelCompiler::ShaderCacheUsageOverride GPUKernelCompiler::get_shader_cache_usage_override() const
 {
-
 	return m_shader_cache_force_usage;
 }
 

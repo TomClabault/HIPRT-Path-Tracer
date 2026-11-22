@@ -250,14 +250,12 @@ constexpr std::string ParallelPrefixScanDecoupledLookback<InputType, Transformed
 template <typename InputType, typename TransformedType, typename OutputType>
 OrochiBuffer<OutputType>& ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_output_buffer()
 {
-
 	return m_output_buffer;
 }
 
 template <typename InputType, typename TransformedType, typename OutputType>
 std::size_t ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>::get_byte_size() const
 {
-
 	return m_input_buffer.get_byte_size() + m_output_buffer.get_byte_size() + m_global_block_index_counter_buffer.get_byte_size() +
 		   m_block_descriptors_buffer.get_byte_size();
 }
@@ -300,14 +298,12 @@ void ParallelPrefixScanDecoupledLookback<InputType, TransformedType, OutputType>
 	public:
 		virtual std::string emit_input_transform() const override
 		{
-
 			// Some random transform to take alternating bits: 0b1010101010101010 = 0xAAAA
 			return "return (float)(value & 0xAAAAAAAA);";
 		}
 
 		virtual std::string emit_output_transform() const override
 		{
-
 			return "return value;";
 		}
 	};

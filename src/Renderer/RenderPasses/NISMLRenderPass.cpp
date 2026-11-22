@@ -198,32 +198,27 @@ void NISMLRenderPass::reset(bool reset_by_camera_movement)
 
 bool NISMLRenderPass::is_render_pass_used(const GPUKernelCompilerOptions& compiler_options) const
 {
-
 	return ILLUMINATION_AWARE_KD_TREE_IS_NISML(compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR),
 											   compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
 float& NISMLRenderPass::get_training_record_percentage()
 {
-
 	return m_training_record_percentage;
 }
 
 int& NISMLRenderPass::get_training_spp()
 {
-
 	return m_training_spp;
 }
 
 int& NISMLRenderPass::get_training_record_buffer_capacity()
 {
-
 	return m_training_record_buffer_capacity;
 }
 
 float& NISMLRenderPass::get_adam_learning_rate()
 {
-
 	return m_adam_learning_rate;
 }
 
@@ -267,6 +262,5 @@ NISMLVRAMUsage NISMLRenderPass::get_vram_usage_breakdown() const
 
 std::size_t NISMLRenderPass::get_vram_usage_bytes() const
 {
-
 	return get_vram_usage_breakdown().get_total_bytes();
 }

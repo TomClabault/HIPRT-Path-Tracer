@@ -393,7 +393,6 @@ void WavefrontRenderPassCommon::launch_material_family_kernels_async(const Mater
 
 bool WavefrontRenderPassCommon::get_overlap_material_family_kernels() const
 {
-
 	return m_overlap_material_family_kernels;
 }
 
