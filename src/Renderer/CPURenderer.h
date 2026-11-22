@@ -20,7 +20,6 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGDistributionSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTDirectionalSpatialReuseDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTSPMISDataHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
@@ -74,7 +73,6 @@ public:
 
 	void tracing_pass();
 
-	void compute_ReSTIR_PT_optimal_spatial_reuse_radii();
 	void configure_ReSTIR_PT_initial_candidates_pass();
 	void configure_ReSTIR_PT_temporal_reuse_pass();
 	void configure_ReSTIR_PT_spatial_reuse_pass(int spatial_reuse_pass_index);
@@ -157,7 +155,6 @@ private:
 		std::vector<ReSTIRPTReservoir> temporal_reservoirs;
 		std::vector<ReSTIRPTReservoir> spatial_reservoirs;
 
-		ReSTIRPTDirectionalSpatialReuseDataHost<std::vector> directional_spatial_reuse_data_buffer;
 		ReSTIRPTSPMISDataHost<std::vector> spmis_data;
 		// Per-pixel state of the union domain spatial reuse kernels: every array of ReSTIRPTSPMISUnionDomainShadowSplitBuffers in one allocation
 		std::vector<float4_t> spmis_union_domain_shadow_split_buffer;

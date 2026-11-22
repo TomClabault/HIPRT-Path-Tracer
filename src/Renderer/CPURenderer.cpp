@@ -11,8 +11,6 @@
 #include "Device/kernels/NEE++/GridPrepopulate.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
-#include "Device/kernels/ReSTIR/DirectionalReuseCompute.h"
-
 #include "Device/kernels/ReSTIR/PT/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/PT/Shading.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuse.h"
@@ -168,7 +166,6 @@ void CPURenderer::setup_buffers()
 	m_restir_pt_state.temporal_reservoirs.resize(width * height);
 	m_restir_pt_state.spatial_reservoirs.resize(width * height);
 
-	m_restir_pt_state.directional_spatial_reuse_data_buffer.resize(width, height);
 	m_restir_pt_state.spmis_data.resize(width, height);
 	m_restir_pt_state.spmis_data.m_spmis_data.memset_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>(
 		HashGrid::UNDEFINED_CHECKSUM_OR_GRID_INDEX);
@@ -406,7 +403,6 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_restir_pt_state.spatial_reservoirs.data();
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_restir_pt_state.temporal_reservoirs.data();
 
-	m_restir_pt_state.directional_spatial_reuse_data_buffer.to_device(m_render_data);
 	m_restir_pt_state.spmis_data.to_device(m_render_data);
 
 	ReSTIRPTSPMISUnionDomainShadowSplitBuffers::layout(reinterpret_cast<unsigned char*>(m_restir_pt_state.spmis_union_domain_shadow_split_buffer.data()),
@@ -1009,8 +1005,6 @@ void CPURenderer::hierarchical_adaptive_sampling_pass()
 
 void CPURenderer::ReSTIR_PT_pass()
 {
-	compute_ReSTIR_PT_optimal_spatial_reuse_radii();
-
 	configure_ReSTIR_PT_initial_candidates_pass();
 	launch_ReSTIR_PT_initial_candidates_pass();
 
@@ -1054,17 +1048,6 @@ void CPURenderer::ReSTIR_PG_pass()
 void CPURenderer::tracing_pass()
 {
 	debug_render_pass([this](int x, int y) { MegaKernel(m_render_data, x, y); });
-}
-
-void CPURenderer::compute_ReSTIR_PT_optimal_spatial_reuse_radii()
-{
-	debug_render_pass(
-		[this](int x, int y)
-		{
-			ReSTIR_PT_Directional_Reuse_Compute(m_render_data, x, y,
-												m_render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_directions_mask_ull,
-												m_render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_radius);
-		});
 }
 
 void CPURenderer::configure_ReSTIR_PT_initial_candidates_pass()

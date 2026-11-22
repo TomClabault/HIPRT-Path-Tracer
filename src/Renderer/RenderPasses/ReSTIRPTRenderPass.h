@@ -8,7 +8,6 @@
 
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
-#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTDirectionalSpatialReuseDataHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTSPMISDataHost.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
@@ -28,7 +27,6 @@ public:
 	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_WEIGHTS_KERNEL_ID;
 	static const std::string RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID;
 	static const std::string RESTIR_PT_SHADING_KERNEL_ID;
-	static const std::string RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID;
 	static const std::string RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID;
@@ -53,7 +51,6 @@ public:
 											  bool silent,
 											  bool use_cache) override;
 	virtual bool pre_frame_render_update(float delta_time) override;
-	bool pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data);
 	bool pre_render_update_spmis_buffers(const HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options);
 	/**
 	 * Allocates the per-pixel state of the union domain spatial reuse kernels when ReSTIRPTSettings::do_spmis_union_domain_reuse() is true and the
@@ -66,13 +63,6 @@ public:
 	 */
 	bool free_spmis_union_domain_shadow_split_buffer();
 
-	/**
-	 * This pass computes the optimal reuse radius and reuse directions to use, per-pixel
-	 * during the spatial reuse passes
-	 *
-	 * This is a no-op if not accumulating i.e. this is only available for offline rendering
-	 */
-	void compute_optimal_spatial_reuse_radii(HIPRTRenderData& render_data);
 	void configure_initial_candidates_pass(HIPRTRenderData& render_data);
 	virtual void launch_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_spmis_create_reuse_cells_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, ReSTIRPTReservoir* input_reservoirs);
@@ -129,7 +119,6 @@ private:
 	OrochiBuffer<ReSTIRPTReservoir> m_temporal_buffer;
 	OrochiBuffer<ReSTIRPTReservoir> m_spatial_buffer;
 
-	ReSTIRPTDirectionalSpatialReuseDataHost<OrochiBuffer> m_directional_spatial_reuse_data;
 	// Number of host pinned render data slots used in turn by upload_render_data(). More than the uploads of one frame so that the wait on the
 	// event of a slot practically never blocks
 	static constexpr unsigned int RENDER_DATA_UPLOAD_SLOT_COUNT = 32;

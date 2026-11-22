@@ -26,7 +26,6 @@ const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID =
 	"ReSTIR PT - Spatial reuse SPMIS Union Domain Shadow Split Resolve";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID					   = "ReSTIR PT - Shading";
-const std::string ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID	   = "ReSTIR PT - Directional reuse compute";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID		   = "ReSTIR PT - SPMIS Reset Buffers";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID	   = "ReSTIR PT - SPMIS Reset Cells Data";
 const std::string ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID			   = "ReSTIR PT - SPMIS Count Cells";
@@ -47,7 +46,6 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FU
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_WEIGHTS_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitWeights" },
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID, "ReSTIR_PT_SpatialReuseSPMISUnionDomainShadowSplitResolve" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, "ReSTIR_PT_Shading" },
-	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, "ReSTIR_PT_Directional_Reuse_Compute" },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, "ReSTIR_PT_SPMIS_ResetBuffers" },
 	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, "ReSTIR_PT_SPMIS_ResetCellsData" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, "ReSTIR_PT_SPMIS_CountCells" },
@@ -73,7 +71,6 @@ const std::unordered_map<std::string, std::string> ReSTIRPTRenderPass::KERNEL_FI
 	{ RESTIR_PT_SPATIAL_REUSE_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_KERNEL_ID,
 	  DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitResolve.h" },
 	{ RESTIR_PT_SHADING_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/PT/Shading.h" },
-	{ RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/DirectionalReuseCompute.h" },
 	{ RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetBuffers.h" },
 	{ RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/ResetCellsData.h" },
 	{ RESTIR_PT_SPMIS_COUNT_CELLS_KERNEL_ID, DEVICE_KERNELS_DIRECTORY "/ReSTIR/SPMIS/CountCells.h" },
@@ -212,14 +209,6 @@ ReSTIRPTRenderPass::ReSTIRPTRenderPass(const std::string& render_pass_name, GPUR
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SHADING_KERNEL_ID]->get_kernel_options().set_macro_value(GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
 																									 8);
 
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID] =
-		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID);
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_file_path(
-		ReSTIRPTRenderPass::KERNEL_FILES.at(ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->set_kernel_function_name(
-		ReSTIRPTRenderPass::KERNEL_FUNCTION_NAMES.at(ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID));
-	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->synchronize_options_with(m_compiler_options);
-
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID] =
 		std::make_shared<GPUKernel>(this->get_name() + "::" + ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID);
 	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID]->set_kernel_file_path(
@@ -304,7 +293,6 @@ void ReSTIRPTRenderPass::resize(unsigned int new_width, unsigned int new_height)
 	m_temporal_buffer.resize(new_width * new_height);
 	m_spatial_buffer.resize(new_width * new_height);
 
-	m_directional_spatial_reuse_data.resize(new_width, new_height);
 	m_spmis_data.resize(new_width, new_height);
 
 	if (m_spmis_union_domain_shadow_split_buffer.size() > 0)
@@ -340,14 +328,6 @@ bool ReSTIRPTRenderPass::pre_render_compilation_check(std::shared_ptr<HIPRTOroch
 	if (need_spatial)
 		// Spatial needed
 		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPATIAL_REUSE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
-
-	bool need_directional_spatial_reuse = !m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->has_been_compiled() &&
-										  render_data.render_settings.restir_pt_settings.spatial_pass.use_adaptive_directional_spatial_reuse;
-	recompiled |= need_directional_spatial_reuse;
-
-	if (need_directional_spatial_reuse)
-		// Spatial needed
-		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->compile(hiprt_orochi_ctx, func_name_sets, use_cache, silent);
 
 	bool using_spmis = (m_renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE) ==
 							RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||
@@ -424,7 +404,6 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 		if (spatial_candidates_reservoir_needs_resize)
 			m_spatial_buffer.resize(render_resolution.x * render_resolution.y);
 
-		render_data_invalidated |= pre_render_update_directional_reuse_buffers(render_data);
 		render_data_invalidated |= pre_render_update_spmis_buffers(render_data, *m_renderer->get_global_compiler_options());
 
 		// Arbitrary setting this one so that we're sure it's pointing to a valid buffer when all the buffers are resized
@@ -455,7 +434,6 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 			render_data_invalidated = true;
 		}
 
-		render_data_invalidated |= m_directional_spatial_reuse_data.free();
 		render_data_invalidated |= m_spmis_data.free();
 		render_data_invalidated |= free_spmis_union_domain_shadow_split_buffer();
 	}
@@ -464,34 +442,6 @@ bool ReSTIRPTRenderPass::pre_frame_render_update(float delta_time)
 		// A percentage of the maximum render resolution extent for automatic spatial reuse radius
 		render_data.render_settings.restir_pt_settings.spatial_pass.reuse_radius =
 			hippt::max(m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y) * ReSTIRPTRenderPass::AUTO_SPATIAL_RADIUS_RESOLUTION_PERCENTAGE;
-
-	return render_data_invalidated;
-}
-
-bool ReSTIRPTRenderPass::pre_render_update_directional_reuse_buffers(const HIPRTRenderData& render_data)
-{
-	const ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
-
-	bool render_data_invalidated = false;
-
-	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
-	{
-		if (m_directional_spatial_reuse_data.maximum_size() == 0)
-		{
-			m_directional_spatial_reuse_data.resize(render_data.render_settings.render_resolution.x, render_data.render_settings.render_resolution.y);
-
-			render_data_invalidated = true;
-		}
-	}
-	else
-	{
-		if (m_directional_spatial_reuse_data.maximum_size() > 0)
-		{
-			m_directional_spatial_reuse_data.free();
-
-			render_data_invalidated = true;
-		}
-	}
 
 	return render_data_invalidated;
 }
@@ -579,38 +529,6 @@ bool ReSTIRPTRenderPass::free_spmis_union_domain_shadow_split_buffer()
 	m_spmis_union_domain_shadow_split_pixel_count = 0;
 
 	return true;
-}
-
-void ReSTIRPTRenderPass::compute_optimal_spatial_reuse_radii(HIPRTRenderData& render_data)
-{
-	bool accumulating							  = render_data.render_settings.accumulate;
-	bool first_frame							  = render_data.render_settings.sample_number == 0;
-	bool not_interacting						  = render_data.render_settings.wants_render_low_resolution == false;
-	bool using_adaptive_directional_spatial_reuse = render_data.render_settings.restir_pt_settings.spatial_pass.use_adaptive_directional_spatial_reuse;
-
-	if (accumulating && first_frame && not_interacting && using_adaptive_directional_spatial_reuse)
-	{
-		// If we're not accumulating, we have no guarantee that the camera isn't moving and so
-		// there isn't really an "optimal" reuse radius per pixel to find
-		//
-		// But if the camera isn't moving, then the neighborhood of a pixel is fixed and we can optimize
-		// the best spatial reuse radius
-		//
-		// Also, we're only doing this as a "prepass" at sample 0: we only need this once for the whole rendering
-
-		unsigned long long int* per_pixel_spatial_reuse_direction_mask_ull =
-			m_directional_spatial_reuse_data.m_spatial_reuse_data
-				.get_buffer_data_ptr<ReSTIRPTDirectionalSpatialReuseDataHostBuffers::RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_DIRECTION_MASK_ULL>();
-		unsigned char* per_pixel_spatial_reuse_radius =
-			m_directional_spatial_reuse_data.m_spatial_reuse_data
-				.get_buffer_data_ptr<ReSTIRPTDirectionalSpatialReuseDataHostBuffers::RESTIR_PT_DIRECTIONAL_SPATIAL_REUSE_RADIUS>();
-		upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID, render_data);
-		void* launch_args[] = { &per_pixel_spatial_reuse_direction_mask_ull, &per_pixel_spatial_reuse_radius };
-
-		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID]->launch_asynchronous(
-			KernelBlockWidthHeight, KernelBlockWidthHeight, m_renderer->m_render_resolution.x, m_renderer->m_render_resolution.y, launch_args,
-			m_renderer->get_main_stream());
-	}
 }
 
 void ReSTIRPTRenderPass::configure_initial_candidates_pass(HIPRTRenderData& render_data)
@@ -1000,8 +918,6 @@ bool ReSTIRPTRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCom
 
 	// GPUKernel records every kernel launch automatically and accumulates its execution time for the frame.
 
-	compute_optimal_spatial_reuse_radii(render_data);
-
 	configure_initial_candidates_pass(render_data);
 	launch_initial_candidates_pass(render_data);
 
@@ -1052,9 +968,7 @@ void ReSTIRPTRenderPass::upload_render_data(const std::string& kernel_id, HIPRTR
 	HIPRTRenderData* host_pinned_render_data = m_render_data_host_pinned.get_host_pinned_pointer() + slot_index;
 	*host_pinned_render_data				 = render_data;
 
-	std::string render_data_global_name = kernel_id == ReSTIRPTRenderPass::RESTIR_PT_DIRECTIONAL_REUSE_COMPUTE_KERNEL_ID
-											  ? "RESTIR_PT_DIRECTIONAL_REUSE_RENDER_DATA"
-										  : kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID ||
+	std::string render_data_global_name = kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_BUFFERS_KERNEL_ID ||
 												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_RESET_CELLS_DATA_KERNEL_ID ||
 												  kernel_id == ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID
 											  ? "RESTIR_PT_SPMIS_RENDER_DATA"
@@ -1075,7 +989,6 @@ void ReSTIRPTRenderPass::update_render_data()
 		render_data.aux_buffers.restir_pt_reservoir_buffer_2 = m_spatial_buffer.get_device_pointer();
 		render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_temporal_buffer.get_device_pointer();
 
-		m_directional_spatial_reuse_data.to_device(render_data);
 		m_spmis_data.to_device(render_data);
 
 		// The pointers of the union domain spatial reuse kernels are published here, before the frame is launched, and are never changed by launch_async():
@@ -1102,15 +1015,12 @@ void ReSTIRPTRenderPass::update_render_data()
 		render_data.aux_buffers.restir_pt_reservoir_buffer_2 = nullptr;
 		render_data.aux_buffers.restir_pt_reservoir_buffer_3 = nullptr;
 
-		render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_directions_mask_ull = nullptr;
-		render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_radius				= nullptr;
-		render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers			= ReSTIRPTSPMISUnionDomainShadowSplitBuffers();
+		render_data.render_settings.restir_pt_settings.spmis_settings.union_domain.shadow_split_buffers = ReSTIRPTSPMISUnionDomainShadowSplitBuffers();
 	}
 }
 
 void ReSTIRPTRenderPass::reset(bool reset_by_camera_movement)
 {
-	m_directional_spatial_reuse_data.reset();
 	m_spmis_data.reset();
 
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
@@ -1145,7 +1055,6 @@ void ReSTIRPTRenderPass::request_temporal_bufffers_clear()
 float ReSTIRPTRenderPass::get_VRAM_usage() const
 {
 	return (m_initial_candidates_buffer.get_byte_size() + m_initial_candidates_working_samples_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() +
-			m_spatial_buffer.get_byte_size() + m_directional_spatial_reuse_data.get_byte_size() + m_spmis_data.get_byte_size() +
-			m_spmis_union_domain_shadow_split_buffer.get_byte_size()) /
+			m_spatial_buffer.get_byte_size() + m_spmis_data.get_byte_size() + m_spmis_union_domain_shadow_split_buffer.get_byte_size()) /
 		   1000000.0f;
 }

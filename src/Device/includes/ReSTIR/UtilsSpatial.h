@@ -10,126 +10,8 @@
 #include "Device/includes/ReSTIR/NeighborSimilarity.h"
 #include "Device/includes/ReSTIR/Surface.h"
 
-#include "HostDeviceCommon/KernelOptions/ReSTIRPTOptions.h"
 #include "HostDeviceCommon/RenderData.h"
 #include "HostDeviceCommon/ReSTIR/ReSTIRPTSettings.h"
-
-HIPRT_DEVICE void setup_adaptive_directional_spatial_reuse(HIPRTRenderData& render_data,
-														   unsigned int center_pixel_index,
-														   Xorshift32Generator& random_number_generator)
-{
-	ReSTIRPTSpatialPassSettings& spatial_pass_settings = render_data.render_settings.restir_pt_settings.spatial_pass;
-	if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
-	{
-		spatial_pass_settings.reuse_radius = spatial_pass_settings.per_pixel_spatial_reuse_radius[center_pixel_index];
-		// Storing the direction reuse mask in the 'current_pixel_directions_reuse_mask' field of the spatial
-		// reuse settings so that we don't have to carry that parameter around in function calls everywhere...
-		//
-		// This parameter will be read by later by the function that samples a neighbor based on the allowed directions
-		spatial_pass_settings.current_pixel_directions_reuse_mask =
-			render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[center_pixel_index];
-
-		if (spatial_pass_settings.reuse_radius == 0)
-			spatial_pass_settings.reuse_neighbor_count = 0;
-	}
-}
-
-/**
- * Returns a pair of random numbers that should be used to sample the spatial neighbor disk of the current pixel
- * (i.e. pass the returned float2_t to 'sample_in_disk_uv').
- *
- * This function samples UVs for sampling in a disk such that the point sampled is only sampled in the allowed
- * directions of a pixel (according to its direction reuse masks).
- *
- * Note that this function will sample the first sector if there are no sectors available around the given pixel
- */
-HIPRT_DEVICE float2_t sample_spatial_neighbor_from_allowed_directions(const HIPRTRenderData& render_data,
-																	  const ReSTIRPTSpatialPassSettings& spatial_pass_settings,
-																	  int2_t center_pixel_coords,
-																	  Xorshift32Generator& rng)
-{
-	unsigned long long int directions_mask = spatial_pass_settings.current_pixel_directions_reuse_mask;
-	int number_of_allowed_sectors		   = hippt::popc(directions_mask);
-	unsigned char random_sector_index	   = rng.random_index(number_of_allowed_sectors);
-
-	// Now that we have our random sector, we need to find what theta rotation corresponds
-	// to that sector
-	//
-	// So we're counting how many sectors come before our 'random_sector_index' and we're going to
-	// multiply that sector count by 2Pi / 32 (or / 64 if using 64 bits)
-	unsigned char count_left_to_go = random_sector_index + 1;
-
-	// Counting how many sectors there before we reach our 'random_sector_index'
-	int sector_index = 0;
-
-	unsigned char bit_count_so_far = 0;
-
-	if (hippt::popc(directions_mask) == ReSTIR_PT_SpatialDirectionalReuseBitCount)
-		// Fast path if all the directions are allowed
-		sector_index = random_sector_index;
-	else
-	{
-		// A naive implementation of this would go something like
-		//
-		// for (i = 0; i < ReSTIR_PT_SpatialDirectionalReuseBitCount; i++)
-		// {
-		//     if (directions_mask & (1ull << i))
-		//     {
-		//         --count_left_to_go;
-		//
-		//         if (count_left_to_go == 0)
-		//             break;
-		//     }
-		// }
-		// sector_index = i;
-		//
-		// i.e., counting the bits one by one until we counted the number of bits we needed
-		//
-		//
-		// But here we're going to count the sectors 'count_left_to_go' by 'count_left_to_go' to get things
-		// a bit faster.
-		//
-		// So if we have the directions mask:
-		//	- 01110000
-		//
-		// and we want the 4th valid sector, i.e. random_sector_index == 3, then we can just go ahead and
-		// count bits 4 by 4:
-		//
-		// 11110000 <--- 'directions_mask'
-		// &
-		// 00001111 <--- 'mask'
-		// =
-		// 00000000.
-		// --> popc(00000000) = 0 -----> 0 bits found
-		//
-		// We move the mask to the left by the number of bits we still have to find (which is still 4):
-		// 11110000 <--- 'directions_mask'
-		// &
-		// 11110000 <--- 'mask'
-		// =
-		// 11110000.
-		// --> popc(11110000) = 4 -----> 4 bits found --> we found all the bits we needed so the sector index
-		// is in position '10000000' = 7 here
-		while (count_left_to_go > 0)
-		{
-			unsigned char mask_length	= count_left_to_go;
-			unsigned long long int mask = ((1ull << mask_length) - 1ull) << bit_count_so_far;
-			int count_mask				= hippt::popc(directions_mask & mask);
-
-			count_left_to_go -= count_mask;
-			bit_count_so_far += mask_length;
-		}
-
-		sector_index = --bit_count_so_far;
-	}
-
-	float theta_start = sector_index / (float)ReSTIR_PT_SpatialDirectionalReuseBitCount;
-	// Generating a random theta in between theta_start and the start of the next sector (which is 1.0f / 32.0f wide)
-	// i.e. a random theta inside our disk sector
-	float random_theta = theta_start + rng() * (1.0f / (float)ReSTIR_PT_SpatialDirectionalReuseBitCount);
-
-	return make_float2(random_theta, rng());
-}
 
 /**
  * Returns the linear index that can be used directly to index a buffer
@@ -168,13 +50,7 @@ HIPRT_DEVICE int get_spatial_neighbor_pixel_index(const HIPRTRenderData& render_
 		// which means that we would be resampling ourselves (the center pixel) -->
 		// pointless because we already resample ourselves "manually" (that's why there's that
 		// "if (neighbor_index == neighbor_reuse_count)" above, to resample the center pixel)
-		float2_t uv;
-		if (spatial_pass_settings.do_adaptive_directional_spatial_reuse(render_data.render_settings.accumulate))
-			uv = sample_spatial_neighbor_from_allowed_directions(render_data, spatial_pass_settings, center_pixel_coords, rng);
-		else
-			uv = make_float2(rng(), rng());
-
-		float2_t neighbor_offset_in_disk = sample_in_disk_uv(spatial_pass_settings.reuse_radius, uv);
+		float2_t neighbor_offset_in_disk = sample_in_disk_uv(spatial_pass_settings.reuse_radius, make_float2(rng(), rng()));
 
 		int2_t neighbor_offset_int = make_int2(static_cast<int>(roundf(neighbor_offset_in_disk.x)), static_cast<int>(roundf(neighbor_offset_in_disk.y)));
 

@@ -66,8 +66,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_SpatialReuse(HIPRTRenderData rend
 	// Generating a unique seed per pixel that will be used to generate (and replay for MIS weights) the spatial neighbors of that pixel
 	spatial_pass_settings.spatial_neighbors_rng_seed = pcg_hash(random_number_generator.xorshift32());
 
-	setup_adaptive_directional_spatial_reuse(render_data, center_pixel_index, random_number_generator);
-
 	// Only used with MIS-like weight
 	int selected_neighbor			   = 0;
 	int neighbor_heuristics_cache	   = 0;

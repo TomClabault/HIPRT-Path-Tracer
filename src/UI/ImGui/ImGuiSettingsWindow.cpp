@@ -1850,8 +1850,6 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 														   "- Final reservoir target function",
 														   "- Final reservoir weight sum",
 														   "- Final reservoir M",
-														   "- Per pixel reuse radius",
-														   "- Valid directions percentage",
 														   "- SPMIS cells",
 														   "- Cell variance" };
 						if (ImGui::Combo("Debug view", (int*)&render_settings.restir_pt_settings.debug_view, debug_view_items, IM_ARRAYSIZE(debug_view_items)))
@@ -3461,9 +3459,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel()
 
 				ImGui::BeginDisabled(using_spmis);
 
-				std::string spatial_reuse_radius_text =
-					restir_pt_spatial_pass_settings.use_adaptive_directional_spatial_reuse ? "Max reuse radius (px)" : "Reuse radius (px)";
-				if (ImGui::SliderInt(spatial_reuse_radius_text.c_str(), &restir_pt_spatial_pass_settings.reuse_radius, 0, 64))
+				if (ImGui::SliderInt("Reuse radius (px)", &restir_pt_spatial_pass_settings.reuse_radius, 0, 64))
 				{
 					restir_pt_spatial_pass_settings.auto_reuse_radius = false;
 
@@ -3480,48 +3476,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_spatial_reuse_panel()
 
 				if (ImGui::Checkbox("Auto", &restir_pt_spatial_pass_settings.auto_reuse_radius))
 					m_render_window->set_render_dirty(true);
-				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius (or maximum spatial reuse radius if using "
-												"\"adaptive-directional spatial reuse\") to use based on the render resolution.");
-
-				if (ImGui::CollapsingHeader("Directional spatial reuse"))
-				{
-					ImGui::TreePush("Directional spatial reuse tree");
-
-					if (!render_settings.accumulate)
-					{
-						ImGuiRenderer::add_warning("Disabled because not accumulating");
-						ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					}
-
-					ImGui::BeginDisabled(!render_settings.accumulate);
-
-					if (ImGui::Checkbox("Use adaptive-directional spatial reuse", &restir_pt_spatial_pass_settings.use_adaptive_directional_spatial_reuse))
-						m_render_window->set_render_dirty(true);
-					ImGuiRenderer::show_help_marker("Precomputes the best per-pixel spatial reuse radius to use as "
-													"well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse.\n\n"
-													""
-													"This increases the spatial reuse \"hit rate\" (i.e. the number of neighbors that are not rejected by "
-													"G-Buffer heuristics) and thus increases convergence speed.\n\n"
-													""
-													"Has no effect if not accumulating.");
-
-					if (restir_pt_spatial_pass_settings.use_adaptive_directional_spatial_reuse)
-					{
-						if (ImGui::SliderInt("Minimum reuse radius (px)", &restir_pt_spatial_pass_settings.minimum_per_pixel_reuse_radius, 0,
-											 restir_pt_spatial_pass_settings.reuse_radius))
-							m_render_window->set_render_dirty(true);
-						ImGuiRenderer::show_help_marker("The minimum radius that will be used per pixel when the optimal per-pixel spatial reuse "
-														"radius is computed by \"adaptive-directional spatial reuse\"");
-					}
-
-					ImGui::EndDisabled();
-
-					ImGui::Dummy(ImVec2(0.0f, 20.0f));
-					ImGui::TreePop();
-				}
-
-				if (using_spmis)
-					ImGuiRenderer::add_tooltip("Not compatible with SPMIS");
+				ImGuiRenderer::show_help_marker("Automatically determines the spatial reuse radius to use based on the render resolution.");
 				ImGui::EndDisabled();
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));

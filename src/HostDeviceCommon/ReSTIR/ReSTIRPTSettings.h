@@ -82,45 +82,6 @@ struct ReSTIRPTSpatialPassSettings
 	// This seed is used to generate the spatial neighbors positions if not using Hammersley
 	unsigned int spatial_neighbors_rng_seed;
 
-	// If true, the best per-pixel spatial reuse radius to use as
-	// well as the sectors in the spatial reuse disk (split in 32 sectors) that should be used for reuse
-	// will be precomputed in a prepass
-	//
-	// This increases the spatial reuse "hit rate" (i.e. the number of neighbors that are not rejected by G-Buffer heuristics)
-	// and thus increases convergence speed.
-	bool use_adaptive_directional_spatial_reuse;
-
-	/**
-	 * If you want to check whether you should use the features of the adaptive directional spatial
-	 * reuse, prefer using this function rather than directly checking the 'use_adaptive_directional_spatial_reuse'
-	 * member
-	 *
-	 * This is because the directional spatial reuse feature cannot be used in realtime mode so if you use the
-	 * 'use_adaptive_directional_spatial_reuse' member directly, you would also have to check for 'render_data.render_settings.accumulate'
-	 * everytime.
-	 *
-	 * This function does it all
-	 */
-	HIPRT_HOST_DEVICE bool do_adaptive_directional_spatial_reuse(bool render_data_render_settings_accumulate) const
-	{
-		return use_adaptive_directional_spatial_reuse && render_data_render_settings_accumulate;
-	}
-
-	unsigned long long int* per_pixel_spatial_reuse_directions_mask_ull = nullptr;
-	// Framebuffer that contains per-pixel spatial radius for use in the spatial reuse passes of ReSTIR.
-	// This framebuffer is filled by the
-	unsigned char* per_pixel_spatial_reuse_radius = nullptr;
-	// The minimum radius that will be used per pixel when the optimal per - pixel spatial reuse
-	// radius is computed by adaptive-directional spatial reuse
-	int minimum_per_pixel_reuse_radius = 3;
-
-	// This variable here is spatial because it is written to at the beginning of the spatial reuse pass.
-	// The only goal of this variable is to be able to carry around the function the direction reuse mask
-	// (i.e. which directions are allowed for reuse)of the pixel.
-	//
-	// This is purely to avoid passing yet another arguments to every function in the code...
-	unsigned long long int current_pixel_directions_reuse_mask = 0;
-
 	// Buffer that contains the input reservoirs for the spatial reuse pass
 	ReSTIRPTReservoir* input_reservoirs = nullptr;
 	// Buffer that contains the output reservoir of the spatial reuse pass
@@ -157,16 +118,14 @@ struct ReSTIRPTNeighborSimiliaritySettings
 
 enum ReSTIRPTDebugView
 {
-	PT_NO_DEBUG								 = 0,
-	PT_SHADE_ONLY_INITIAL_CANDIDATES		 = 1,
-	PT_FINAL_RESERVOIR_UCW					 = 2,
-	PT_TARGET_FUNCTION						 = 3,
-	PT_WEIGHT_SUM							 = 4,
-	PT_M_COUNT								 = 5,
-	PT_PER_PIXEL_REUSE_RADIUS				 = 6,
-	PT_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE = 7,
-	PT_SPMIS_CELLS							 = 8,
-	PT_CELL_VARIANCE						 = 9,
+	PT_NO_DEBUG						 = 0,
+	PT_SHADE_ONLY_INITIAL_CANDIDATES = 1,
+	PT_FINAL_RESERVOIR_UCW			 = 2,
+	PT_TARGET_FUNCTION				 = 3,
+	PT_WEIGHT_SUM					 = 4,
+	PT_M_COUNT						 = 5,
+	PT_SPMIS_CELLS					 = 6,
+	PT_CELL_VARIANCE				 = 7,
 };
 
 struct ReSTIRPTSettings
@@ -190,8 +149,7 @@ struct ReSTIRPTSettings
 		spatial_pass.debug_neighbor_location		   = false;
 		spatial_pass.debug_neighbor_location_direction = 0;
 
-		spatial_pass.use_adaptive_directional_spatial_reuse = false;
-		spatial_pass.spatial_neighbors_rng_seed				= 42;
+		spatial_pass.spatial_neighbors_rng_seed = 42;
 
 		neighbor_similarity_settings.use_normal_similarity_heuristic = true;
 		neighbor_similarity_settings.normal_similarity_angle_degrees = 37.5f;

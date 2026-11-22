@@ -163,25 +163,6 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_M_COUNT)
 		path_tracing_accumulate_color(render_data, pixel_index,
 									  ColorRGB32F(resampling_reservoir.confidence) * render_data.render_settings.restir_pt_settings.debug_view_scale_factor);
-	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_PER_PIXEL_REUSE_RADIUS &&
-			 render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
-	{
-		float radius_percentage = (render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_radius[pixel_index] /
-								   (float)render_data.render_settings.restir_pt_settings.spatial_pass.reuse_radius);
-		ColorRGB32F debug_color = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), radius_percentage);
-
-		debug_set_final_color(render_data, x, y, debug_color);
-	}
-	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_PER_PIXEL_VALID_DIRECTIONS_PERCENTAGE &&
-			 render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_radius != nullptr)
-	{
-		unsigned char accepted_directions =
-			hippt::popc(render_data.render_settings.restir_pt_settings.spatial_pass.per_pixel_spatial_reuse_directions_mask_ull[pixel_index]);
-		float accepted_percentage = accepted_directions / 32.0f;
-		ColorRGB32F debug_color	  = hippt::lerp(ColorRGB32F(2.0f, 0.0f, 0.0f), ColorRGB32F(0.0f, 2.0f, 0.0f), accepted_percentage);
-
-		debug_set_final_color(render_data, x, y, debug_color);
-	}
 	else if (render_data.render_settings.restir_pt_settings.debug_view == ReSTIRPTDebugView::PT_SHADE_ONLY_INITIAL_CANDIDATES &&
 			 ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled)
 	{
