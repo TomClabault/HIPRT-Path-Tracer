@@ -87,8 +87,14 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_resolve_pixel(HIPRTRenderData&
 
 	ReSTIRPTReservoir spatial_reuse_output_reservoir;
 	if (selected_candidate == canonical_candidate)
-		// The canonical sample keeps its target function
-		spatial_reuse_output_reservoir.sample = input_reservoir_buffer[center_pixel_index].sample;
+	{
+		// The canonical sample with the resampling target function its resampling weight was computed with
+		const ReSTIRPTReservoir& center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
+
+		spatial_reuse_output_reservoir.sample				  = center_pixel_reservoir.sample;
+		spatial_reuse_output_reservoir.sample.target_function = spmis_union_domain_shadow_split_canonical_resampling_target_function(
+			center_pixel_reservoir, shadow_split_buffers.canonical_numerators[center_pixel_index]);
+	}
 	else if (selected_candidate >= 0)
 	{
 		// The sample of the selected neighbor with its target function at the center pixel

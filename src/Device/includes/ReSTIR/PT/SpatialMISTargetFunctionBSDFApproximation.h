@@ -15,10 +15,11 @@
 #include "HostDeviceCommon/RenderData.h"
 
 /**
- * Approximation of the BSDF in the target function of the MIS weights of the union domain reuse of ReSTIR PT (kernel option
- *ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation): canonical and reverse probes (ReSTIR_PT_evaluate_target_function_at_pixel()) and own terms
- *(ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(): a sample at its own pixel, a neighbor's sample at the center pixel, the canonical sample at the
- *center pixel). The resampling weights still use the full target function.
+ * Approximation of the BSDF in the target function of the union domain reuse of ReSTIR PT. The MIS weights use it: canonical and reverse probes
+ * (ReSTIR_PT_evaluate_target_function_at_pixel()) and own terms (ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(): a sample at its own pixel, a
+ * neighbor's sample at the center pixel, the canonical sample at the center pixel). The resampling weights use it times the luminance of the radiance of
+ * the sample (ReSTIR_PT_resampling_target_function_bsdf_approximation()): the neighbors' samples are only evaluated with the full BSDFs at the center pixel
+ * for the pairs that take the fallback.
  *
  * INVARIANT: for every sample and every pixel, the approximation is > 0 exactly when the target function is > 0, and the probes and the own terms use the same
  * function of (sample, pixel). The group-wise MIS weights then stay a partition of unity and the spatial reuse stays unbiased, whatever the approximation
@@ -131,17 +132,17 @@ struct ReSTIRPTMISTargetFunctionBSDFApproximationLobe
 };
 
 /**
- * Whether the MIS weights of the union domain reuse use the approximation for this render: the kernel option
- * ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation is on and the spatial reuse takes the union domain path of ReSTIR PT (and, with the principled
- * BSDF, the lobe records are allocated). CameraRays and the initial candidates only write the flags and the lobes when this is true, they stay zero otherwise
+ * Whether the union domain reuse can take the cheap path of the approximation for this render: the spatial reuse takes the union domain path of ReSTIR PT
+ * (and, with the principled BSDF, the lobe records are allocated). CameraRays and the initial candidates only write the flags and the lobes when this is
+ * true, they stay zero otherwise
  *
- * The union domain spatial reuse kernel does not call this function: it is only launched when the spatial reuse takes the union domain path and it compiles
- * the approximation in or out with the kernel option alone. Without the flags and the lobes (this function returned false when they were written), no pair
- * (sample, pixel) is on the cheap path: every pair takes the fallback and the lobe records are not read
+ * The union domain spatial reuse kernel does not call this function: it is only launched when the spatial reuse takes the union domain path. Without the
+ * flags and the lobes (this function returned false when they were written), no pair (sample, pixel) is on the cheap path: every pair takes the fallback
+ * and the lobe records are not read
  */
 HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(const HIPRTRenderData& render_data)
 {
-#if PathSamplingStrategyIsReSTIRPT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
+#if PathSamplingStrategyIsReSTIRPT
 	bool enabled = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType);
 
 #if BSDF_MODEL == BSDF_PRINCIPLED
@@ -151,7 +152,7 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(const
 	return enabled;
 #else
 	return false;
-#endif // #if PathSamplingStrategyIsReSTIRPT && ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
+#endif // #if PathSamplingStrategyIsReSTIRPT
 }
 
 /**
@@ -858,6 +859,22 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(con
 
 	return own_term_value;
 #endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
+}
+
+/**
+ * Resampling target function of the union domain reuse: the approximation 'approximation_value' of the sample at a pixel
+ * (ReSTIR_PT_evaluate_target_function_at_pixel() with the approximation, or an own term) times the luminance of the radiance of the sample.
+ *
+ * Principled BSDF: on the fallback, the approximation is the full target function divided by that luminance (floored), this is the full target function.
+ * On the cheap path, the analytic lobes times that luminance. Lambertian BSDF: the cosine at the pixel times that luminance.
+ *
+ * Zero exactly where the target function is, which keeps the resampling unbiased: the UCW of the output sample is computed with this same function and
+ * the shading pass evaluates the full integrand. The output reservoir stores this function, which no later pass reads as a target function: the union
+ * domain reuse only runs without temporal reuse and with a single spatial reuse pass (ReSTIRPTSettings::do_spmis_union_domain_reuse())
+ */
+HIPRT_DEVICE float ReSTIR_PT_resampling_target_function_bsdf_approximation(const ReSTIRPTReservoirSample& sample, float approximation_value)
+{
+	return approximation_value * hippt::max(sample.rc_vertex_incident_radiance.luminance(), 1.0e-30f);
 }
 
 #endif // #ifndef DEVICE_RESTIR_PT_SPATIAL_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_H

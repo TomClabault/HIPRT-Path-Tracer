@@ -120,11 +120,7 @@ bool FillGBufferRenderPass::mis_target_function_bsdf_approximation_lobe_records_
 	bool union_domain_reuse =
 		restir_pt_settings.do_spmis_union_domain_reuse(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE));
 
-	bool mis_target_function_bsdf_approximation =
-		m_compiler_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION) ==
-		KERNEL_OPTION_TRUE;
-
-	return restir_pt_path_sampling && principled_bsdf && union_domain_reuse && mis_target_function_bsdf_approximation;
+	return restir_pt_path_sampling && principled_bsdf && union_domain_reuse;
 }
 
 bool FillGBufferRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)

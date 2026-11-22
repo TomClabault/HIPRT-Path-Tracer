@@ -76,8 +76,8 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 																  reused_neighbors_count, union_domain_settings.visibility_pool_size, selected_pixel_indices,
 																  selection_probabilities, random_number_generator);
 
-	// With the kernel option ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation, the MIS weights use the MIS target function BSDF approximation
-	// instead of the target function (probes and own terms), the resampling weights still use the target function
+	// The MIS weights use the MIS target function BSDF approximation instead of the target function (probes and own terms), the resampling weights use
+	// the approximation times the luminance of the radiance of the sample (ReSTIR_PT_resampling_target_function_bsdf_approximation())
 
 	// Resampling only the neighbors, canonical resampling is further below
 	for (int neighbor_index = 0; neighbor_index < selected_slot_count; neighbor_index++)
@@ -98,31 +98,24 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 															center_pixel_surface.shading_point, render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
 															render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
-		// The selection traced the visibility of the sample at the center pixel: the visibility-free target function is the target function
-		float target_function_at_center = 0.0f;
+		// The selection traced the visibility of the sample at the center pixel: the visibility-free MIS approximation of the sample at the center pixel.
+		// It is the own term of the sample at the center pixel in the MIS weights below (the probes and the own terms are the same function of (sample,
+		// pixel)) and the resampling target function derives from it: the full BSDFs are only evaluated for the pairs that take the fallback
+		float mis_target_at_center = 0.0f;
 		if (neighbor_reservoir.UCW > 0.0f)
-			target_function_at_center =
-				ReSTIR_PT_evaluate_target_function<false>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+			mis_target_at_center = ReSTIR_PT_evaluate_target_function_at_pixel<false, true>(
+				render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_surface.shading_point, random_number_generator);
+		float resampling_target_function_at_center = ReSTIR_PT_resampling_target_function_bsdf_approximation(neighbor_reservoir.sample, mis_target_at_center);
 
 		float mis_weight = 0.0f;
-		if (target_function_at_center > 0.0f && shift_mapping_jacobian != 0.0f)
+		if (resampling_target_function_at_center > 0.0f && shift_mapping_jacobian != 0.0f)
 		{
-			// Target function of the neighbor's sample at the neighbor in the measure of the center pixel
-			float target_function_at_neighbor = neighbor_reservoir.sample.target_function / shift_mapping_jacobian;
-
-			float mis_target_at_neighbor = target_function_at_neighbor;
-			float mis_target_at_center	 = target_function_at_center;
-
-#if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
-			// Own terms: the approximation of the sample at its own pixel (from its target function in its own measure, the Jacobian division does not
-			// change the support) and at the center pixel
-			mis_target_at_neighbor =
+			// Own term of the neighbor's sample at the neighbor in the measure of the center pixel, from its target function in its own measure (the Jacobian
+			// division does not change the support)
+			float mis_target_at_neighbor =
 				ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
 																		  neighbor_reservoir.sample.target_function) /
 				shift_mapping_jacobian;
-			mis_target_at_center = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample,
-																							 static_cast<int>(center_pixel_index), target_function_at_center);
-#endif // #if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
 
 			mis_weight = mis_weight_function.get_resampling_MIS_weight_non_canonical(
 				render_data, neighbor_reservoir.sample, static_cast<float>(neighbor_reservoir.confidence), mis_target_at_neighbor,
@@ -130,7 +123,8 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 				neighbor_selection_probability, random_number_generator);
 		}
 
-		spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian, random_number_generator);
+		spatial_reuse_output_reservoir.combine_with(neighbor_reservoir, mis_weight, resampling_target_function_at_center, shift_mapping_jacobian,
+													random_number_generator);
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}
 
@@ -139,19 +133,18 @@ HIPRT_DEVICE void ReSTIR_PT_SPMIS_union_domain_spatial_reuse(HIPRTRenderData& re
 	if (center_pixel_reservoir.UCW > 0.0f)
 	{
 		// Own term of the canonical sample at the center pixel
-		float canonical_mis_target = center_pixel_reservoir.sample.target_function;
-#if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
-		canonical_mis_target = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(
+		float canonical_mis_target = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(
 			render_data, center_pixel_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_reservoir.sample.target_function);
-#endif
 
 		float mis_weight = mis_weight_function.get_resampling_MIS_weight_canonical(
 			render_data, center_pixel_reservoir.sample, center_pixel_reservoir.confidence, canonical_mis_target, center_pixel_surface, domain, mis_group_size,
 			canonical_group_count, random_number_generator);
 
+		// The resampling target function of the canonical sample is the one of its own term
 		constexpr float shift_mapping_jacobian = 1.0f;
-		float target_function_at_center		   = center_pixel_reservoir.sample.target_function;
-		spatial_reuse_output_reservoir.combine_with(center_pixel_reservoir, mis_weight, target_function_at_center, shift_mapping_jacobian,
+		float canonical_resampling_target_function =
+			ReSTIR_PT_resampling_target_function_bsdf_approximation(center_pixel_reservoir.sample, canonical_mis_target);
+		spatial_reuse_output_reservoir.combine_with(center_pixel_reservoir, mis_weight, canonical_resampling_target_function, shift_mapping_jacobian,
 													random_number_generator);
 		spatial_reuse_output_reservoir.sanity_check(center_pixel_coords);
 	}

@@ -4000,23 +4000,6 @@ void ImGuiSettingsWindow::draw_ReSTIR_PT_SPMIS_settings_panel()
 										"total (group count x group size), the weight is averaged over all the groups that can be formed with these "
 										"pixels, for the same cost.");
 
-		// Kernel option: the MIS probes only compile the evaluation they use
-		std::shared_ptr<GPUKernelCompilerOptions> union_domain_kernel_options = m_renderer->get_global_compiler_options();
-		bool mis_target_function_bsdf_approximation =
-			union_domain_kernel_options->get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION) ==
-			KERNEL_OPTION_TRUE;
-		if (ImGui::Checkbox("MIS target function BSDF approximation", &mis_target_function_bsdf_approximation))
-		{
-			union_domain_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION,
-														 mis_target_function_bsdf_approximation ? KERNEL_OPTION_TRUE : KERNEL_OPTION_FALSE);
-			m_renderer->recompile_kernels();
-
-			m_render_window->set_render_dirty(true);
-		}
-		ImGuiRenderer::show_help_marker("The MIS weights evaluate a cheap approximation of the target function (cosine or analytic lobes, no material fetch or "
-										"BSDF evaluation for simple materials) that is non-zero exactly where the target function is. Unbiased, faster "
-										"spatial reuse for a similar quality.\n\nChanging this recompiles the kernels.");
-
 		if (ImGui::SliderInt("Total neighbor budget", &union_domain_settings.total_neighbor_budget, 1, 256, "%d", ImGuiSliderFlags_AlwaysClamp))
 			m_render_window->set_render_dirty(true);
 		ImGuiRenderer::show_help_marker("Domains with at most that many contributing neighbors are sampled exactly (all their neighbors are evaluated). "

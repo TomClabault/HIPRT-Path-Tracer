@@ -98,7 +98,6 @@ public:
 	static const std::string RESTIR_PT_SPATIAL_TARGET_FUNCTION_VISIBILITY;
 	static const std::string RESTIR_PT_MIS_WEIGHTS_TYPE;
 	static const std::string RESTIR_PT_DEBUG_VIEW_SHADE_ONLY_INITIAL_CANDIDATES_ENABLED;
-	static const std::string RESTIR_PT_SPMIS_UNION_DOMAIN_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION;
 
 	static const std::string RESTIR_PG_ENABLE;
 	static const std::string RESTIR_PG_DISTRIBUTION_COMPONENT_COUNT;

@@ -76,7 +76,8 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 	float* canonical_values = nullptr;
 
 	// One float per pixel: the numerator c_c p_c of the canonical MIS weight. Written by the prepare kernel when the canonical sample is resampled.
-	// Read by the weights kernel: the canonical MIS weight
+	// Read by the weights kernel: the canonical MIS weight and the resampling target function of the canonical sample. Read by the resolve kernel when
+	// the canonical sample is selected: its resampling target function
 	float* canonical_numerators = nullptr;
 
 	// One float per pixel: the confidence sum C of the domain of the pixel. Written by the prepare kernel. Read by the weights kernel: the group
@@ -94,8 +95,9 @@ struct ReSTIRPTSPMISUnionDomainShadowSplitBuffers
 	// slots. Read by the resolve kernel: the sample of the selected neighbor
 	unsigned int* neighbor_pixels = nullptr;
 
-	// One float per neighbor slot, same layout as companions: the target function of the neighbor's sample at the center pixel. Written by the
-	// weights kernel for the candidate slots. Read by the resolve kernel: the target function of the output sample when that neighbor is selected
+	// One float per neighbor slot, same layout as companions: the resampling target function of the neighbor's sample at the center pixel
+	// (ReSTIR_PT_resampling_target_function_bsdf_approximation()). Written by the weights kernel for the candidate slots. Read by the resolve kernel: the
+	// target function of the output sample when that neighbor is selected
 	float* neighbor_targets = nullptr;
 
 	// One float per neighbor slot, same layout as companions: the resampling weight of the neighbor with its companion visible. Written by the

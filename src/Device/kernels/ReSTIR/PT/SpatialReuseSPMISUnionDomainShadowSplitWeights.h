@@ -85,29 +85,26 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 					render_data.g_buffer.primary_hit_position[neighbor_pixel_index],
 					render_data.render_settings.restir_pt_settings.get_jacobian_heuristic_threshold());
 
-			// The selection traced the visibility of the sample at the center pixel: the visibility-free target function is the target function
-			float target_function_at_center = 0.0f;
+			// The selection traced the visibility of the sample at the center pixel: the visibility-free MIS approximation of the sample at the center pixel.
+			// It is the own term of the sample at the center pixel in the MIS weights below (the probes and the own terms are the same function of (sample,
+			// pixel)) and the resampling target function derives from it: the full BSDFs are only evaluated for the pairs that take the fallback
+			float mis_target_at_center = 0.0f;
 			if (neighbor_reservoir.UCW > 0.0f)
-				target_function_at_center =
-					ReSTIR_PT_evaluate_target_function<false>(render_data, neighbor_reservoir.sample, center_pixel_surface, random_number_generator);
+				mis_target_at_center = ReSTIR_PT_evaluate_target_function_at_pixel<false, true>(
+					render_data, neighbor_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_surface.shading_point, random_number_generator);
+			float resampling_target_function_at_center =
+				ReSTIR_PT_resampling_target_function_bsdf_approximation(neighbor_reservoir.sample, mis_target_at_center);
 
-			if (!(target_function_at_center > 0.0f && shift_mapping_jacobian != 0.0f))
+			if (!(resampling_target_function_at_center > 0.0f && shift_mapping_jacobian != 0.0f))
 				// Zero MIS weight in the single kernel: zero resampling weight, never selected
 				continue;
 
-			// Target function of the neighbor's sample at the neighbor in the measure of the center pixel
-			float target_function_at_neighbor = neighbor_reservoir.sample.target_function / shift_mapping_jacobian;
-
-			float mis_target_at_neighbor = target_function_at_neighbor;
-			float mis_target_at_center	 = target_function_at_center;
-#if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
-			mis_target_at_neighbor =
+			// Own term of the neighbor's sample at the neighbor in the measure of the center pixel, from its target function in its own measure (the Jacobian
+			// division does not change the support)
+			float mis_target_at_neighbor =
 				ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
 																		  neighbor_reservoir.sample.target_function) /
 				shift_mapping_jacobian;
-			mis_target_at_center = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample,
-																							 static_cast<int>(center_pixel_index), target_function_at_center);
-#endif // #if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
 
 			// The companion of the slot drawn by the prepare kernel and its value without visibility: its ray is traced by the resolve kernel
 			unsigned int companion_pixel_index = shadow_split_buffers.companions[chosen * pixel_count + center_pixel_index];
@@ -130,7 +127,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 
 			// The resampling weight of ReSTIRPTReservoir::combine_with(): MIS weight x target function x UCW x Jacobian. The resolve kernel adds the
 			// correction when the companion is occluded
-			float resampling_factor			  = target_function_at_center * neighbor_reservoir.UCW * shift_mapping_jacobian;
+			float resampling_factor			  = resampling_target_function_at_center * neighbor_reservoir.UCW * shift_mapping_jacobian;
 			float weight_companion_visible	  = mis_weight_companion_visible * resampling_factor;
 			float weight_occlusion_correction = (mis_weight_companion_occluded - mis_weight_companion_visible) * resampling_factor;
 
@@ -150,7 +147,7 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 			if (weight_companion_visible > 0.0f || reverse_ray_needed)
 			{
 				shadow_split_buffers.neighbor_pixels[slot_entry_index]			   = neighbor_pixel_index;
-				shadow_split_buffers.neighbor_targets[slot_entry_index]			   = target_function_at_center;
+				shadow_split_buffers.neighbor_targets[slot_entry_index]			   = resampling_target_function_at_center;
 				shadow_split_buffers.neighbor_weights[slot_entry_index]			   = weight_companion_visible;
 				shadow_split_buffers.neighbor_weight_corrections[slot_entry_index] = weight_occlusion_correction;
 
@@ -179,10 +176,11 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData&
 		float canonical_mis_weight = mis_weight_function.get_canonical_MIS_weight_from_probes(
 			canonical_numerator, group_scale, probe_target_functions, probe_count, RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_MIS_GROUP_SIZE);
 
-		// Resampling weight of the canonical sample: MIS weight x its target function x its UCW (Jacobian 1)
+		// Resampling weight of the canonical sample: MIS weight x its resampling target function x its UCW (Jacobian 1)
 		const ReSTIRPTReservoir& center_pixel_reservoir = input_reservoir_buffer[center_pixel_index];
-		shadow_split_buffers.canonical_weights[center_pixel_index] =
-			canonical_mis_weight * center_pixel_reservoir.sample.target_function * center_pixel_reservoir.UCW;
+		float canonical_resampling_target_function =
+			spmis_union_domain_shadow_split_canonical_resampling_target_function(center_pixel_reservoir, canonical_numerator);
+		shadow_split_buffers.canonical_weights[center_pixel_index] = canonical_mis_weight * canonical_resampling_target_function * center_pixel_reservoir.UCW;
 
 		resolve_flags |= RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_RESOLVE_CANONICAL_BIT;
 	}

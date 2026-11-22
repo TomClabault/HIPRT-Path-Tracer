@@ -205,11 +205,8 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 		prepare_flags |= RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_PRESENT_BIT;
 
 		// Own term of the canonical sample at the center pixel
-		float canonical_mis_target = center_pixel_reservoir.sample.target_function;
-#if ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation == KERNEL_OPTION_TRUE
-		canonical_mis_target = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(
+		float canonical_mis_target = ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(
 			render_data, center_pixel_reservoir.sample, static_cast<int>(center_pixel_index), center_pixel_reservoir.sample.target_function);
-#endif
 
 		shadow_split_buffers.canonical_numerators[center_pixel_index] = canonical_mis_target * center_pixel_reservoir_confidence;
 

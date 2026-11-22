@@ -56,6 +56,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
+#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -148,6 +149,19 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_field_mask(u
 										 : RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_DUPLICATE_CANONICAL_SOURCE_BITS;
 
 	return (1u << field_bits) - 1u;
+}
+
+/**
+ * Resampling target function of the canonical sample (ReSTIR_PT_resampling_target_function_bsdf_approximation()) from its own term 'canonical_numerator' /
+ * confidence (ReSTIRPTSPMISUnionDomainShadowSplitBuffers::canonical_numerators). The weights kernel weights the canonical sample with it and the resolve
+ * kernel divides by the same value when the canonical sample is selected, so both must call this function
+ */
+HIPRT_DEVICE float spmis_union_domain_shadow_split_canonical_resampling_target_function(const ReSTIRPTReservoir& center_pixel_reservoir,
+																						float canonical_numerator)
+{
+	float canonical_mis_target = canonical_numerator / static_cast<float>(hippt::max(1, center_pixel_reservoir.confidence));
+
+	return ReSTIR_PT_resampling_target_function_bsdf_approximation(center_pixel_reservoir.sample, canonical_mis_target);
 }
 
 /**

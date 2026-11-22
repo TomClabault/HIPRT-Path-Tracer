@@ -109,26 +109,6 @@
  */
 #define ReSTIR_PT_DebugViewShadeOnlyInitialCandidatesEnabled KERNEL_OPTION_FALSE
 
-/**
- * If KERNEL_OPTION_TRUE, the group-wise MIS weights of the SPMIS union domain reuse (canonical and neighbor probes, and the target functions of a sample at
- * its own pixel, of a neighbor's sample at the center pixel and of the canonical sample at the center pixel) use an approximation of the target function
- * instead of the target function, see SpatialMISTargetFunctionBSDFApproximation.h. The resampling weights still use the target function.
- *
- * The approximation is non-zero exactly where the target function is (same support): the MIS weights stay a partition of unity and the reuse stays
- * unbiased.
- *
- * It costs no material fetch and no BSDF evaluation for the pairs of analytic materials (cosine at the pixel with the Lambertian BSDF, analytic lobes
- * with the principled BSDF), the full target function otherwise.
- *
- * At the same quality, the spatial reuse pass is faster with both the principled and the Lambertian BSDF
- *
- * This is a compile time switch so that the MIS probes only compile the evaluation they use: the approximation (and its full target function fallback,
- * evaluated before the shadow ray) or the full target function evaluated after the shadow ray, not both
- *
- *	- KERNEL_OPTION_TRUE or KERNEL_OPTION_FALSE values are accepted. Self-explanatory
- */
-#define ReSTIR_PT_SPMISUnionDomainMISTargetFunctionBSDFApproximation KERNEL_OPTION_TRUE
-
 #endif // #ifndef __KERNELCC__
 
 #define ReSTIR_PT_SPMISHashGridCollisionResolutionMaxSteps 256
