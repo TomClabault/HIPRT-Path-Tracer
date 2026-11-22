@@ -85,6 +85,51 @@ HIPRT_DEVICE void spmis_build_cell_alias_table(const float* scaled_importances, 
 			spmis_write_alias_table_entry(cell_alias_table, index, 1.0f, index);
 }
 
+#ifdef __KERNELCC__
+/**
+ * Alias table of the alive cell 'cell_alive_index', built by the whole block: the threads load the importances, thread 0 builds the table
+ */
+HIPRT_DEVICE void spmis_build_cell_alias_table_block(unsigned short int* cell_non_zero_reservoir_counters,
+													 unsigned int* cell_offsets,
+													 unsigned int* cell_alive_list,
+													 unsigned int* pixel_indices_sorted,
+													 ReSTIRPTReservoir* input_reservoirs,
+													 float* cell_cdfs,
+													 float* cell_alias_tables,
+													 unsigned int size,
+													 unsigned int cell_alive_index)
+{
+	unsigned int cell_index = cell_alive_list[cell_alive_index];
+	if (cell_index >= size)
+		return;
+
+	unsigned int count = hippt::min(static_cast<unsigned int>(cell_non_zero_reservoir_counters[cell_index]), RESTIR_PT_SPMIS_ALIAS_TABLE_MAX_CELL_SIZE);
+	if (count == 0)
+		// No table to build
+		return;
+
+	unsigned int cell_offset = cell_offsets[cell_index];
+	// SPMIS CDF layout: cdf[0] holds the sum of the importances of the cell
+	float importance_scale = count / cell_cdfs[cell_offset];
+
+	__shared__ float scaled_importances[RESTIR_PT_SPMIS_ALIAS_TABLE_MAX_CELL_SIZE];
+	for (unsigned int index_in_cell = threadIdx.x; index_in_cell < count; index_in_cell += blockDim.x)
+	{
+		const ReSTIRPTReservoir& input_reservoir = input_reservoirs[pixel_indices_sorted[cell_offset + index_in_cell]];
+
+		// Same importance as ReSTIR_PT_SPMIS_BuildCDFs
+		float importance				  = input_reservoir.UCW * input_reservoir.sample.target_function * input_reservoir.confidence;
+		scaled_importances[index_in_cell] = importance * importance_scale;
+	}
+
+	__syncthreads();
+
+	// The sweep is sequential: one thread builds the table of the cell from the shared importances
+	if (threadIdx.x == 0)
+		spmis_build_cell_alias_table(scaled_importances, count, cell_alias_tables + cell_offset * RESTIR_PT_SPMIS_UNION_DOMAIN_ALIAS_TABLE_FLOAT_COUNT);
+}
+#endif // #ifdef __KERNELCC__
+
 /**
  * Alias tables of the cells (ReSTIRPTSPMISUnionDomainSettings::cell_alias_tables), read by stage 1 of the neighbor selection of the union domain reuse.
  *
@@ -100,6 +145,7 @@ __launch_bounds__(RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE) ReSTIR_PT_SPMIS_BuildA
 																						   ReSTIRPTReservoir* input_reservoirs,
 																						   float* cell_cdfs,
 																						   float* cell_alias_tables,
+																						   unsigned int* cell_alive_count,
 																						   unsigned int size)
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
@@ -139,35 +185,17 @@ inline ReSTIR_PT_SPMIS_BuildAliasTables(AtomicType<unsigned short int>* cell_non
 		spmis_build_cell_alias_table(scaled_importances, count, cell_alias_tables + cell_offset * RESTIR_PT_SPMIS_UNION_DOMAIN_ALIAS_TABLE_FLOAT_COUNT);
 	}
 #else  // #ifndef __KERNELCC__
-	unsigned int cell_alive_index = blockIdx.x;
-	unsigned int cell_index		  = cell_alive_list[cell_alive_index];
-	if (cell_index >= size)
-		return;
-
-	unsigned int count = hippt::min(static_cast<unsigned int>(cell_non_zero_reservoir_counters[cell_index]), RESTIR_PT_SPMIS_ALIAS_TABLE_MAX_CELL_SIZE);
-	if (count == 0)
-		// No table to build
-		return;
-
-	unsigned int cell_offset = cell_offsets[cell_index];
-	// SPMIS CDF layout: cdf[0] holds the sum of the importances of the cell
-	float importance_scale = count / cell_cdfs[cell_offset];
-
-	__shared__ float scaled_importances[RESTIR_PT_SPMIS_ALIAS_TABLE_MAX_CELL_SIZE];
-	for (unsigned int index_in_cell = threadIdx.x; index_in_cell < count; index_in_cell += blockDim.x)
+	// The grid has a fixed number of blocks: the host launches this kernel without reading the number of alive cells back, see ReSTIR_PT_SPMIS_BuildCDFs.
+	// Each block loops over the cells
+	unsigned int alive_count = *cell_alive_count;
+	for (unsigned int cell_alive_index = blockIdx.x; cell_alive_index < alive_count; cell_alive_index += gridDim.x)
 	{
-		const ReSTIRPTReservoir& input_reservoir = input_reservoirs[pixel_indices_sorted[cell_offset + index_in_cell]];
+		spmis_build_cell_alias_table_block(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, pixel_indices_sorted, input_reservoirs, cell_cdfs,
+										   cell_alias_tables, size, cell_alive_index);
 
-		// Same importance as ReSTIR_PT_SPMIS_BuildCDFs
-		float importance				  = input_reservoir.UCW * input_reservoir.sample.target_function * input_reservoir.confidence;
-		scaled_importances[index_in_cell] = importance * importance_scale;
+		// The next cell of the block rewrites the shared importances that thread 0 may still be reading to build the table of this cell
+		__syncthreads();
 	}
-
-	__syncthreads();
-
-	// The sweep is sequential: one thread builds the table of the cell from the shared importances
-	if (threadIdx.x == 0)
-		spmis_build_cell_alias_table(scaled_importances, count, cell_alias_tables + cell_offset * RESTIR_PT_SPMIS_UNION_DOMAIN_ALIAS_TABLE_FLOAT_COUNT);
 #endif // #ifndef __KERNELCC__
 }
 

@@ -78,6 +78,11 @@ public:
 	virtual void launch_initial_candidates_pass(HIPRTRenderData& render_data);
 	void launch_spmis_create_reuse_cells_pass(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options, ReSTIRPTReservoir* input_reservoirs);
 	void resize_cdf_luts_buffer(HIPRTRenderData& render_data, unsigned int cell_alive_count);
+	/**
+	 * Number of blocks of 'block_size' threads of the SPMIS cell kernel 'kernel_id' (build CDFs, cells variance, build alias tables): enough to fill the GPU
+	 * once, at most 'num_cells'. The blocks loop over the alive cells, whose count is only known on the GPU
+	 */
+	unsigned int get_spmis_cell_kernel_block_count(const std::string& kernel_id, unsigned int block_size, unsigned int num_cells);
 	void configure_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void launch_temporal_reuse_pass(HIPRTRenderData& render_data);
 	void configure_spatial_reuse_pass(HIPRTRenderData& render_data, int spatial_pass_index);

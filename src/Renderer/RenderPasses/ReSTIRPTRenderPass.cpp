@@ -780,21 +780,28 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 
 	float* cell_cdfs			  = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDFS>().get_device_pointer();
 	unsigned int* cell_alive_list = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_ALIVE_LIST>().get_device_pointer();
-	unsigned int cell_size		  = spmis_settings.tile_size;
-	unsigned int dispatch_block_size = cell_size * cell_size;
-	unsigned int cell_alive_count =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER>().download_data()[0];
+	unsigned int* cell_alive_count =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER>().get_device_pointer();
 
-	resize_cdf_luts_buffer(render_data, cell_alive_count);
-
-	unsigned short int* cell_cdf_luts =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().get_device_pointer();
-	unsigned int* cell_cdf_lut_offsets =
-		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS>().get_device_pointer();
 	bool union_domain_reuse = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(
 		compiler_options.get_macro_value(GPUKernelCompilerOptions::RESTIR_PT_MIS_WEIGHTS_TYPE));
 	// Only the legacy SPMIS spatial reuse samples the CDFs through their LUTs, the union domain reuse samples the alias tables of the cells
-	bool build_cdf_luts			   = !union_domain_reuse;
+	bool build_cdf_luts = !union_domain_reuse;
+	if (build_cdf_luts)
+	{
+		// The LUT buffer is sized for the alive cells: the count is read back on the host, which waits for the kernels above to complete.
+		// The cell kernels below read the count on the GPU, the union domain reuse does not need it on the host
+		unsigned int cell_alive_count_host =
+			m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER>().download_data()[0];
+
+		resize_cdf_luts_buffer(render_data, cell_alive_count_host);
+	}
+
+	// The LUT buffer is only allocated for the legacy SPMIS spatial reuse
+	unsigned short int* cell_cdf_luts =
+		build_cdf_luts ? m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUTS>().get_device_pointer() : nullptr;
+	unsigned int* cell_cdf_lut_offsets =
+		m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS>().get_device_pointer();
 	void* build_cdfs_launch_args[] = { &cell_non_zero_reservoir_counters,
 									   &cell_offsets,
 									   &cell_alive_list,
@@ -804,52 +811,68 @@ void ReSTIRPTRenderPass::launch_spmis_create_reuse_cells_pass(HIPRTRenderData& r
 									   &cell_cdf_luts,
 									   &cell_cdf_lut_offsets,
 									   &build_cdf_luts,
+									   &cell_alive_count,
 									   &num_cells };
 
-	if (cell_alive_count > 0)
+	// The cell kernels run one block per alive cell in a grid sized without the number of alive cells: their blocks loop over the cells.
+	// Always dispatching 1024 sized blocks for the build cdfs kernel, since the kernel is designed to handle that many threads per cell
+	unsigned int build_cdfs_block_count = get_spmis_cell_kernel_block_count(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID, 1024, num_cells);
+	m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->launch_asynchronous(1024, 1, build_cdfs_block_count * 1024, 1, build_cdfs_launch_args,
+																							 m_renderer->get_main_stream());
+
+	// Variance is only needed for the first frame to seed the cached cell search radius;
+	// subsequent frames reuse the cached cell index and never read cell_variance.
+	if (render_data.render_settings.sample_number == 0)
 	{
-		// Always dispatching 1024 sized blocks for the build cdfs kernel, since the kernel is designed to handle that many threads per cell
-		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_CDFS_KERNEL_ID]->launch_asynchronous(1024, 1, cell_alive_count * 1024, 1, build_cdfs_launch_args,
-																								 m_renderer->get_main_stream());
+		float* cell_variance = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_VARIANCE>().get_device_pointer();
+		void* compute_noise_launch_args[] = { &cell_counters,	 &cell_offsets,	 &cell_alive_list,	&pixel_indices_sorted,
+											  &input_reservoirs, &cell_variance, &cell_alive_count, &num_cells };
 
-		// Variance is only needed for the first frame to seed the cached cell search radius;
-		// subsequent frames reuse the cached cell index and never read cell_variance.
-		if (render_data.render_settings.sample_number == 0)
-		{
-			float* cell_variance = m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_CELL_VARIANCE>().get_device_pointer();
-			void* compute_noise_launch_args[] = { &cell_counters,	 &cell_offsets,	 &cell_alive_list, &pixel_indices_sorted,
-												  &input_reservoirs, &cell_variance, &num_cells };
-
-			// Same dispatch as BuildCDFs: one block per alive cell, 1024 threads/block
-			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->launch_asynchronous(
-				1024, 1, cell_alive_count * 1024, 1, compute_noise_launch_args, m_renderer->get_main_stream());
-		}
-
-		if (union_domain_reuse)
-		{
-			// Alias tables of the cells, same distributions as their CDFs built above. One block per alive cell
-			float* cell_alias_tables =
-				m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>().get_device_pointer();
-			void* build_alias_tables_launch_args[] = { &cell_non_zero_reservoir_counters,
-													   &cell_offsets,
-													   &cell_alive_list,
-													   &pixel_indices_sorted,
-													   &input_reservoirs,
-													   &cell_cdfs,
-													   &cell_alias_tables,
-													   &num_cells };
-			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID]->launch_asynchronous(
-				RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE, 1, cell_alive_count * RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE, 1, build_alias_tables_launch_args,
-				m_renderer->get_main_stream());
-
-			// Compact records of the non-zero reservoirs of the cells, read by the neighbor selection of the union domain reuse. One thread per pixel
-			unsigned int pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
-
-			upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, render_data);
-			m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->launch_asynchronous(64, 1, pixel_count, 1, nullptr,
-																												 m_renderer->get_main_stream());
-		}
+		// Same dispatch as BuildCDFs: blocks of 1024 threads looping over the alive cells
+		unsigned int compute_variance_block_count =
+			get_spmis_cell_kernel_block_count(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID, 1024, num_cells);
+		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_COMPUTE_CELLS_VARIANCE_KERNEL_ID]->launch_asynchronous(
+			1024, 1, compute_variance_block_count * 1024, 1, compute_noise_launch_args, m_renderer->get_main_stream());
 	}
+
+	if (union_domain_reuse)
+	{
+		// Alias tables of the cells, same distributions as their CDFs built above. Blocks looping over the alive cells
+		float* cell_alias_tables =
+			m_spmis_data.m_spmis_data.get_buffer<ReSTIRPTSPMISDataHostBuffers::RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>().get_device_pointer();
+		void* build_alias_tables_launch_args[]		= { &cell_non_zero_reservoir_counters,
+														&cell_offsets,
+														&cell_alive_list,
+														&pixel_indices_sorted,
+														&input_reservoirs,
+														&cell_cdfs,
+														&cell_alias_tables,
+														&cell_alive_count,
+														&num_cells };
+		unsigned int build_alias_tables_block_count = get_spmis_cell_kernel_block_count(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID,
+																						RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE, num_cells);
+		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_ALIAS_TABLES_KERNEL_ID]->launch_asynchronous(
+			RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE, 1, build_alias_tables_block_count * RESTIR_PT_SPMIS_ALIAS_TABLE_BLOCK_SIZE, 1,
+			build_alias_tables_launch_args, m_renderer->get_main_stream());
+
+		// Compact records of the non-zero reservoirs of the cells, read by the neighbor selection of the union domain reuse. One thread per pixel
+		unsigned int pixel_count = render_data.render_settings.render_resolution.x * render_data.render_settings.render_resolution.y;
+
+		upload_render_data(ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID, render_data);
+		m_kernels[ReSTIRPTRenderPass::RESTIR_PT_SPMIS_BUILD_NEIGHBOR_RECORDS_KERNEL_ID]->launch_asynchronous(64, 1, pixel_count, 1, nullptr,
+																											 m_renderer->get_main_stream());
+	}
+}
+
+unsigned int ReSTIRPTRenderPass::get_spmis_cell_kernel_block_count(const std::string& kernel_id, unsigned int block_size, unsigned int num_cells)
+{
+	// Enough blocks to fill the GPU once: the blocks then loop over the alive cells. There are never more alive cells than cells
+	unsigned int maximum_active_blocks_per_multiprocessor =
+		static_cast<unsigned int>(m_kernels[kernel_id]->get_max_active_blocks_per_multiprocessor(static_cast<int>(block_size)));
+	unsigned int resident_block_count =
+		hippt::max(1u, maximum_active_blocks_per_multiprocessor) * static_cast<unsigned int>(m_renderer->get_device_properties().multiProcessorCount * 2);
+
+	return hippt::max(1u, hippt::min(resident_block_count, num_cells));
 }
 
 void ReSTIRPTRenderPass::resize_cdf_luts_buffer(HIPRTRenderData& render_data, unsigned int cell_alive_count)

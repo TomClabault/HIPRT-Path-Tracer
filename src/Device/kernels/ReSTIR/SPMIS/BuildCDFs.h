@@ -11,85 +11,21 @@
 #include "HostDeviceCommon/RenderData.h"
 
 #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void)
-ReSTIR_PT_SPMIS_BuildCDFs(unsigned short int* cell_non_zero_reservoir_counters,
-						  unsigned int* cell_offsets,
-						  unsigned int* cell_alive_list,
-						  unsigned int* pixel_indices_sorted,
-						  ReSTIRPTReservoir* input_reservoirs,
-						  float* out_cdfs,
-						  unsigned short int* cell_cdf_luts,
-						  unsigned int* cell_cdf_luts_offsets,
-						  bool build_cdf_luts,
-						  unsigned int size)
-#else  // #ifdef __KERNELCC__
-GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
-								 unsigned int* cell_offsets,
-								 unsigned int* cell_alive_list,
-								 unsigned int cell_alive_count,
-								 unsigned int* pixel_indices_sorted,
-								 ReSTIRPTReservoir* input_reservoirs,
-								 float* out_cdfs,
-								 unsigned short int* cell_cdf_luts,
-								 unsigned int* cell_cdf_luts_offsets,
-								 bool build_cdf_luts,
-								 [[maybe_unused]] unsigned int size				= 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
-								 [[maybe_unused]] unsigned int cell_alive_index = 0) // Unused in CPU path, just so that intellisense is happy for the GPU path
-#endif // #ifdef __KERNELCC__
+/**
+ * CDF (and LUT if 'build_cdf_luts') of the alive cell 'cell_alive_index', built by the whole block of 1024 threads
+ */
+HIPRT_DEVICE void spmis_build_cell_cdf(unsigned short int* cell_non_zero_reservoir_counters,
+									   unsigned int* cell_offsets,
+									   unsigned int* cell_alive_list,
+									   unsigned int* pixel_indices_sorted,
+									   ReSTIRPTReservoir* input_reservoirs,
+									   float* out_cdfs,
+									   unsigned short int* cell_cdf_luts,
+									   unsigned int* cell_cdf_luts_offsets,
+									   bool build_cdf_luts,
+									   unsigned int size,
+									   unsigned int cell_alive_index)
 {
-#ifndef __KERNELCC__
-	// Completely different path for the CPU
-	for (int cell_alive_index = 0; cell_alive_index < cell_alive_count; cell_alive_index++)
-	{
-		unsigned int cell_index		= cell_alive_list[cell_alive_index];
-		unsigned int non_zero_count = cell_non_zero_reservoir_counters[cell_index];
-		if (non_zero_count > 0)
-		{
-			unsigned int cell_offset = cell_offsets[cell_index];
-			float running_sum		 = 0.0f;
-
-			for (unsigned int i = 0; i < non_zero_count; i++)
-			{
-				unsigned int pixel_index = pixel_indices_sorted[cell_offset + i];
-
-				out_cdfs[cell_offset + i] = running_sum;
-				running_sum +=
-					input_reservoirs[pixel_index].UCW * input_reservoirs[pixel_index].sample.target_function * input_reservoirs[pixel_index].confidence;
-			}
-
-			// Normalization
-			for (unsigned int i = 0; i < non_zero_count; i++)
-				out_cdfs[cell_offset + i] /= running_sum;
-			// Writing the sum in [0], used to compute the probability at sampling time (which is neighbor_importance / sum)
-			out_cdfs[cell_offset] = running_sum;
-
-			if (!build_cdf_luts)
-				continue;
-
-			// Now computing the LUT
-			unsigned int current_cdf_index = 0;
-			for (unsigned int bin = 0; bin < ReSTIR_PT_SPMISCDFLUTSize; bin++)
-			{
-				float bin_lower_bound = bin / static_cast<float>(ReSTIR_PT_SPMISCDFLUTSize);
-
-				while (current_cdf_index < non_zero_count - 1 && out_cdfs[cell_offset + current_cdf_index + 1] <= bin_lower_bound)
-					current_cdf_index++;
-
-				cell_cdf_luts[cell_alive_index * ReSTIR_PT_SPMISCDFLUTSize + bin] = static_cast<unsigned short int>(current_cdf_index);
-			}
-
-			cell_cdf_luts_offsets[cell_index] = cell_alive_index * ReSTIR_PT_SPMISCDFLUTSize;
-		}
-	}
-
-	return;
-#endif // #ifndef __KERNELCC__
-
-#ifdef __KERNELCC__
-	const uint32_t cell_alive_index = blockIdx.x;
-#endif
-
 	unsigned int cell_index = cell_alive_list[cell_alive_index];
 	if (cell_index >= size)
 		return;
@@ -168,6 +104,99 @@ inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_r
 
 		bin_index += blockDim.x;
 	}
+}
+#endif // #ifdef __KERNELCC__
+
+#ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void)
+ReSTIR_PT_SPMIS_BuildCDFs(unsigned short int* cell_non_zero_reservoir_counters,
+						  unsigned int* cell_offsets,
+						  unsigned int* cell_alive_list,
+						  unsigned int* pixel_indices_sorted,
+						  ReSTIRPTReservoir* input_reservoirs,
+						  float* out_cdfs,
+						  unsigned short int* cell_cdf_luts,
+						  unsigned int* cell_cdf_luts_offsets,
+						  bool build_cdf_luts,
+						  unsigned int* cell_alive_count,
+						  unsigned int size)
+#else  // #ifdef __KERNELCC__
+GLOBAL_KERNEL_SIGNATURE(void)
+inline ReSTIR_PT_SPMIS_BuildCDFs(AtomicType<unsigned short int>* cell_non_zero_reservoir_counters,
+								 unsigned int* cell_offsets,
+								 unsigned int* cell_alive_list,
+								 unsigned int cell_alive_count,
+								 unsigned int* pixel_indices_sorted,
+								 ReSTIRPTReservoir* input_reservoirs,
+								 float* out_cdfs,
+								 unsigned short int* cell_cdf_luts,
+								 unsigned int* cell_cdf_luts_offsets,
+								 bool build_cdf_luts,
+								 [[maybe_unused]] unsigned int size				= 0, // Unused in CPU path, just so that intellisense is happy for the GPU path
+								 [[maybe_unused]] unsigned int cell_alive_index = 0) // Unused in CPU path, just so that intellisense is happy for the GPU path
+#endif // #ifdef __KERNELCC__
+{
+#ifndef __KERNELCC__
+	// Completely different path for the CPU
+	for (int cell_alive_index = 0; cell_alive_index < cell_alive_count; cell_alive_index++)
+	{
+		unsigned int cell_index		= cell_alive_list[cell_alive_index];
+		unsigned int non_zero_count = cell_non_zero_reservoir_counters[cell_index];
+		if (non_zero_count > 0)
+		{
+			unsigned int cell_offset = cell_offsets[cell_index];
+			float running_sum		 = 0.0f;
+
+			for (unsigned int i = 0; i < non_zero_count; i++)
+			{
+				unsigned int pixel_index = pixel_indices_sorted[cell_offset + i];
+
+				out_cdfs[cell_offset + i] = running_sum;
+				running_sum +=
+					input_reservoirs[pixel_index].UCW * input_reservoirs[pixel_index].sample.target_function * input_reservoirs[pixel_index].confidence;
+			}
+
+			// Normalization
+			for (unsigned int i = 0; i < non_zero_count; i++)
+				out_cdfs[cell_offset + i] /= running_sum;
+			// Writing the sum in [0], used to compute the probability at sampling time (which is neighbor_importance / sum)
+			out_cdfs[cell_offset] = running_sum;
+
+			if (!build_cdf_luts)
+				continue;
+
+			// Now computing the LUT
+			unsigned int current_cdf_index = 0;
+			for (unsigned int bin = 0; bin < ReSTIR_PT_SPMISCDFLUTSize; bin++)
+			{
+				float bin_lower_bound = bin / static_cast<float>(ReSTIR_PT_SPMISCDFLUTSize);
+
+				while (current_cdf_index < non_zero_count - 1 && out_cdfs[cell_offset + current_cdf_index + 1] <= bin_lower_bound)
+					current_cdf_index++;
+
+				cell_cdf_luts[cell_alive_index * ReSTIR_PT_SPMISCDFLUTSize + bin] = static_cast<unsigned short int>(current_cdf_index);
+			}
+
+			cell_cdf_luts_offsets[cell_index] = cell_alive_index * ReSTIR_PT_SPMISCDFLUTSize;
+		}
+	}
+
+	return;
+#endif // #ifndef __KERNELCC__
+
+#ifdef __KERNELCC__
+	// The grid has a fixed number of blocks: the host launches this kernel without reading the number of alive cells back, which would stall the GPU
+	// until the host has received it and submitted the next kernels. Each block loops over the cells
+	unsigned int alive_count = *cell_alive_count;
+	for (unsigned int cell_alive_index = blockIdx.x; cell_alive_index < alive_count; cell_alive_index += gridDim.x)
+	{
+		spmis_build_cell_cdf(cell_non_zero_reservoir_counters, cell_offsets, cell_alive_list, pixel_indices_sorted, input_reservoirs, out_cdfs, cell_cdf_luts,
+							 cell_cdf_luts_offsets, build_cdf_luts, size, cell_alive_index);
+
+		// The next cell of the block rewrites the shared memory that the threads of this cell may still be reading
+		__syncthreads();
+	}
+#endif // #ifdef __KERNELCC__
 }
 
 #endif // #ifndef KERNELS_RESTIR_SPMIS_BUILD_CDFS_H

@@ -13,6 +13,60 @@
 #define PER_CELL_VARIANCE_MIN_PIXEL_COUNT 16
 
 #ifdef __KERNELCC__
+/**
+ * Variance of the alive cell 'cell_alive_index', computed by the whole block of 1024 threads
+ */
+HIPRT_DEVICE void spmis_compute_cell_variance(unsigned short int* cell_pixels_counters,
+											  unsigned int* cell_offsets,
+											  unsigned int* cell_alive_list,
+											  unsigned int* pixel_indices_sorted,
+											  ReSTIRPTReservoir* input_reservoirs,
+											  float* out_cell_variance,
+											  unsigned int size,
+											  unsigned int cell_alive_index)
+{
+	unsigned int cell_index = cell_alive_list[cell_alive_index];
+	if (cell_index >= size)
+		return;
+
+	unsigned int total_count = cell_pixels_counters[cell_index];
+	if (total_count < PER_CELL_VARIANCE_MIN_PIXEL_COUNT)
+	{
+		if (threadIdx.x == 0)
+			out_cell_variance[cell_index] = -1.0f;
+
+		return;
+	}
+
+	unsigned int cell_offset = cell_offsets[cell_index];
+	unsigned int index		 = cell_offset + threadIdx.x;
+
+	float contribution = 0.0f;
+	if (threadIdx.x < total_count)
+	{
+		unsigned int pixel_index	= pixel_indices_sorted[index];
+		ReSTIRPTReservoir reservoir = input_reservoirs[pixel_index];
+		contribution				= reservoir.UCW * reservoir.sample.target_function;
+	}
+
+	float sum	 = block_reduce<1024>(contribution);
+	float sum_sq = block_reduce<1024>(contribution * contribution);
+
+	if (threadIdx.x == 0)
+	{
+		float mean							   = sum / total_count;
+		float variance						   = hippt::max(0.0f, sum_sq / total_count - mean * mean);
+		float log_variance					   = hippt::intrin_logf(1.0f + variance);
+		float relative_variance				   = variance / (mean * mean + 1e-6f);
+		float variation_coefficient			   = hippt::sqrt(relative_variance);
+		float variation_coefficient_normalized = variation_coefficient / (1.0f + variation_coefficient);
+
+		out_cell_variance[cell_index] = variation_coefficient_normalized;
+	}
+}
+#endif // #ifdef __KERNELCC__
+
+#ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 ReSTIR_PT_SPMIS_ComputeCellsVariance(unsigned short int* cell_pixels_counters,
 									 unsigned int* cell_offsets,
@@ -20,6 +74,7 @@ ReSTIR_PT_SPMIS_ComputeCellsVariance(unsigned short int* cell_pixels_counters,
 									 unsigned int* pixel_indices_sorted,
 									 ReSTIRPTReservoir* input_reservoirs,
 									 float* out_cell_variance,
+									 unsigned int* cell_alive_count,
 									 unsigned int size)
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
@@ -75,47 +130,18 @@ inline ReSTIR_PT_SPMIS_ComputeCellsVariance(AtomicType<unsigned short int>* cell
 #endif // #ifndef __KERNELCC__
 
 #ifdef __KERNELCC__
-	const uint32_t cell_alive_index = blockIdx.x;
-#endif
-
-	unsigned int cell_index = cell_alive_list[cell_alive_index];
-	if (cell_index >= size)
-		return;
-
-	unsigned int total_count = cell_pixels_counters[cell_index];
-	if (total_count < PER_CELL_VARIANCE_MIN_PIXEL_COUNT)
+	// The grid has a fixed number of blocks: the host launches this kernel without reading the number of alive cells back, see ReSTIR_PT_SPMIS_BuildCDFs.
+	// Each block loops over the cells
+	unsigned int alive_count = *cell_alive_count;
+	for (unsigned int cell_alive_index = blockIdx.x; cell_alive_index < alive_count; cell_alive_index += gridDim.x)
 	{
-		if (threadIdx.x == 0)
-			out_cell_variance[cell_index] = -1.0f;
+		spmis_compute_cell_variance(cell_pixels_counters, cell_offsets, cell_alive_list, pixel_indices_sorted, input_reservoirs, out_cell_variance, size,
+									cell_alive_index);
 
-		return;
+		// The next cell of the block rewrites the shared memory of the reductions that the threads of this cell may still be reading
+		__syncthreads();
 	}
-
-	unsigned int cell_offset = cell_offsets[cell_index];
-	unsigned int index		 = cell_offset + threadIdx.x;
-
-	float contribution = 0.0f;
-	if (threadIdx.x < total_count)
-	{
-		unsigned int pixel_index	= pixel_indices_sorted[index];
-		ReSTIRPTReservoir reservoir = input_reservoirs[pixel_index];
-		contribution				= reservoir.UCW * reservoir.sample.target_function;
-	}
-
-	float sum	 = block_reduce<1024>(contribution);
-	float sum_sq = block_reduce<1024>(contribution * contribution);
-
-	if (threadIdx.x == 0)
-	{
-		float mean							   = sum / total_count;
-		float variance						   = hippt::max(0.0f, sum_sq / total_count - mean * mean);
-		float log_variance					   = hippt::intrin_logf(1.0f + variance);
-		float relative_variance				   = variance / (mean * mean + 1e-6f);
-		float variation_coefficient			   = hippt::sqrt(relative_variance);
-		float variation_coefficient_normalized = variation_coefficient / (1.0f + variation_coefficient);
-
-		out_cell_variance[cell_index] = variation_coefficient_normalized;
-	}
+#endif // #ifdef __KERNELCC__
 }
 
 #endif // #ifndef KERNELS_RESTIR_SPMIS_COMPUTE_CELLS_VARIANCE_H
