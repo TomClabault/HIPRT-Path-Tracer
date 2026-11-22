@@ -423,6 +423,18 @@ bool GPURenderer::frame_render_done()
 	return m_render_thread.frame_render_done();
 }
 
+bool GPURenderer::frame_in_flight()
+{
+
+	return m_render_thread.frame_in_flight();
+}
+
+bool GPURenderer::wait_on_render_completion_for(float timeout_ms)
+{
+
+	return m_render_thread.wait_on_render_completion_for(timeout_ms);
+}
+
 void GPURenderer::resize(int new_width, int new_height)
 {
 	// Needed so that this function can eventually be called from another thread

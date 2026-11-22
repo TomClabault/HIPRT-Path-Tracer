@@ -12,8 +12,10 @@
 #include "UI/RenderWindow.h"
 #include "Utils/Utils.h"
 
+#include <chrono>
 #include <functional>
 #include <iostream>
+#include <thread>
 
 #include "stb_image_write.h"
 
@@ -689,7 +691,16 @@ void RenderWindow::init_glfw(int window_width, int window_height)
 	// we can retrieve a pointer to this instance of RenderWindow in the callback functions
 	// such as the window_resized_callback function for example
 	glfwSetWindowUserPointer(m_glfw_window, this);
-	glfwSwapInterval(1);
+	// No vsync: with vsync, a frame of the renderer that completes while glfwSwapBuffers() waits for the vertical blank is only
+	// noticed after that wait and the GPU idles until then. The main loop is paced by wait_for_frame_completion_or_UI_refresh()
+	// instead, which wakes up as soon as the renderer completes a frame
+	glfwSwapInterval(0);
+
+	GLFWmonitor* primary_monitor  = glfwGetPrimaryMonitor();
+	const GLFWvidmode* video_mode = primary_monitor != nullptr ? glfwGetVideoMode(primary_monitor) : nullptr;
+	if (video_mode != nullptr && video_mode->refreshRate > 0)
+		m_UI_refresh_period_ms = 1000.0f / video_mode->refreshRate;
+
 	// No window size callback: the window size includes the ImGui windows around the viewport so it is not the render
 	// resolution. ImGuiRenderWindow::draw() resizes the renderer to the size of the ImGui viewport when it changes
 	m_mouse_interactor->set_callbacks(m_glfw_window);
@@ -1192,9 +1203,18 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 
 	m_renderer->start_render_thread();
 
+	uint64_t previous_frame_start_time = glfwGetTimerValue();
 	while (!glfwWindowShouldClose(m_glfw_window))
 	{
+		// The frame delta time covers the whole iteration, the wait for the renderer included: it is the wall-clock time of
+		// one UI frame
+		uint64_t iteration_start_time = glfwGetTimerValue();
+
+		wait_for_frame_completion_or_UI_refresh(previous_frame_start_time);
+
+		// Taken after the wait so that the CPU overhead measured below does not include the time spent waiting for the renderer
 		uint64_t frame_start_time = glfwGetTimerValue();
+		previous_frame_start_time = frame_start_time;
 		// Saving whether the renderer as finished its frame
 		// at the beginning of this CPU frame.
 		//
@@ -1228,6 +1248,10 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 		m_application_state->render_dirty |= m_application_state->interacting_last_frame != is_interacting();
 
 		render();
+		// A frame in flight here either is still in flight at the next iteration or completes before it: in both cases the
+		// next iteration must not sleep before processing it
+		m_frame_pending_after_render = m_renderer->frame_in_flight();
+
 		m_display_view_system->display();
 		m_imgui_renderer->draw_interface();
 
@@ -1251,7 +1275,7 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 
 		glfwSwapBuffers(m_glfw_window);
 
-		float delta_time_ms								  = (glfwGetTimerValue() - frame_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
+		float delta_time_ms								  = (glfwGetTimerValue() - iteration_start_time) / static_cast<float>(timer_frequency) * 1000.0f;
 		m_application_state->last_CPU_frame_delta_time_ms = delta_time_ms;
 		m_application_state->last_viewport_refresh_timestamp += m_application_state->last_CPU_frame_delta_time_ms;
 
@@ -1271,6 +1295,24 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 
 		m_keyboard_interactor.poll_keyboard_inputs();
 	}
+}
+
+void RenderWindow::wait_for_frame_completion_or_UI_refresh(uint64_t previous_frame_start_time)
+{
+	float elapsed_ms   = (glfwGetTimerValue() - previous_frame_start_time) / static_cast<float>(glfwGetTimerFrequency()) * 1000.0f;
+	float remaining_ms = m_UI_refresh_period_ms - elapsed_ms;
+	if (remaining_ms <= 0.0f)
+		// The UI is due for a refresh
+		return;
+
+	if (m_renderer->frame_in_flight())
+		// Returns as soon as the renderer completes the frame so that the next frame is queued right away instead of at the
+		// next UI refresh
+		m_renderer->wait_on_render_completion_for(remaining_ms);
+	else if (!m_frame_pending_after_render)
+		// No frame being rendered and no completed frame to process: nothing to do before the next UI refresh. Without this
+		// sleep, the loop would redraw the UI as fast as it can and its OpenGL work would take GPU time from the renderer
+		std::this_thread::sleep_for(std::chrono::duration<float, std::milli>(remaining_ms));
 }
 
 void RenderWindow::render()

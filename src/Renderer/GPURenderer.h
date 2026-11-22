@@ -149,6 +149,16 @@ public:
 	 * Whether or not the current frame has finished rendering
 	 */
 	bool frame_render_done();
+	/**
+	 * Returns true if a frame has been queued by render() and hasn't finished rendering yet
+	 */
+	bool frame_in_flight();
+	/**
+	 * If a frame is being rendered, blocks until it is done or until 'timeout_ms' milliseconds have passed.
+	 *
+	 * Returns true if no frame is being rendered anymore when the function returns
+	 */
+	bool wait_on_render_completion_for(float timeout_ms);
 
 	/**
 	 * Resizes all the buffers of the renderer to the given new width and height

@@ -173,6 +173,16 @@ private:
 	// Applies the resize queued by queue_resize(), if any
 	void apply_queued_resize();
 
+	/**
+	 * Paces the main loop: returns when the renderer completes the frame it is rendering or when one UI refresh period
+	 * has passed since 'previous_frame_start_time', whichever comes first. Sleeps until the end of that period if no frame
+	 * is being rendered and no completed frame is waiting to be processed.
+	 *
+	 * The completion of a frame is processed (and the next frame queued) as soon as it happens instead of at the
+	 * next iteration of a loop paced by the vertical blank
+	 */
+	void wait_for_frame_completion_or_UI_refresh(uint64_t previous_frame_start_time);
+
 	// How many times at most the window is resized to reach the requested viewport size.
 	// If the requested size still isn't reached after that (window larger than the screen
 	// for example), the viewport just keeps the size it has
@@ -191,6 +201,12 @@ private:
 	// The renderer buffers then still hold the image of the previous resolution: displaying them
 	// with the new resolution reads the rows with the wrong width and shows a torn image
 	bool m_renderer_buffers_hold_previous_resolution = false;
+
+	// Longest time between two iterations of the main loop: the refresh period of the primary monitor
+	float m_UI_refresh_period_ms = 1000.0f / 60.0f;
+	// Whether a frame of the renderer was in flight right after the last call to render() of the main loop. If it was, its
+	// completion still has to be processed
+	bool m_frame_pending_after_render = false;
 
 	// Viewport size queued by queue_resize(), applied at the beginning of the next frame
 	bool m_resize_queued	  = false;

@@ -24,6 +24,7 @@
 
 #include "HostDeviceCommon/RenderData.h"
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 
@@ -62,6 +63,17 @@ public:
 	 * If a frame is currently being computed, this function blocks until the frame has been rendered
 	 */
 	void wait_on_render_completion();
+	/**
+	 * If a frame is currently being computed, blocks until the frame has been rendered or until 'timeout_ms' milliseconds
+	 * have passed, whichever comes first.
+	 *
+	 * Returns true if no frame is being computed anymore when the function returns
+	 */
+	bool wait_on_render_completion_for(float timeout_ms);
+	/**
+	 * Returns true if a frame has been requested and its completion callback hasn't run yet
+	 */
+	bool frame_in_flight();
 
 	/**
 	 * This function is in charge of updating various "dynamic attributes/properties/buffers" of the renderer before rendering a frame.
@@ -177,9 +189,11 @@ private:
 	std::condition_variable m_render_completed_condition_variable;
 	std::mutex m_render_completex_mutex;
 
-	bool m_currently_rendering = false;
-	bool m_frame_requested	   = false;
-	bool m_exit_requested	   = false;
+	// Atomic so that frame_in_flight() reads it without locking. The completion callback still writes it under m_render_completex_mutex: the
+	// waits on m_render_completed_condition_variable would otherwise miss a notification sent between their check and their sleep
+	std::atomic<bool> m_currently_rendering = false;
+	bool m_frame_requested					= false;
+	bool m_exit_requested					= false;
 };
 
 #endif // #ifndef GPU_RENDERER_THREAD_H

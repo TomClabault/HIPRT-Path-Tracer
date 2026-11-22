@@ -9,6 +9,8 @@
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 
+#include <chrono>
+
 const std::string GPURendererThread::RENDER_GRAPH_FULL_NAME			 = "Full render graph";
 const std::string GPURendererThread::RENDER_GRAPH_INTERACTIVITY_NAME = "Interactivity render graph";
 
@@ -215,6 +217,21 @@ void GPURendererThread::wait_on_render_completion()
 	m_render_completed_condition_variable.wait(lock, [this] { return !m_currently_rendering; });
 }
 
+bool GPURendererThread::wait_on_render_completion_for(float timeout_ms)
+{
+	std::unique_lock<std::mutex> lock(m_render_completex_mutex);
+
+	std::chrono::duration<float, std::milli> timeout(timeout_ms);
+
+	return m_render_completed_condition_variable.wait_for(lock, timeout, [this] { return !m_currently_rendering; });
+}
+
+bool GPURendererThread::frame_in_flight()
+{
+
+	return m_currently_rendering.load();
+}
+
 void GPURendererThread::pre_frame_render_update(float delta_time)
 {
 	m_renderer->step_animations(delta_time);
@@ -408,22 +425,32 @@ void GPURendererThread::render_internal()
 	struct CallbackPayload
 	{
 		bool* frame_rendered;
-		bool* currently_rendering;
+		std::atomic<bool>* currently_rendering;
 		std::condition_variable* render_completed_condition_variable;
+		std::mutex* render_completed_mutex;
 	};
 
 	CallbackPayload* payload					 = new CallbackPayload;
 	payload->currently_rendering				 = &m_currently_rendering;
 	payload->frame_rendered						 = &m_frame_rendered;
 	payload->render_completed_condition_variable = &m_render_completed_condition_variable;
+	payload->render_completed_mutex				 = &m_render_completex_mutex;
 
 	OROCHI_CHECK_ERROR(oroLaunchHostFunc(
 		m_renderer->get_main_stream(),
 		[](void* payload)
 		{
-			CallbackPayload* payload_struct		 = reinterpret_cast<CallbackPayload*>(payload);
-			*payload_struct->frame_rendered		 = true;
-			*payload_struct->currently_rendering = false;
+			CallbackPayload* payload_struct = reinterpret_cast<CallbackPayload*>(payload);
+
+			{
+				// The flags are written under the mutex of the condition variable: a waiter that has just found
+				// 'currently_rendering' true and is about to block would otherwise miss this notification and sleep
+				// until its timeout
+				std::lock_guard<std::mutex> lock(*payload_struct->render_completed_mutex);
+
+				*payload_struct->frame_rendered		 = true;
+				*payload_struct->currently_rendering = false;
+			}
 			payload_struct->render_completed_condition_variable->notify_all();
 
 			delete payload_struct;
