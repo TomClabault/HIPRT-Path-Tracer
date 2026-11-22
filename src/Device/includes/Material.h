@@ -197,7 +197,6 @@ HIPRT_DEVICE static PrincipledMaterialClassificationInputs load_packed_material_
 	inputs.thin_film_strength						 = packed_material.get_thin_film();
 	inputs.dispersion_scale							 = packed_material.get_dispersion_scale();
 	inputs.thin_walled								 = packed_material.get_thin_walled();
-	inputs.enforce_strong_energy_conservation		 = packed_material.get_enforce_strong_energy_conservation();
 
 	return inputs;
 }

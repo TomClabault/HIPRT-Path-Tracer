@@ -104,10 +104,10 @@ struct DeviceUnpackedPrincipledFullMaterial
 		  coat_anisotropy(0.0f), coat_anisotropy_rotation(0.0f), coat_ior(1.5f), sheen(0.0f), sheen_roughness(0.5f), sheen_color(1.0f, 1.0f, 1.0f), ior(1.40f),
 		  specular_transmission(0.0f), diffuse_transmission(0.0f), absorption_at_distance(1.0f), absorption_color(1.0f, 1.0f, 1.0f), dispersion_scale(0.0f),
 		  dispersion_abbe_number(20.0f), thin_film(0.0f), thin_film_ior(1.3f), thin_film_thickness(500.0f), thin_film_kappa_3(0.0f),
-		  thin_film_hue_shift_degrees(0.0f), thin_film_base_ior_override(1.0f), alpha_opacity(1.0f), energy_preservation_monte_carlo_samples(12),
-		  do_metallic_energy_compensation(true), do_specular_energy_compensation(true), do_coat_energy_compensation(true), thin_walled(false),
-		  do_glass_energy_compensation(true), thin_film_do_ior_override(false), enforce_strong_energy_conservation(false), emission(0.0f, 0.0f, 0.0f),
-		  emission_strength(1.0f), emissive_texture_index(MaterialConstants::NO_TEXTURE), dielectric_priority(0)
+		  thin_film_hue_shift_degrees(0.0f), thin_film_base_ior_override(1.0f), alpha_opacity(1.0f), do_metallic_energy_compensation(true),
+		  do_specular_energy_compensation(true), do_coat_energy_compensation(true), thin_walled(false), do_glass_energy_compensation(true),
+		  thin_film_do_ior_override(false), emission(0.0f, 0.0f, 0.0f), emission_strength(1.0f), emissive_texture_index(MaterialConstants::NO_TEXTURE),
+		  dielectric_priority(0)
 	{
 	}
 
@@ -116,10 +116,9 @@ struct DeviceUnpackedPrincipledFullMaterial
 		: base_color(NoInitTag{}), metallic(0.0f), metallic_F82(NoInitTag{}), metallic_F90(NoInitTag{}), second_roughness_weight(0.0f), second_roughness(0.5f),
 		  retro_reflection(0.0f), specular(0.0f), specular_color(NoInitTag{}), coat(0.0f), coat_medium_absorption(NoInitTag{}), coat_roughness(0.0f),
 		  coat_roughening(1.0f), coat_anisotropy(0.0f), coat_ior(1.5f), sheen(0.0f), sheen_roughness(0.5f), sheen_color(1.0f, 1.0f, 1.0f),
-		  specular_transmission(0.0f), absorption_color(NoInitTag{}), dispersion_scale(0.0f), energy_preservation_monte_carlo_samples(12),
-		  do_metallic_energy_compensation(true), do_specular_energy_compensation(true), do_coat_energy_compensation(true), thin_walled(false),
-		  do_glass_energy_compensation(true), thin_film_do_ior_override(false), enforce_strong_energy_conservation(false), emission(0.0f, 0.0f, 0.0f),
-		  emissive_texture_index(MaterialConstants::NO_TEXTURE)
+		  specular_transmission(0.0f), absorption_color(NoInitTag{}), dispersion_scale(0.0f), do_metallic_energy_compensation(true),
+		  do_specular_energy_compensation(true), do_coat_energy_compensation(true), thin_walled(false), do_glass_energy_compensation(true),
+		  thin_film_do_ior_override(false), emission(0.0f, 0.0f, 0.0f), emissive_texture_index(MaterialConstants::NO_TEXTURE)
 	{
 	}
 
@@ -328,9 +327,6 @@ struct DeviceUnpackedPrincipledFullMaterial
 	// 0.0f completely transparent (becomes invisible)
 	float alpha_opacity;
 
-	// TODO remove this, unused
-	unsigned char energy_preservation_monte_carlo_samples;
-
 	/**
 	 * The booleans are moved to the end of the structure to avoid too much structure packing
 	 */
@@ -349,21 +345,6 @@ struct DeviceUnpackedPrincipledFullMaterial
 	// for that material
 	bool do_glass_energy_compensation;
 	bool thin_film_do_ior_override;
-
-	// If true, 'energy_preservation_monte_carlo_samples' will be used
-	// to compute the directional albedo of this material.
-	// This computed directional albedo is then used to ensure perfect energy conservation
-	// and preservation.
-	//
-	// This is however very expensive.
-	// This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
-	// the clearcoat layer and the BSDF below may be acceptable).
-	//
-	// Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy
-	// conservation/preservation with the precomputed LUTs [Turquin, 2019].
-	//
-	// See PrincipledBSDFDoEnergyCompensation in this codebase.
-	bool enforce_strong_energy_conservation;
 
 	HIPRT_HOST_DEVICE void set_dielectric_priority(unsigned char priority)
 	{

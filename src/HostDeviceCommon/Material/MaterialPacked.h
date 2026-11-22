@@ -18,14 +18,13 @@ struct DevicePackedEffectiveMaterial
 {
 	enum PackedFlagsIndices : unsigned char
 	{
-		PACKED_THIN_WALLED						  = 0,
-		PACKED_EMISSIVE_TEXTURE_USED			  = 1,
-		PACKED_THIN_FILM_DO_IOR_OVERRIDE		  = 2,
-		GLASS_ENERGY_COMPENSATION				  = 3,
-		CLEARCOAT_ENERGY_COMPENSATION			  = 4,
-		METALLIC_ENERGY_COMPENSATION			  = 5,
-		SPECULAR_ENERGY_COMPENSATION			  = 6,
-		PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION = 7,
+		PACKED_THIN_WALLED				 = 0,
+		PACKED_EMISSIVE_TEXTURE_USED	 = 1,
+		PACKED_THIN_FILM_DO_IOR_OVERRIDE = 2,
+		GLASS_ENERGY_COMPENSATION		 = 3,
+		CLEARCOAT_ENERGY_COMPENSATION	 = 4,
+		METALLIC_ENERGY_COMPENSATION	 = 5,
+		SPECULAR_ENERGY_COMPENSATION	 = 6,
 	};
 
 	enum PackedAnisotropyGroupIndices : unsigned char
@@ -62,10 +61,9 @@ struct DevicePackedEffectiveMaterial
 
 	enum PackedAlphaOpacityGroupIndices : unsigned char
 	{
-		PACKED_ALPHA_OPACITY			   = 0,
-		PACKED_THIN_FILM_HUE_SHIFT		   = 1,
-		PACKED_DIELECTRIC_PRIORITY		   = 0,
-		PACKED_ENERGY_PRESERVATION_SAMPLES = 1,
+		PACKED_ALPHA_OPACITY	   = 0,
+		PACKED_THIN_FILM_HUE_SHIFT = 1,
+		PACKED_DIELECTRIC_PRIORITY = 0,
 	};
 
 	HIPRT_HOST_DEVICE bool is_emissive() const
@@ -148,8 +146,6 @@ struct DevicePackedEffectiveMaterial
 
 		packed.set_alpha_opacity(unpacked.alpha_opacity);
 		packed.set_dielectric_priority(unpacked.get_dielectric_priority());
-		packed.set_energy_preservation_monte_carlo_samples(unpacked.energy_preservation_monte_carlo_samples);
-		packed.set_enforce_strong_energy_conservation(unpacked.enforce_strong_energy_conservation);
 
 		return packed;
 	}
@@ -219,8 +215,6 @@ struct DevicePackedEffectiveMaterial
 
 		unpacked.alpha_opacity = this->get_alpha_opacity();
 		unpacked.set_dielectric_priority(this->get_dielectric_priority());
-		unpacked.energy_preservation_monte_carlo_samples = this->get_energy_preservation_monte_carlo_samples();
-		unpacked.enforce_strong_energy_conservation		 = this->get_enforce_strong_energy_conservation();
 
 		return unpacked;
 	}
@@ -485,16 +479,6 @@ struct DevicePackedEffectiveMaterial
 		return alpha_thin_film_hue_dielectric_priority.get_uchar<PackedAlphaOpacityGroupIndices::PACKED_DIELECTRIC_PRIORITY>();
 	}
 
-	HIPRT_HOST_DEVICE unsigned char get_energy_preservation_monte_carlo_samples() const
-	{
-		return alpha_thin_film_hue_dielectric_priority.get_uchar<PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>();
-	}
-
-	HIPRT_HOST_DEVICE bool get_enforce_strong_energy_conservation() const
-	{
-		return flags.get_bool<PackedFlagsIndices::PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION>();
-	}
-
 	HIPRT_HOST_DEVICE void set_emission(ColorRGB32F emission_)
 	{
 		this->emission = emission_;
@@ -755,17 +739,6 @@ struct DevicePackedEffectiveMaterial
 		alpha_thin_film_hue_dielectric_priority.set_uchar<PackedAlphaOpacityGroupIndices::PACKED_ALPHA_OPACITY>(dielectric_priority);
 	}
 
-	HIPRT_HOST_DEVICE void set_energy_preservation_monte_carlo_samples(unsigned char energy_preservation_monte_carlo_samples)
-	{
-		alpha_thin_film_hue_dielectric_priority.set_uchar<PackedAlphaOpacityGroupIndices::PACKED_ENERGY_PRESERVATION_SAMPLES>(
-			energy_preservation_monte_carlo_samples);
-	}
-
-	HIPRT_HOST_DEVICE void set_enforce_strong_energy_conservation(bool enforce_strong_energy_conservation)
-	{
-		flags.set_bool<PackedFlagsIndices::PACKED_ENFORCE_STRONG_ENERGY_CONSERVATION>(enforce_strong_energy_conservation);
-	}
-
 private:
 	// Packed flags of the material:
 	//  - thin_walled
@@ -778,21 +751,6 @@ private:
 	//  - thin_film_do_ior_override
 	//      Whether or not to override the IORs used for the base material on top of which
 	//      the thin film sits.
-	//
-	//  - enforce_strong_energy_conservation
-	//      If true, 'energy_preservation_monte_carlo_samples' will be used
-	//      to compute the directional albedo of this material.
-	//      This computed directional albedo is then used to ensure perfect energy conservation
-	//      and preservation.
-	//
-	//      This is however very expensive.
-	//      This is usually only needed on clearcoated materials (but even then, the energy loss due to the absence of multiple scattering between
-	//      the clearcoat layer and the BSDF below may be acceptable).
-	//
-	//      Non-clearcoated materials can already ensure perfect (modulo implementation quality) energy
-	//      conservation/preservation with the precomputed LUTs [Turquin, 2019].
-	//
-	//      See PrincipledBSDFDoEnergyCompensation in this codebase.
 	//
 	//      Values from the 'PackedFlagsIndices' enum should be used
 	//      to retrieve/set from the packed flags
@@ -909,10 +867,6 @@ private:
 	//
 	//  - Dielectric priority
 	//      Nested dielectric with priority parameter
-	//
-	//  - Energy preservation samples
-	//      How many samples will be computed for the integration of the directional
-	//      when the strong energy preservation/conservation of the material is enabled
 	Float2xUChar2xPacked alpha_thin_film_hue_dielectric_priority;
 };
 
