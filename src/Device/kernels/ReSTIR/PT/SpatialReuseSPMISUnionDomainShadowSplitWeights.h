@@ -21,11 +21,14 @@
 /**
  * Weights kernel for the center pixel whose prepare flags are 'prepare_flags' (pixel not done) and whose stage-2 / canonical probe visibility bits are
  * 'visible_mask', see the top of SpatialSPMISUnionDomainShadowSplit.h
+ *
+ * Forced inline: the kernel calls it once and keeps nothing live across the call, but out of line it would save and restore every callee-saved
+ * register it uses in scratch memory
  */
-HIPRT_DEVICE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData& render_data,
-																unsigned int center_pixel_index,
-																unsigned int prepare_flags,
-																unsigned int visible_mask)
+HIPRT_DEVICE HIPRT_FORCEINLINE void spmis_union_domain_shadow_split_weights_pixel(HIPRTRenderData& render_data,
+																				  unsigned int center_pixel_index,
+																				  unsigned int prepare_flags,
+																				  unsigned int visible_mask)
 {
 	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings		   = render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
 	const ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers = union_domain_settings.shadow_split_buffers;

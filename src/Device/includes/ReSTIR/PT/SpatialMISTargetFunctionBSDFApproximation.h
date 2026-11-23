@@ -644,13 +644,16 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_target_function_bsdf_approximation_samp
 
 /**
  * Pixel-side value of the principled approximation from the lobe record of the pixel (one 8-byte load), view direction from the camera position
+ *
+ * Forced inline, as the other functions of the cheap path below: out of line, the sample and the vectors passed by reference live in scratch memory in
+ * the caller, every field read here is a scratch load and the caller saves its callee-saved registers around the call
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value(const HIPRTRenderData& render_data,
-																					 int pixel_index,
-																					 const float3_t& shading_point,
-																					 const float3_t& shading_normal,
-																					 const float3_t& incident_light_direction,
-																					 float cosine_term)
+HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value(const HIPRTRenderData& render_data,
+																									   int pixel_index,
+																									   const float3_t& shading_point,
+																									   const float3_t& shading_normal,
+																									   const float3_t& incident_light_direction,
+																									   float cosine_term)
 {
 	float3_t view_direction = hippt::normalize(render_data.current_camera.position - shading_point);
 	float view_cosine		= hippt::dot(shading_normal, view_direction);
@@ -666,9 +669,9 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_v
  * Reconnection-side value of the principled approximation from the lobe stored in the sample, view direction from the reconnection vertex to the pixel at
  * 'shading_point'. 1 for a DI sample. No material fetch
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_rc_side_value(const HIPRTRenderData& render_data,
-																				  const ReSTIRPTReservoirSample& sample,
-																				  const float3_t& shading_point)
+HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approximation_rc_side_value(const HIPRTRenderData& render_data,
+																									const ReSTIRPTReservoirSample& sample,
+																									const float3_t& shading_point)
 {
 	if (sample.di_sample)
 		return 1.0f;
@@ -689,12 +692,12 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_rc_side_valu
  * view direction of the pixel, direction to the reconnection vertex) or the reconnection vertex lobe (sample smooth bit, incident light info at the sample
  * point, direction to the pixel, stored outgoing direction)
  */
-HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_pair_delta_peak_possible(const HIPRTRenderData& render_data,
-																							const ReSTIRPTReservoirSample& sample,
-																							unsigned int pixel_flags,
-																							const float3_t& shading_point,
-																							const float3_t& shading_normal,
-																							const float3_t& incident_light_direction)
+HIPRT_DEVICE HIPRT_FORCEINLINE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_pair_delta_peak_possible(const HIPRTRenderData& render_data,
+																											  const ReSTIRPTReservoirSample& sample,
+																											  unsigned int pixel_flags,
+																											  const float3_t& shading_point,
+																											  const float3_t& shading_normal,
+																											  const float3_t& incident_light_direction)
 {
 	if ((pixel_flags & RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG) != 0)
 	{
@@ -723,14 +726,16 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_pair_delta_pe
  * Returns RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK, RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH or
  * RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_ZERO (cheap path, the pixel is below the shading normal of the reconnection vertex: every lobe of the
  * reconnection vertex BSDF is zero)
+ *
+ * Forced inline for the reason given above ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value()
  */
-HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_decision(const HIPRTRenderData& render_data,
-																		   const ReSTIRPTReservoirSample& sample,
-																		   unsigned int pixel_flags,
-																		   const float3_t& shading_point,
-																		   const float3_t& shading_normal,
-																		   const float3_t& incident_light_direction,
-																		   float cosine_term)
+HIPRT_DEVICE HIPRT_FORCEINLINE int ReSTIR_PT_MIS_target_function_bsdf_approximation_decision(const HIPRTRenderData& render_data,
+																							 const ReSTIRPTReservoirSample& sample,
+																							 unsigned int pixel_flags,
+																							 const float3_t& shading_point,
+																							 const float3_t& shading_normal,
+																							 const float3_t& incident_light_direction,
+																							 float cosine_term)
 {
 	bool analytic_pixel = (pixel_flags & RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG) != 0;
 
@@ -765,14 +770,16 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_decision(const
 /**
  * Approximation value of a pair (sample, pixel) on the cheap path (ReSTIR_PT_MIS_target_function_bsdf_approximation_decision() returned
  * RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH)
+ *
+ * Forced inline for the reason given above ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value()
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_cheap_path_value(const HIPRTRenderData& render_data,
-																					 const ReSTIRPTReservoirSample& sample,
-																					 int pixel_index,
-																					 const float3_t& shading_point,
-																					 const float3_t& shading_normal,
-																					 const float3_t& incident_light_direction,
-																					 float cosine_term)
+HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approximation_cheap_path_value(const HIPRTRenderData& render_data,
+																									   const ReSTIRPTReservoirSample& sample,
+																									   int pixel_index,
+																									   const float3_t& shading_point,
+																									   const float3_t& shading_normal,
+																									   const float3_t& incident_light_direction,
+																									   float cosine_term)
 {
 #if BSDF_MODEL == BSDF_LAMBERTIAN
 	return cosine_term;
@@ -788,10 +795,12 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_cheap_path_v
  * Approximation value of a pair (sample, pixel) on the fallback, from the full target function 'full_target_function' of the pair: the cosine at the pixel on
  * the support of the full target function (Lambertian BSDF), the full target function without the radiance of the sample otherwise (floored on its
  * support)
+ *
+ * Forced inline for the reason given above ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value()
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_fallback_value(const ReSTIRPTReservoirSample& sample,
-																				   float full_target_function,
-																				   float cosine_term)
+HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approximation_fallback_value(const ReSTIRPTReservoirSample& sample,
+																									 float full_target_function,
+																									 float cosine_term)
 {
 	if (full_target_function <= 0.0f)
 		return 0.0f;
@@ -812,11 +821,13 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_fallback_val
  *
  * A known full target function can be > 0 where a re-evaluation at the current G-buffer is 0 (a stored delta-peak target of a perfectly smooth lobe whose
  * mirror direction moved). The support of the own term must be the one of 'own_full_target_function': a zero cheap value then takes the fallback value
+ *
+ * Forced inline for the reason given above ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value()
  */
-HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(const HIPRTRenderData& render_data,
-																			 const ReSTIRPTReservoirSample& sample,
-																			 int pixel_index,
-																			 float own_full_target_function)
+HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(const HIPRTRenderData& render_data,
+																							   const ReSTIRPTReservoirSample& sample,
+																							   int pixel_index,
+																							   float own_full_target_function)
 {
 	if (own_full_target_function <= 0.0f)
 		return 0.0f;
