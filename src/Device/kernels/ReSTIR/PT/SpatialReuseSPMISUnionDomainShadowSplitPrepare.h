@@ -81,6 +81,19 @@ HIPRT_DEVICE bool spmis_union_domain_shadow_split_stage2_needs_ray(const ReSTIRP
 }
 
 /**
+ * spmis_target_function_at_domain_pixel() for the canonical probes, out of line: inlined in the probe loop, the target function evaluation raises the
+ * register pressure of the whole prepare kernel, which then keeps more of its state in scratch memory than this call costs (measured slower)
+ */
+HIPRT_DEVICE HIPRT_NOINLINE float spmis_union_domain_shadow_split_canonical_probe_value(const HIPRTRenderData& render_data,
+																						const ReSTIRPTReservoirSample& sample,
+																						float3_t center_pixel_shading_point,
+																						unsigned int pixel_index,
+																						Xorshift32Generator& random_number_generator)
+{
+	return spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_shading_point, pixel_index, random_number_generator);
+}
+
+/**
  * Prepare kernel for the center pixel: everything of the spatial reuse before its first shadow ray, see the top of SpatialSPMISUnionDomainShadowSplit.h
  */
 HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData& render_data, unsigned int center_pixel_index, int2_t center_pixel_coords)
@@ -221,8 +234,8 @@ HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData&
 		{
 			unsigned int probe_pixel_index = spmis_union_domain_uniform_pixel(render_data, domain, random_number_generator);
 
-			float probe_value = spmis_target_function_at_domain_pixel(render_data, center_pixel_reservoir.sample, center_pixel_surface.shading_point,
-																	  probe_pixel_index, random_number_generator);
+			float probe_value = spmis_union_domain_shadow_split_canonical_probe_value(
+				render_data, center_pixel_reservoir.sample, center_pixel_surface.shading_point, probe_pixel_index, random_number_generator);
 			if (probe_value > 0.0f)
 			{
 				// Only the probes with a ray can be non-zero: the weights kernel reads the value of a probe whose ray is visible only. A duplicate keeps

@@ -15,18 +15,19 @@
 #include "Device/includes/ReSTIR/Surface.h"
 #include "HostDeviceCommon/RenderData.h"
 
-HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_bsdf(const HIPRTRenderData& render_data,
-																const ReSTIRPTReservoirSample& sample,
-																const float3_t& surface_shading_point,
-																const float3_t& surface_view_direction,
-																const float3_t& surface_shading_normal,
-																const float3_t& surface_geometric_normal,
-																int surface_primitive_index,
-																RayVolumeState& surface_ray_volume_state,
-																DeviceUnpackedPrincipledFullMaterial& surface_material,
-																const float3_t& incident_light_direction,
-																float cosine_term,
-																Xorshift32Generator& random_number_generator)
+// Forced inline: out of line, the sample, the material and the volume state passed by reference live in scratch memory in the caller
+HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_bsdf(const HIPRTRenderData& render_data,
+																				  const ReSTIRPTReservoirSample& sample,
+																				  const float3_t& surface_shading_point,
+																				  const float3_t& surface_view_direction,
+																				  const float3_t& surface_shading_normal,
+																				  const float3_t& surface_geometric_normal,
+																				  int surface_primitive_index,
+																				  RayVolumeState& surface_ray_volume_state,
+																				  DeviceUnpackedPrincipledFullMaterial& surface_material,
+																				  const float3_t& incident_light_direction,
+																				  float cosine_term,
+																				  Xorshift32Generator& random_number_generator)
 {
 	float bsdf_pdf;
 	BSDFContext bsdf_context(surface_view_direction, surface_shading_normal, surface_geometric_normal, incident_light_direction,
@@ -152,13 +153,16 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_sample_visible_at_surface(const HIPRTRenderData
  *
  * This is a template parameter so that only one of the two evaluations is compiled at a call site: the approximation (with its full target function
  * fallback before the visibility test) or the full target function after the visibility test
+ *
+ * Forced inline: out of line, the sample and the shading point passed by reference live in scratch memory in the caller and every field read here
+ * is a scratch load
  */
 template <bool withVisiblity, bool misTargetFunctionBSDFApproximation = false>
-HIPRT_HOST_DEVICE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTRenderData& render_data,
-																	const ReSTIRPTReservoirSample& sample,
-																	int surface_pixel_index,
-																	const float3_t& surface_shading_point,
-																	Xorshift32Generator& random_number_generator)
+HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTRenderData& render_data,
+																					  const ReSTIRPTReservoirSample& sample,
+																					  int surface_pixel_index,
+																					  const float3_t& surface_shading_point,
+																					  Xorshift32Generator& random_number_generator)
 {
 	float distance_to_sample_point;
 	float3_t incident_light_direction;

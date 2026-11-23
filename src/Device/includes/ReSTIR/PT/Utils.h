@@ -76,11 +76,12 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 	return false;
 }
 
-HIPRT_DEVICE void ReSTIR_PT_update_volume_state_for_sample_point(const HIPRTRenderData& render_data,
-																 RayVolumeState& volume_state,
-																 DeviceUnpackedPrincipledFullMaterial& material_at_visible_point,
-																 BSDFIncidentLightInfo incident_light_info_visible_point,
-																 int visible_point_primitive_index)
+// Forced inline: out of line, the volume state and the material passed by reference live in scratch memory in the caller
+HIPRT_DEVICE HIPRT_FORCEINLINE void ReSTIR_PT_update_volume_state_for_sample_point(const HIPRTRenderData& render_data,
+																				   RayVolumeState& volume_state,
+																				   DeviceUnpackedPrincipledFullMaterial& material_at_visible_point,
+																				   BSDFIncidentLightInfo incident_light_info_visible_point,
+																				   int visible_point_primitive_index)
 {
 	if (bsdf_incident_light_info_transmission_lobe(incident_light_info_visible_point))
 	{

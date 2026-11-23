@@ -447,7 +447,10 @@ HIPRT_DEVICE static void get_intersection_material_into(const HIPRTRenderData& r
 	}
 }
 
-HIPRT_DEVICE static DeviceUnpackedPrincipledFullMaterial get_intersection_material(const HIPRTRenderData& render_data, int material_index, float2_t texcoords)
+// Forced inline: out of line, the returned material is written to scratch memory and read back by the caller
+HIPRT_DEVICE HIPRT_FORCEINLINE static DeviceUnpackedPrincipledFullMaterial get_intersection_material(const HIPRTRenderData& render_data,
+																									 int material_index,
+																									 float2_t texcoords)
 {
 	DeviceUnpackedPrincipledFullMaterial material;
 

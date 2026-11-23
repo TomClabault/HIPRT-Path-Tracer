@@ -117,11 +117,12 @@ HIPRT_DEVICE static float3_t principled_sheen_sample(const HIPRTRenderData& rend
 	return sheen_ltc_sample(render_data, material, local_view_direction, shading_normal, random_number_generator);
 }
 
+// Forced inline: out of line, the material passed by reference is read from scratch memory
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F principled_metallic_fresnel(const MaterialType& material,
-															float incident_ior,
-															float3_t local_to_light_or_view_direction,
-															float3_t local_half_vector)
+HIPRT_DEVICE HIPRT_FORCEINLINE static ColorRGB32F principled_metallic_fresnel(const MaterialType& material,
+																			  float incident_ior,
+																			  float3_t local_to_light_or_view_direction,
+																			  float3_t local_half_vector)
 {
 	float HoL = hippt::clamp(1.0e-8f, 1.0f, hippt::dot(local_half_vector, local_to_light_or_view_direction));
 
@@ -1854,8 +1855,8 @@ HIPRT_DEVICE static ColorRGB32F principled_bsdf_sample(
 
 		// Giving some information about what the BSDF sampled to the caller
 		bsdf_context.incident_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
-		output_direction = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
-												principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
+		output_direction				 = local_to_world_frame(TR_coat, BR_coat, bsdf_context.shading_normal,
+																principled_coat_sample(render_data, bsdf_context, local_view_direction_rotated_coat, random_number_generator));
 	}
 	else if (rand_1 < cdf1)
 	{

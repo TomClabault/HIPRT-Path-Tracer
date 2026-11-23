@@ -21,12 +21,15 @@
  *
  * The kernels of the union domain spatial reuse (SpatialSPMISUnionDomainShadowSplit.h) evaluate the probes with it and trace the ray of a probe in
  * another kernel when its value is non-zero
+ *
+ * Forced inline: out of line, the sample passed by reference lives in scratch memory in the caller and every field read here is a scratch load. The
+ * prepare kernel calls it through the out-of-line spmis_union_domain_shadow_split_canonical_probe_value() instead (see there)
  */
-HIPRT_DEVICE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& render_data,
-														 const ReSTIRPTReservoirSample& sample,
-														 float3_t center_pixel_shading_point,
-														 unsigned int pixel_index,
-														 Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_FORCEINLINE float spmis_target_function_at_domain_pixel(const HIPRTRenderData& render_data,
+																		   const ReSTIRPTReservoirSample& sample,
+																		   float3_t center_pixel_shading_point,
+																		   unsigned int pixel_index,
+																		   Xorshift32Generator& random_number_generator)
 {
 	float3_t pixel_shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
 

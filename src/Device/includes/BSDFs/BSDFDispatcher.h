@@ -19,12 +19,15 @@
  *
  * If 'update_ray_volume_state' is passed as true, the givenargument is passed as nullptr, the volume state of the ray won't
  * be updated by this sample call (i.e. the ray won't track if this sample call made it exit/enter a new material)
+ *
+ * Forced inline: out of line, the BSDF context and its material, passed by reference, live in scratch memory: the caller writes them there and
+ * every field read here is a scratch load
  */
 template <typename MaterialType>
-HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data,
-													 BSDFContextT<MaterialType>& bsdf_context,
-													 float& pdf,
-													 Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_FORCEINLINE static ColorRGB32F bsdf_dispatcher_eval(const HIPRTRenderData& render_data,
+																	   BSDFContextT<MaterialType>& bsdf_context,
+																	   float& pdf,
+																	   Xorshift32Generator& random_number_generator)
 {
 #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
 	/*switch (brdf_type)
