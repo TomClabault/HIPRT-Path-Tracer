@@ -131,10 +131,12 @@ private:
 	T* m_data_pointer = nullptr;
 
 	size_t m_element_count = 0;
+	// Size of the allocation: it isn't m_element_count * sizeof(T) when the buffer was resized with a type size override
+	size_t m_allocated_byte_size = 0;
 };
 
 template <typename T>
-OrochiBuffer<T>::OrochiBuffer(int element_count) : m_element_count(element_count)
+OrochiBuffer<T>::OrochiBuffer(int element_count) : m_element_count(element_count), m_allocated_byte_size(sizeof(T) * element_count)
 {
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * element_count));
 }
@@ -146,7 +148,8 @@ OrochiBuffer<T>::OrochiBuffer(const std::vector<T>& data)
 		return;
 
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * data.size()));
-	m_element_count = data.size();
+	m_element_count		  = data.size();
+	m_allocated_byte_size = sizeof(T) * data.size();
 
 	upload_data(data);
 }
@@ -164,11 +167,13 @@ OrochiBuffer<T>::OrochiBuffer(const OrochiBuffer<T>& other)
 template <typename T>
 OrochiBuffer<T>::OrochiBuffer(OrochiBuffer<T>&& other)
 {
-	m_data_pointer	= other.m_data_pointer;
-	m_element_count = other.m_element_count;
+	m_data_pointer		  = other.m_data_pointer;
+	m_element_count		  = other.m_element_count;
+	m_allocated_byte_size = other.m_allocated_byte_size;
 
-	other.m_data_pointer  = nullptr;
-	other.m_element_count = 0;
+	other.m_data_pointer		= nullptr;
+	other.m_element_count		= 0;
+	other.m_allocated_byte_size = 0;
 }
 
 template <typename T>
@@ -200,11 +205,13 @@ void OrochiBuffer<T>::operator=(OrochiBuffer&& other) noexcept
 	if (m_data_pointer)
 		free();
 
-	m_data_pointer	= other.m_data_pointer;
-	m_element_count = other.m_element_count;
+	m_data_pointer		  = other.m_data_pointer;
+	m_element_count		  = other.m_element_count;
+	m_allocated_byte_size = other.m_allocated_byte_size;
 
-	other.m_data_pointer  = nullptr;
-	other.m_element_count = 0;
+	other.m_data_pointer		= nullptr;
+	other.m_element_count		= 0;
+	other.m_allocated_byte_size = 0;
 }
 
 template <typename T>
@@ -238,7 +245,10 @@ inline void OrochiBuffer<T>::memset_whole_buffer_async(T* host_pinned_memory, st
 template <typename T>
 void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 {
-	if (m_element_count == new_element_count)
+	// The size of the elements can change without their count: the size override of a GPU structure whose size depends
+	// on compile-time options for example
+	size_t buffer_size = type_size_override != 0 ? (type_size_override * new_element_count) : (sizeof(T) * new_element_count);
+	if (m_element_count == new_element_count && m_allocated_byte_size == buffer_size)
 		// Nothing to resize
 		return;
 
@@ -252,10 +262,10 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 		Debug::debugbreak();
 	}
 
-	size_t buffer_size = type_size_override != 0 ? (type_size_override * new_element_count) : (sizeof(T) * new_element_count);
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), buffer_size));
 
-	m_element_count = new_element_count;
+	m_element_count		  = new_element_count;
+	m_allocated_byte_size = buffer_size;
 }
 
 template <typename T>
@@ -267,8 +277,9 @@ void OrochiBuffer<T>::resize_host_pinned_mem(int new_element_count, size_t type_
 	size_t buffer_size = type_size_override != 0 ? (type_size_override * new_element_count) : (sizeof(T) * new_element_count);
 	OROCHI_CHECK_ERROR(oroHostMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), buffer_size, 0));
 
-	m_element_count = new_element_count;
-	m_pinned_memory = true;
+	m_element_count		  = new_element_count;
+	m_allocated_byte_size = buffer_size;
+	m_pinned_memory		  = true;
 }
 
 template <typename T>
@@ -648,9 +659,10 @@ void OrochiBuffer<T>::free()
 		return;
 	}
 
-	m_element_count = 0;
-	m_data_pointer	= nullptr;
-	m_pinned_memory = false;
+	m_element_count		  = 0;
+	m_allocated_byte_size = 0;
+	m_data_pointer		  = nullptr;
+	m_pinned_memory		  = false;
 }
 
 template <typename T>
@@ -666,9 +678,10 @@ void OrochiBuffer<T>::free_no_error()
 	else
 		return;
 
-	m_element_count = 0;
-	m_data_pointer	= nullptr;
-	m_pinned_memory = false;
+	m_element_count		  = 0;
+	m_allocated_byte_size = 0;
+	m_data_pointer		  = nullptr;
+	m_pinned_memory		  = false;
 }
 
 #endif // #ifndef OROCHI_BUFFER_H
