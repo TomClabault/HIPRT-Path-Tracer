@@ -209,27 +209,20 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 
 	while (current_triangle_count == 0)
 	{
-		unsigned int left_index	 = current_left_child_or_first_triangle;
-		unsigned int right_index = left_index + 1;
+		LightTreeSGChildren children =
+			light_tree_sg_evaluate_children(nodes, current_left_child_or_first_triangle, specular_data, context.position, context.view_direction,
+											context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
 
-		LightTreeSGDescentNode left_node =
-			light_tree_sg_descent_node(render_data.light_tree_sg, left_index, specular_data, context.position, context.view_direction, context.shading_normal,
-									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
-		LightTreeSGDescentNode right_node =
-			light_tree_sg_descent_node(render_data.light_tree_sg, right_index, specular_data, context.position, context.view_direction, context.shading_normal,
-									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
-
-		float importance_sum = left_node.importance + right_node.importance;
+		float importance_sum = children.left_importance + children.right_importance;
 		if (importance_sum <= 0.0f)
 			return false;
 
-		float left_probability = left_node.importance / importance_sum;
+		float left_probability = children.left_importance / importance_sum;
 		bool go_left		   = random_number_generator() < left_probability;
 
 		cumulative_probability *= go_left ? left_probability : 1.0f - left_probability;
-		current_triangle_count = go_left ? left_node.triangle_count : right_node.triangle_count;
-		current_left_child_or_first_triangle =
-			go_left ? left_node.left_child_index_or_first_triangle_index : right_node.left_child_index_or_first_triangle_index;
+		current_triangle_count				 = go_left ? children.left_triangle_count : children.right_triangle_count;
+		current_left_child_or_first_triangle = go_left ? children.left_child_index_or_first_triangle_index : children.right_child_index_or_first_triangle_index;
 	}
 
 	unsigned int local_triangle_index	   = random_number_generator.random_index(current_triangle_count);
@@ -413,8 +406,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 		return 0.0f;
 
 	// Replay the unsplit SG traversal inside the selected cluster, including uniform triangle selection at the leaf.
-	// Same nodes as sample_light_inside_cluster(), read through light_tree_sg_descent_node() (descent records or nodes and lobes), traversal fields
-	// of the chosen child carried to the next level
+	// Same importances as sample_light_inside_cluster(), traversal fields of the chosen child carried to the next level
 	unsigned int current_triangle_count				  = nodes[current_node_index].triangle_count;
 	unsigned int current_left_child_or_first_triangle = nodes[current_node_index].left_child_index_or_first_triangle_index;
 
@@ -425,27 +417,20 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 		if (current_depth >= sizeof(unsigned int) * 8u)
 			return 0.0f;
 
-		unsigned int left_index	 = current_left_child_or_first_triangle;
-		unsigned int right_index = left_index + 1u;
+		LightTreeSGChildren children =
+			light_tree_sg_evaluate_children(nodes, current_left_child_or_first_triangle, specular_data, context.position, context.view_direction,
+											context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
 
-		LightTreeSGDescentNode left_node =
-			light_tree_sg_descent_node(render_data.light_tree_sg, left_index, specular_data, context.position, context.view_direction, context.shading_normal,
-									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
-		LightTreeSGDescentNode right_node =
-			light_tree_sg_descent_node(render_data.light_tree_sg, right_index, specular_data, context.position, context.view_direction, context.shading_normal,
-									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
-
-		float importance_sum = left_node.importance + right_node.importance;
+		float importance_sum = children.left_importance + children.right_importance;
 		if (importance_sum <= 0.0f)
 			return 0.0f;
 
-		float left_probability = left_node.importance / importance_sum;
+		float left_probability = children.left_importance / importance_sum;
 		bool go_left		   = (bit_trail & (1u << current_depth)) == 0u;
 
 		conditional_probability *= go_left ? left_probability : 1.0f - left_probability;
-		current_triangle_count = go_left ? left_node.triangle_count : right_node.triangle_count;
-		current_left_child_or_first_triangle =
-			go_left ? left_node.left_child_index_or_first_triangle_index : right_node.left_child_index_or_first_triangle_index;
+		current_triangle_count				 = go_left ? children.left_triangle_count : children.right_triangle_count;
+		current_left_child_or_first_triangle = go_left ? children.left_child_index_or_first_triangle_index : children.right_child_index_or_first_triangle_index;
 		current_depth++;
 	}
 

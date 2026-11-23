@@ -1099,7 +1099,6 @@ void ImGuiSettingsWindow::apply_nee_estimator_dependent_settings()
 	if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
 	{
 		render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP = ILLUMINATION_AWARE_KD_TREE_DEFAULT_SPP_LIMIT_LEARNING_TO_CLUSTER;
-		m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(1);
 
 		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY, LSS_BASE_LIGHT_TREE_SG);
 
@@ -1111,8 +1110,6 @@ void ImGuiSettingsWindow::apply_nee_estimator_dependent_settings()
 			m_renderer->get_envmap().recompute_sampling_data_structure(m_renderer.get());
 		}
 	}
-	else
-		m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(LightTreeSGBuilderOptions::LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT);
 }
 
 void ImGuiSettingsWindow::draw_sampling_panel()
@@ -2619,25 +2616,6 @@ void ImGuiSettingsWindow::draw_light_tree_SG_settings_panel()
 				ImGui::TreePop();
 			}
 			ImGui::EndDisabled(); // do_splitting
-
-			static int current_spatial_lobe_count = m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count();
-			ImGui::SliderInt("Spatial lobes per node", &current_spatial_lobe_count, 1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES);
-
-			if (current_spatial_lobe_count != m_renderer->get_light_tree_sg_sampling_data_structure().get_spatial_lobe_count())
-			{
-				ImGui::TreePush("Apply button spatial lobe count");
-
-				if (ImGui::Button("Apply"))
-				{
-					current_spatial_lobe_count = hippt::clamp(1, LIGHT_TREE_SG_MAX_SPATIAL_LOBES, current_spatial_lobe_count);
-					m_renderer->get_light_tree_sg_sampling_data_structure().set_spatial_lobe_count(current_spatial_lobe_count);
-
-					m_renderer->recompute_emissives_sampling_data_structure();
-					m_render_window->set_render_dirty(true);
-				}
-
-				ImGui::TreePop();
-			}
 
 			if (ImGui::Checkbox("Do adaptive splitting", &do_splitting))
 			{

@@ -6,18 +6,7 @@
 #ifndef RENDERER_LIGHT_TREE_SG_NODE_H
 #define RENDERER_LIGHT_TREE_SG_NODE_H
 
-#include "HostDeviceCommon/LightTreeSGSettings.h"
 #include "HostDeviceCommon/Maths/Math.h"
-
-struct LightTreeSGSpatialLobeBuild
-{
-	double power = 0.0;
-
-	double3_t mean	= make_double3(0.0, 0.0, 0.0);
-	double variance = 0.0;
-
-	AABB bounds;
-};
 
 struct LightTreeSGNode
 {
@@ -41,16 +30,23 @@ struct LightTreeSGNode
 			vmf.sharpness = hippt::min((3.0f * mean_axis_length - hippt::pow_3(mean_axis_length)) / (1.0f - hippt::square(mean_axis_length)), 2199023255552.0f);
 	}
 
+	float3_t get_float_spatial_mean() const
+	{
+		return make_float3(static_cast<float>(spatial_mean.x), static_cast<float>(spatial_mean.y), static_cast<float>(spatial_mean.z));
+	}
+
 	// For adaptive splitting
 	float energy_average			 = 0.0f;
 	float energy_variance			 = 0.0f;
 	unsigned int total_emitter_count = 0;
 
-	LightTreeSGSpatialLobeBuild spatial_lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES];
-	float3_t spatial_mean = make_float3(0.0f, 0.0f, 0.0f);
+	// Power-weighted mean and variance of the positions of the emitters of the node, in double precision: the parents accumulate them from
+	// their children up to the root
+	double3_t spatial_mean	= make_double3(0.0, 0.0, 0.0);
+	double spatial_variance = 0.0;
 
 	float3_t mean_axis = make_float3(0.0f, 0.0f, 0.0f);
-	float total_power  = 0.0f;
+	double total_power = 0.0;
 
 	float3_t orientation_axis = make_float3(0.0f, 0.0f, 0.0f);
 	// Orientation cone angle

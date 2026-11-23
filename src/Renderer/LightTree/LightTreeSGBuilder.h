@@ -18,12 +18,6 @@
 class LightTreeSGBuilder
 {
 public:
-	struct LightTreeSGLobeReduction
-	{
-		LightTreeSGSpatialLobeBuild lobes[LIGHT_TREE_SG_MAX_SPATIAL_LOBES];
-	};
-
-public:
 	void build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
 						  const std::vector<float>& triangles_average_emissive_power_luminance,
 						  const std::vector<int>& triangle_indices,
@@ -44,9 +38,6 @@ public:
 
 	LightTreeSGBuilderOptions& get_build_options();
 
-	int get_spatial_lobe_count() const;
-	void set_spatial_lobe_count(int spatial_lobe_count);
-
 	int get_tree_cut_size() const;
 	void set_tree_cut_size(int tree_cut_size);
 	int get_second_tree_cut_size() const;
@@ -54,27 +45,13 @@ public:
 
 private:
 	/**
-	 * Merges multiple SG spatial lobes into a single lobe, weighted by their power. The membership bitmask indicates which lobe of 'lobes' to merge.
+	 * Radius of the smallest sphere centered on 'center' that contains 'bounds'
 	 */
-	static LightTreeSGSpatialLobeBuild light_tree_sg_lobes_merge(const LightTreeSGSpatialLobeBuild* lobes, int lobe_count, unsigned int membership_mask);
-	static LightTreeSGSpatialLobeBuild light_tree_sg_merge_lobes(const LightTreeSGSpatialLobeBuild& first, const LightTreeSGSpatialLobeBuild& second);
-	/**
-	 * Takes a bunch of SG spatial nodes (typically 4: 2 of the left child and 2 of the right child) and reduces them to a target number of lobes (typically 2)
-	 * for the merged parent node.
-	 */
-	static LightTreeSGLobeReduction light_tree_sg_reduce_lobes(const LightTreeSGSpatialLobeBuild* lobes, int lobe_count, int target_lobe_count);
-	static float3_t light_tree_sg_lobes_mean(const LightTreeSGSpatialLobeBuild* lobes, int lobe_count);
+	static float bounds_sphere_radius(const AABB& bounds, float3_t center);
 	void update_ats_builder_options();
 	void compute_tree_cut(std::vector<unsigned int>& tree_cut_node_indices, unsigned int& effective_tree_cut_size, int tree_cut_size);
 	template <template <typename> typename DataContainer>
 	LightTreeSGBuilderDeviceData<DataContainer> compute_device_data() const;
-	/**
-	 * Fills one LightTreeSGDescentRecordDevice per node from the device nodes and their single spatial lobe and logs the number of nodes whose
-	 * lobe power / mean differ from the node total power / spatial mean that the records stand in for
-	 */
-	static void fill_descent_records(const std::vector<LightTreeSGNodeDevice>& nodes_device,
-									 const std::vector<SpatialSGLobeDevice>& spatial_lobes_device,
-									 std::vector<LightTreeSGDescentRecordDevice>& descent_records_device);
 
 private:
 	LightTreeATSBuilder m_light_tree_ats_builder;
@@ -112,60 +89,39 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 
 	LightTreeSGBuilderDeviceData<DataContainer> device_data_out;
 	device_data_out.nodes_device.resize(m_nodes.size());
-	device_data_out.spatial_lobes_device.resize(m_nodes.size() * m_build_options.spatial_lobe_count);
+	device_data_out.node_energy_statistics_device.resize(m_nodes.size());
 	device_data_out.tree_cut_node_indices_device		= m_tree_cut_node_indices;
 	device_data_out.second_tree_cut_node_indices_device = m_second_tree_cut_node_indices;
 
 	for (int i = 0; i < m_nodes.size(); i++)
 	{
-		device_data_out.nodes_device[i].vmf.axis			  = m_nodes[i].vmf.axis;
-		device_data_out.nodes_device[i].vmf.sharpness		  = m_nodes[i].vmf.sharpness;
-		device_data_out.nodes_device[i].gaussian_spatial_mean = m_nodes[i].spatial_mean;
-		device_data_out.nodes_device[i].spatial_lobe_count	  = m_build_options.spatial_lobe_count;
+		const LightTreeSGNode& node		   = m_nodes[i];
+		LightTreeSGNodeDevice& device_node = device_data_out.nodes_device[i];
 
-		for (int lobe_index = 0; lobe_index < m_build_options.spatial_lobe_count; lobe_index++)
-		{
-			const LightTreeSGSpatialLobeBuild& lobe = m_nodes[i].spatial_lobes[lobe_index];
+		device_node.spatial_mean		   = node.get_float_spatial_mean();
+		device_node.total_power			   = static_cast<float>(node.total_power / SG_integral(node.vmf.sharpness));
+		device_node.vmf.axis			   = node.vmf.axis;
+		device_node.vmf.sharpness		   = node.vmf.sharpness;
+		device_node.orientation_axis	   = node.orientation_axis;
+		device_node.bounding_sphere_radius = node.bounding_sphere_radius;
+		device_node.bounds_min			   = node.bounds.mini;
+		device_node.bounds_max			   = node.bounds.maxi;
+		device_node.cos_theta_o			   = cosf(node.theta_o);
+		device_node.sin_theta_o			   = sinf(node.theta_o);
+		device_node.spatial_variance	   = static_cast<float>(node.spatial_variance);
+		device_node.support_radius		   = bounds_sphere_radius(node.bounds, device_node.spatial_mean);
+		device_node.triangle_count		   = node.triangle_count;
 
-			SpatialSGLobeDevice& device_lobe = device_data_out.spatial_lobes_device[i * m_build_options.spatial_lobe_count + lobe_index];
-			device_lobe.mean				 = make_float3(static_cast<float>(lobe.mean.x), static_cast<float>(lobe.mean.y), static_cast<float>(lobe.mean.z));
-			device_lobe.variance			 = static_cast<float>(lobe.variance);
-			device_lobe.power				 = static_cast<float>(lobe.power / SG_integral(m_nodes[i].vmf.sharpness));
-
-			float radius_squared = 0.0f;
-
-			for (int corner_index = 0; corner_index < 8; corner_index++)
-			{
-				const float3_t corner =
-					make_float3((corner_index & 1) ? lobe.bounds.mini.x : lobe.bounds.maxi.x, (corner_index & 2) ? lobe.bounds.mini.y : lobe.bounds.maxi.y,
-								(corner_index & 4) ? lobe.bounds.mini.z : lobe.bounds.maxi.z);
-				radius_squared = hippt::max(radius_squared, hippt::length2(corner - device_lobe.mean));
-			}
-
-			device_lobe.support_radius = hippt::sqrt(radius_squared);
-		}
-
-		device_data_out.nodes_device[i].orientation_axis	   = m_nodes[i].orientation_axis;
-		device_data_out.nodes_device[i].cos_theta_o			   = cosf(m_nodes[i].theta_o);
-		device_data_out.nodes_device[i].sin_theta_o			   = sinf(m_nodes[i].theta_o);
-		device_data_out.nodes_device[i].bounding_sphere_radius = m_nodes[i].bounding_sphere_radius;
-		device_data_out.nodes_device[i].total_power			   = m_nodes[i].total_power / SG_integral(m_nodes[i].vmf.sharpness);
-		device_data_out.nodes_device[i].energy_variance		   = m_nodes[i].energy_variance;
-		device_data_out.nodes_device[i].energy_average		   = m_nodes[i].energy_average;
-		device_data_out.nodes_device[i].total_emitter_count	   = m_nodes[i].total_emitter_count;
-		device_data_out.nodes_device[i].bounds_min			   = m_nodes[i].bounds.mini;
-		device_data_out.nodes_device[i].bounds_max			   = m_nodes[i].bounds.maxi;
-		device_data_out.nodes_device[i].triangle_count		   = m_nodes[i].triangle_count;
-
-		if (m_nodes[i].triangle_count == 0)
-			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].left_child_index;
+		if (node.triangle_count == 0)
+			device_node.left_child_index_or_first_triangle_index = node.left_child_index;
 		else
-			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].first_triangle_index;
-	}
+			device_node.left_child_index_or_first_triangle_index = node.first_triangle_index;
 
-	// The descent records fuse the single lobe of a node into its record: with more lobes per node, the descents of the tree read the nodes and their lobes
-	if (m_build_options.spatial_lobe_count == 1)
-		fill_descent_records(device_data_out.nodes_device, device_data_out.spatial_lobes_device, device_data_out.descent_records_device);
+		LightTreeSGNodeEnergyStatisticsDevice& energy_statistics = device_data_out.node_energy_statistics_device[i];
+		energy_statistics.energy_variance						 = node.energy_variance;
+		energy_statistics.energy_average						 = node.energy_average;
+		energy_statistics.total_emitter_count					 = node.total_emitter_count;
+	}
 
 	// Path from the root to every node, with the encoding of the bit trails of the triangles: the device finds the node of a light cut that
 	// contains a triangle by comparing these paths with the bit trail of the triangle. Nodes deeper than 32 keep the invalid depth: their path
@@ -209,8 +165,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 		render_data.light_tree_sg.settings.effective_tree_cut_size		  = 0;
 		render_data.light_tree_sg.settings.effective_second_tree_cut_size = 0;
 		render_data.light_tree_sg.nodes									  = nullptr;
-		render_data.light_tree_sg.spatial_lobes							  = nullptr;
-		render_data.light_tree_sg.descent_records						  = nullptr;
+		render_data.light_tree_sg.node_energy_statistics				  = nullptr;
 		render_data.light_tree_sg.tree_cut_node_indices					  = nullptr;
 		render_data.light_tree_sg.second_tree_cut_node_indices			  = nullptr;
 		render_data.light_tree_sg.node_path_codes						  = nullptr;
@@ -226,14 +181,9 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 
 	if constexpr (std::is_same_v<DataContainer<int>, std::vector<int>>)
 	{
-		device_data.m_device_spatial_lobes_buffer				 = device_data.spatial_lobes_device;
-		device_data.m_device_descent_records_buffer				 = device_data.descent_records_device;
+		device_data.m_device_node_energy_statistics_buffer		 = device_data.node_energy_statistics_device;
 		device_data.m_device_tree_cut_node_indices_buffer		 = device_data.tree_cut_node_indices_device;
 		device_data.m_device_second_tree_cut_node_indices_buffer = device_data.second_tree_cut_node_indices_device;
-
-		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
-			device_data.nodes_device[node_index].spatial_lobes =
-				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;
 
 		device_data.m_device_nodes_buffer			= device_data.nodes_device;
 		device_data.m_device_indices_array_buffer	= m_light_tree_ats_builder.get_triangle_indices();
@@ -242,14 +192,9 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	}
 	else
 	{
-		device_data.m_device_spatial_lobes_buffer				 = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
-		device_data.m_device_descent_records_buffer				 = OrochiBuffer<LightTreeSGDescentRecordDevice>(device_data.descent_records_device);
-		device_data.m_device_tree_cut_node_indices_buffer		 = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
+		device_data.m_device_node_energy_statistics_buffer = OrochiBuffer<LightTreeSGNodeEnergyStatisticsDevice>(device_data.node_energy_statistics_device);
+		device_data.m_device_tree_cut_node_indices_buffer  = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
 		device_data.m_device_second_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.second_tree_cut_node_indices_device);
-
-		for (int node_index = 0; node_index < device_data.nodes_device.size(); node_index++)
-			device_data.nodes_device[node_index].spatial_lobes =
-				device_data.m_device_spatial_lobes_buffer.data() + node_index * m_build_options.spatial_lobe_count;
 
 		device_data.m_device_nodes_buffer			= OrochiBuffer<LightTreeSGNodeDevice>(device_data.nodes_device);
 		device_data.m_device_indices_array_buffer	= OrochiBuffer<int>(m_light_tree_ats_builder.get_triangle_indices());
@@ -257,17 +202,15 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 		device_data.m_device_node_path_codes_buffer = OrochiBuffer<uint2_t>(device_data.node_path_codes_device);
 	}
 
-	render_data.light_tree_sg.settings.spatial_lobe_count			  = m_build_options.spatial_lobe_count;
 	render_data.light_tree_sg.settings.effective_tree_cut_size		  = build_result.effective_tree_cut_size;
 	render_data.light_tree_sg.settings.effective_second_tree_cut_size = build_result.effective_second_tree_cut_size;
 	render_data.light_tree_sg.nodes									  = device_data.m_device_nodes_buffer.data();
-	render_data.light_tree_sg.spatial_lobes							  = device_data.m_device_spatial_lobes_buffer.data();
-	render_data.light_tree_sg.descent_records		= device_data.descent_records_device.empty() ? nullptr : device_data.m_device_descent_records_buffer.data();
-	render_data.light_tree_sg.tree_cut_node_indices = device_data.m_device_tree_cut_node_indices_buffer.data();
-	render_data.light_tree_sg.second_tree_cut_node_indices = device_data.m_device_second_tree_cut_node_indices_buffer.data();
-	render_data.light_tree_sg.indices_array				   = device_data.m_device_indices_array_buffer.data();
-	render_data.light_tree_sg.bit_trails				   = device_data.m_bit_trails_buffer.data();
-	render_data.light_tree_sg.node_path_codes			   = device_data.m_device_node_path_codes_buffer.data();
+	render_data.light_tree_sg.node_energy_statistics				  = device_data.m_device_node_energy_statistics_buffer.data();
+	render_data.light_tree_sg.tree_cut_node_indices					  = device_data.m_device_tree_cut_node_indices_buffer.data();
+	render_data.light_tree_sg.second_tree_cut_node_indices			  = device_data.m_device_second_tree_cut_node_indices_buffer.data();
+	render_data.light_tree_sg.indices_array							  = device_data.m_device_indices_array_buffer.data();
+	render_data.light_tree_sg.bit_trails							  = device_data.m_bit_trails_buffer.data();
+	render_data.light_tree_sg.node_path_codes						  = device_data.m_device_node_path_codes_buffer.data();
 }
 
 #endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_H

@@ -11,9 +11,6 @@
 
 struct LightTreeSGBuilderOptions
 {
-	// One lobe per node lets the descents of the tree read the compact descent records of the nodes (LightTreeSGDescentRecordDevice)
-	static constexpr int LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT = 1;
-
 	int build_split_method = LIGHT_TREE_BUILD_OPTION_SPLIT_BINNED;
 	int bin_count		   = 64;
 
@@ -22,8 +19,7 @@ struct LightTreeSGBuilderOptions
 
 	int max_triangles_per_leaf = 1;
 
-	int spatial_lobe_count = LIGHT_TREE_SG_DEFAULT_SPATIAL_LOBE_COUNT;
-	int tree_cut_size	   = 256;
+	int tree_cut_size = 256;
 };
 
 #endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_OPTIONS_H

@@ -63,12 +63,11 @@ struct SGSpecularImportanceData
  * the bounding sphere test, one more dependent memory round trip per node of the light tree traversal. A wave executes both sides of a
  * divergent branch anyway so the selects cost almost nothing
  */
-HIPRT_DEVICE float light_tree_sg_max_emitter_cosine(
-	float3_t spatial_mean, float bounding_sphere_radius, float3_t orientation_axis, float cos_theta_o, float sin_theta_o, float3_t shading_point)
+HIPRT_DEVICE float light_tree_sg_node_max_emitter_cosine(const LightTreeSGNodeDevice& node, float3_t shading_point)
 {
-	float3_t center_to_shading = shading_point - spatial_mean;
+	float3_t center_to_shading = shading_point - node.spatial_mean;
 	float distance			   = hippt::length(center_to_shading);
-	float support_radius	   = bounding_sphere_radius;
+	float support_radius	   = node.bounding_sphere_radius;
 
 	/*
 	 * Positional direction cone.
@@ -86,8 +85,8 @@ HIPRT_DEVICE float light_tree_sg_max_emitter_cosine(
 	 *
 	 * theta_bound = theta_o + theta_u
 	 */
-	float cos_bound = cos_theta_o * cos_theta_u - sin_theta_o * sin_theta_u;
-	float sin_bound = sin_theta_o * cos_theta_u + cos_theta_o * sin_theta_u;
+	float cos_bound = node.cos_theta_o * cos_theta_u - node.sin_theta_o * sin_theta_u;
+	float sin_bound = node.sin_theta_o * cos_theta_u + node.cos_theta_o * sin_theta_u;
 
 	/*
 	 * If theta_o + theta_u >= pi, every orientation relative to the
@@ -99,7 +98,7 @@ HIPRT_DEVICE float light_tree_sg_max_emitter_cosine(
 	bool cone_covers_everything = sin_bound <= 0.0f;
 
 	float3_t direction = center_to_shading / distance;
-	float cos_theta	   = hippt::clamp(-1.0f, 1.0f, hippt::dot(orientation_axis, direction));
+	float cos_theta	   = hippt::clamp(-1.0f, 1.0f, hippt::dot(node.orientation_axis, direction));
 
 	// Query direction lies inside the expanded orientation cone.
 	bool inside_cone = cos_theta >= cos_bound;
@@ -109,41 +108,78 @@ HIPRT_DEVICE float light_tree_sg_max_emitter_cosine(
 	// cos(theta - (theta_o + theta_u))
 	float max_cosine = cos_theta * cos_bound + sin_theta * sin_bound;
 
-	return (inside_sphere | cone_covers_everything | inside_cone) ? 1.0f : max_cosine;
+	return (inside_sphere || cone_covers_everything || inside_cone) ? 1.0f : max_cosine;
 }
 
-HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice& spatial_lobe,
-													   const VMF& directional_vmf,
-													   const SGSpecularImportanceData& spec_data,
-													   float3_t shading_point,
-													   float3_t view_direction,
-													   float3_t shading_normal,
-													   float specular,
-													   float alpha_x,
-													   float alpha_y)
+/**
+ * Whether 'node' can be rejected (importance of 0) at 'shading_point': no power, entirely behind the surface or, when backfacing lights are
+ * not allowed, facing away from the shading point
+ *
+ * The tests are combined with selects, not early returns: with returns, every field of the node would only be loaded after the test that
+ * precedes its use, a chain of dependent memory round trips per node of the traversal
+ */
+HIPRT_DEVICE bool light_tree_sg_node_rejected(const LightTreeSGNodeDevice& node, float3_t shading_point, float3_t shading_normal)
 {
-	// The zero power test is a select at the end, not an early return: with an early return, the mean, variance and radius of the lobe would
-	// only be loaded after the power, one more dependent memory round trip per lobe
-	bool zero_power = spatial_lobe.power <= 0.0f;
+	bool rejected = node.total_power <= 0.0f;
+
+	// The full bounds of the node only reject it if the spatial mean is behind the surface (if it's in front of the surface the node definitely cannot be
+	// rejected for sure so the bounds test does not matter).
+	bool mean_behind_surface = hippt::dot(shading_normal, node.spatial_mean - shading_point) <= 0.0f;
+
+	float3_t max_corner;
+	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
+	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
+	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
+
+	bool bounds_behind_surface = hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f;
+
+	// Bitwise | and & instead of || and &&: the short-circuit operators would compile to a branch around the cone test, which would delay the
+	// loads of the cone fields behind the other tests
+	rejected = rejected | (mean_behind_surface & bounds_behind_surface);
+	if (!DirectLightSamplingAllowBackfacingLights)
+		// Light is backfacing and backfacing lights are not allowed, so the importance is 0, rejecting it
+		rejected = rejected | (light_tree_sg_node_max_emitter_cosine(node, shading_point) <= 0.0f);
+
+	return rejected;
+}
+
+/**
+ * Importance of 'node' at 'shading_point': the spatial Gaussian of the emitters of the node (mean, variance, power) multiplied by the VMF of
+ * their orientations, integrated against the diffuse and specular lobes of the BSDF.
+ *
+ * The rejection tests are selects at the end, not early returns: with returns, every field of the node would only be loaded after the test
+ * that precedes its use, a chain of dependent memory round trips per node of the traversal. A wave executes both sides of a divergent branch
+ * anyway so evaluating the importance of a rejected node costs almost nothing. The result is the same as with early returns
+ */
+HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
+												 const SGSpecularImportanceData& spec_data,
+												 float3_t shading_point,
+												 float3_t view_direction,
+												 float3_t shading_normal,
+												 float specular,
+												 float alpha_x,
+												 float alpha_y)
+{
+	bool rejected = light_tree_sg_node_rejected(node, shading_point, shading_normal);
 
 	// This importance only shapes the sampling probabilities and the same code evaluates it for sampling and for the PDF
 	// so the hardware reciprocal / reciprocal square root are used instead of the correctly rounded division / sqrt sequences:
 	// these sequences were a large part of the cost of the light tree traversal
-	float3_t shading_to_lobe	= spatial_lobe.mean - shading_point;
-	float squared_distance		= hippt::dot(shading_to_lobe, shading_to_lobe);
+	float3_t shading_to_node	= node.spatial_mean - shading_point;
+	float squared_distance		= hippt::dot(shading_to_node, shading_to_node);
 	float safe_squared_distance = hippt::max(squared_distance, 1.0e-20f);
-	float3_t to_light_direction = shading_to_lobe * hippt::intrin_rsqrt(safe_squared_distance);
+	float3_t to_light_direction = shading_to_node * hippt::intrin_rsqrt(safe_squared_distance);
 
 	float c						   = hippt::clamp(0.0f, 1.0f, hippt::dot(shading_normal, -to_light_direction));
 	float sharpness_clamp_variance = safe_squared_distance / SG_LIGHT_SHARPNESS_MAX;
-	float variance				   = hippt::max(spatial_lobe.variance, sharpness_clamp_variance);
-	variance					   = variance * (1.0f - c) + 0.5f * hippt::square(spatial_lobe.support_radius) * c;
+	float variance				   = hippt::max(node.spatial_variance, sharpness_clamp_variance);
+	variance					   = variance * (1.0f - c) + 0.5f * hippt::square(node.support_radius) * c;
 	variance					   = hippt::max(variance, 1.0e-20f);
 
 	float inverse_variance = hippt::intrin_rcp(variance);
-	float emissive		   = spatial_lobe.power * inverse_variance;
+	float emissive		   = node.total_power * inverse_variance;
 	float light_sharpness  = safe_squared_distance * inverse_variance;
-	SGLobe light_lobe	   = SG_product(-directional_vmf.axis, directional_vmf.sharpness, to_light_direction, light_sharpness);
+	SGLobe light_lobe	   = SG_product(-node.vmf.axis, node.vmf.sharpness, to_light_direction, light_sharpness);
 
 	float amplitude			   = hippt::intrin_expf(light_lobe.logAmplitude);
 	float cosine			   = hippt::clamp(-1.0f, 1.0f, hippt::dot(light_lobe.axis, shading_normal));
@@ -158,7 +194,7 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 			float2x2(spec_data.projected_roughness_2.x, 0.0f, 0.0f, spec_data.projected_roughness_2.y) + 2.0f * light_lobe_variance * spec_data.jj_matrix;
 
 		float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z);
-		float det = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
+		float det	  = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
 					2.0f * light_lobe_variance *
 						(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
 					light_lobe_variance * light_lobe_variance * det_JJ4;
@@ -191,218 +227,77 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 
 	float importance = emissive * (diffuse_illumination + specular * specular_illumination);
 
-	return zero_power ? 0.0f : importance;
+	return rejected ? 0.0f : importance;
 }
 
 /**
- * Whether a node whose fields are given can be rejected (importance of 0) at 'shading_point': no power, entirely behind the surface or, when
- * backfacing lights are not allowed, facing away from the shading point
- *
- * The tests are combined with selects, not early returns: with returns, every field of the node would only be loaded after the test that
- * precedes its use, a chain of dependent memory round trips per node of the traversal
+ * Importances and traversal fields of the two children of a node of the light tree
  */
-HIPRT_DEVICE bool light_tree_sg_rejected(float total_power,
-										 float3_t spatial_mean,
-										 float3_t bounds_min,
-										 float3_t bounds_max,
-										 float bounding_sphere_radius,
-										 float3_t orientation_axis,
-										 float cos_theta_o,
-										 float sin_theta_o,
-										 float3_t shading_point,
-										 float3_t shading_normal)
+struct LightTreeSGChildren
 {
-	bool rejected = total_power <= 0.0f;
+	float left_importance  = 0.0f;
+	float right_importance = 0.0f;
 
-	// The full bounds of the node only reject it if the spatial mean is behind the surface (if it's in front of the surface the node definitely cannot be
-	// rejected for sure so the bounds test does not matter).
-	bool mean_behind_surface = hippt::dot(shading_normal, spatial_mean - shading_point) <= 0.0f;
+	unsigned int left_triangle_count  = 0;
+	unsigned int right_triangle_count = 0;
 
-	float3_t max_corner;
-	max_corner.x = (shading_normal.x >= 0.0f) ? bounds_max.x : bounds_min.x;
-	max_corner.y = (shading_normal.y >= 0.0f) ? bounds_max.y : bounds_min.y;
-	max_corner.z = (shading_normal.z >= 0.0f) ? bounds_max.z : bounds_min.z;
-
-	bool bounds_behind_surface = hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f;
-
-	// Bitwise | and & instead of || and &&: the short-circuit operators would compile to a branch around the cone test, which would delay the
-	// loads of the cone fields behind the other tests
-	rejected = rejected | (mean_behind_surface & bounds_behind_surface);
-	if (!DirectLightSamplingAllowBackfacingLights)
-		// Light is backfacing and backfacing lights are not allowed, so the importance is 0, rejecting it
-		rejected = rejected |
-				   (light_tree_sg_max_emitter_cosine(spatial_mean, bounding_sphere_radius, orientation_axis, cos_theta_o, sin_theta_o, shading_point) <= 0.0f);
-
-	return rejected;
-}
-
-/**
- * Importance of a node whose spatial lobes are 'spatial_lobes[0 .. spatial_lobe_count - 1]'.
- *
- * The lobes of node i are stored at 'LightTreeSGDevice::spatial_lobes + i * LightTreeSGSettings::spatial_lobe_count': a caller that knows the
- * index of the node can pass that address directly instead of 'node.spatial_lobes', which saves the dependent load of the pointer
- *
- * The rejection tests are selects at the end, not early returns: with returns, every field of the node and of its lobes would only be loaded
- * after the test that precedes its use, a chain of dependent memory round trips per node of the traversal. A wave executes both sides of a
- * divergent branch anyway so evaluating the lobes of a rejected node costs almost nothing. The result is the same as with early returns
- */
-HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
-												 const SpatialSGLobeDevice* spatial_lobes,
-												 unsigned int spatial_lobe_count,
-												 const SGSpecularImportanceData& spec_data,
-												 float3_t shading_point,
-												 float3_t view_direction,
-												 float3_t shading_normal,
-												 float specular,
-												 float alpha_x,
-												 float alpha_y)
-{
-	bool rejected = light_tree_sg_rejected(node.total_power, node.gaussian_spatial_mean, node.bounds_min, node.bounds_max, node.bounding_sphere_radius,
-										   node.orientation_axis, node.cos_theta_o, node.sin_theta_o, shading_point, shading_normal);
-
-	// The first lobe is evaluated outside of the loop: inside the loop, its loads could only be issued after the test of the loop count. The
-	// builder always allocates at least one lobe per node so 'spatial_lobes[0]' is always readable
-	float first_lobe_importance =
-		light_tree_sg_evaluate_spatial_lobe(spatial_lobes[0], node.vmf, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
-
-	float final_importance = spatial_lobe_count > 0 ? 0.0f + first_lobe_importance : 0.0f;
-	for (unsigned int lobe_index = 1; lobe_index < spatial_lobe_count; lobe_index++)
-		final_importance += light_tree_sg_evaluate_spatial_lobe(spatial_lobes[lobe_index], node.vmf, spec_data, shading_point, view_direction, shading_normal,
-																specular, alpha_x, alpha_y);
-
-	return rejected ? 0.0f : final_importance;
-}
-
-HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& node,
-												 const SGSpecularImportanceData& spec_data,
-												 float3_t shading_point,
-												 float3_t view_direction,
-												 float3_t shading_normal,
-												 float specular,
-												 float alpha_x,
-												 float alpha_y)
-{
-	return light_tree_sg_node_importance(node, node.spatial_lobes, node.spatial_lobe_count, spec_data, shading_point, view_direction, shading_normal, specular,
-										 alpha_x, alpha_y);
-}
-
-/**
- * Importance of a node from its descent record: the same computation as light_tree_sg_node_importance() for a node with a single spatial
- * lobe, with the power and mean of the lobe standing for the total power and spatial mean of the node in the rejection tests (see
- * LightTreeSGDescentRecordDevice)
- */
-HIPRT_DEVICE float light_tree_sg_descent_record_importance(const LightTreeSGDescentRecordDevice& record,
-														   const SGSpecularImportanceData& spec_data,
-														   float3_t shading_point,
-														   float3_t view_direction,
-														   float3_t shading_normal,
-														   float specular,
-														   float alpha_x,
-														   float alpha_y)
-{
-	float3_t bounds_max = make_float3(record.bounds_max_x, record.bounds_max_y, record.bounds_max_z);
-
-	bool rejected = light_tree_sg_rejected(record.lobe_power, record.lobe_mean, record.bounds_min, bounds_max, record.bounding_sphere_radius,
-										   record.orientation_axis, record.cos_theta_o, record.sin_theta_o, shading_point, shading_normal);
-
-	// The lobe and the VMF are rebuilt in registers from the fields of the record so that the importance goes through the same evaluation as
-	// the nodes
-	SpatialSGLobeDevice spatial_lobe;
-	spatial_lobe.mean			= record.lobe_mean;
-	spatial_lobe.variance		= record.lobe_variance;
-	spatial_lobe.power			= record.lobe_power;
-	spatial_lobe.support_radius = record.lobe_support_radius;
-
-	VMF directional_vmf;
-	directional_vmf.axis	  = record.vmf_axis;
-	directional_vmf.sharpness = record.vmf_sharpness;
-
-	float lobe_importance = light_tree_sg_evaluate_spatial_lobe(spatial_lobe, directional_vmf, spec_data, shading_point, view_direction, shading_normal,
-																specular, alpha_x, alpha_y);
-
-	// '0.0f +' like the sum over the lobes of light_tree_sg_node_importance(): the importance is the same float, a lobe importance of -0.0f included
-	return rejected ? 0.0f : 0.0f + lobe_importance;
-}
-
-/**
- * Importance and traversal fields of a node during a descent of the light tree
- */
-struct LightTreeSGDescentNode
-{
-	float importance;
-
-	unsigned int triangle_count;
-	unsigned int left_child_index_or_first_triangle_index;
+	unsigned int left_child_index_or_first_triangle_index  = 0;
+	unsigned int right_child_index_or_first_triangle_index = 0;
 };
 
 /**
- * Reads the node of index 'node_index' from its descent record when the light tree has them (one spatial lobe per node), from the node and
- * its lobes otherwise.
+ * Evaluates the children 'left_child_index' and 'left_child_index + 1' of a node.
  *
- * Every descent of the light tree and every PDF evaluation that replays one goes through this function (or through the overload of
- * light_tree_sg_node_importance() that takes a node index) so that sampling and PDF always compute the same probabilities
+ * The two children go through a single copy of the importance code, in a loop that is not unrolled. With one copy per child, the compiler
+ * keeps values of the left child live in registers through the whole evaluation of the right child: the kernels that sample a light from
+ * the tree or evaluate its PDF need more registers and fewer of their waves fit on a SIMD
  */
-HIPRT_DEVICE LightTreeSGDescentNode light_tree_sg_descent_node(const LightTreeSGDevice& light_tree,
-															   unsigned int node_index,
-															   const SGSpecularImportanceData& spec_data,
-															   float3_t shading_point,
-															   float3_t view_direction,
-															   float3_t shading_normal,
-															   float specular,
-															   float alpha_x,
-															   float alpha_y)
+HIPRT_DEVICE LightTreeSGChildren light_tree_sg_evaluate_children(const LightTreeSGNodeDevice* nodes,
+																 unsigned int left_child_index,
+																 const SGSpecularImportanceData& spec_data,
+																 float3_t shading_point,
+																 float3_t view_direction,
+																 float3_t shading_normal,
+																 float specular,
+																 float alpha_x,
+																 float alpha_y)
 {
-	LightTreeSGDescentNode result;
+	LightTreeSGChildren children;
 
-	const LightTreeSGDescentRecordDevice* descent_records = light_tree.descent_records;
-	if (descent_records != nullptr)
+	NO_UNROLL_LOOP
+	for (unsigned int child = 0; child < 2u; child++)
 	{
-		const LightTreeSGDescentRecordDevice& record = descent_records[node_index];
+		const LightTreeSGNodeDevice& child_node = nodes[left_child_index + child];
 
-		result.importance =
-			light_tree_sg_descent_record_importance(record, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
-		result.triangle_count							= record.triangle_count;
-		result.left_child_index_or_first_triangle_index = record.left_child_index_or_first_triangle_index;
+		float importance = light_tree_sg_node_importance(child_node, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+
+		// Selects instead of indexing arrays with 'child': an array indexed in a loop that is not unrolled would live in scratch memory
+		bool is_left_child = child == 0u;
+
+		children.left_importance  = is_left_child ? importance : children.left_importance;
+		children.right_importance = is_left_child ? children.right_importance : importance;
+
+		children.left_triangle_count  = is_left_child ? child_node.triangle_count : children.left_triangle_count;
+		children.right_triangle_count = is_left_child ? children.right_triangle_count : child_node.triangle_count;
+
+		children.left_child_index_or_first_triangle_index =
+			is_left_child ? child_node.left_child_index_or_first_triangle_index : children.left_child_index_or_first_triangle_index;
+		children.right_child_index_or_first_triangle_index =
+			is_left_child ? children.right_child_index_or_first_triangle_index : child_node.left_child_index_or_first_triangle_index;
 	}
-	else
-	{
-		const LightTreeSGNodeDevice& node		 = light_tree.nodes[node_index];
-		const SpatialSGLobeDevice* spatial_lobes = light_tree.spatial_lobes;
-		unsigned int spatial_lobe_count			 = light_tree.settings.spatial_lobe_count;
 
-		// The lobes are addressed from the node index, not through the lobe pointer of the node, so that they load together with the node
-		result.importance = light_tree_sg_node_importance(node, spatial_lobes + node_index * spatial_lobe_count, spatial_lobe_count, spec_data, shading_point,
-														  view_direction, shading_normal, specular, alpha_x, alpha_y);
-		result.triangle_count							= node.triangle_count;
-		result.left_child_index_or_first_triangle_index = node.left_child_index_or_first_triangle_index;
-	}
-
-	return result;
-}
-
-/**
- * Importance of the node of index 'node_index', read from its descent record when the light tree has them, see light_tree_sg_descent_node()
- */
-HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGDevice& light_tree,
-												 unsigned int node_index,
-												 const SGSpecularImportanceData& spec_data,
-												 float3_t shading_point,
-												 float3_t view_direction,
-												 float3_t shading_normal,
-												 float specular,
-												 float alpha_x,
-												 float alpha_y)
-{
-	return light_tree_sg_descent_node(light_tree, node_index, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y).importance;
+	return children;
 }
 
 #include "Device/includes/LightSampling/LightTree/LightTreeSGSamplingCommon.h"
 
 #if LightTreeSGDoSplitting == KERNEL_OPTION_TRUE
 
-HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& node, float3_t shading_point)
+HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& node,
+												   const LightTreeSGNodeEnergyStatisticsDevice& energy_statistics,
+												   float3_t shading_point)
 {
-	float3_t node_center		 = node.gaussian_spatial_mean;
+	float3_t node_center		 = node.spatial_mean;
 	float bounding_sphere_radius = node.bounding_sphere_radius;
 
 	// Compute a and b for the geometric mean and variance
@@ -414,16 +309,18 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 
 	float mean_geometric	 = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
-	float variance			 = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) +
-								hippt::square(node.get_energy_average()) * variance_geometric) *
-							   hippt::square(node.total_emitter_count);
+	float variance			 = (energy_statistics.energy_variance * variance_geometric + energy_statistics.energy_variance * hippt::square(mean_geometric) +
+						hippt::square(energy_statistics.get_energy_average()) * variance_geometric) *
+					 hippt::square(energy_statistics.total_emitter_count);
 
 	return variance;
 }
 
-HIPRT_DEVICE float light_tree_sg_node_coherence(const LightTreeSGNodeDevice& node, float3_t shading_point)
+HIPRT_DEVICE float light_tree_sg_node_coherence(const LightTreeSGNodeDevice& node,
+												const LightTreeSGNodeEnergyStatisticsDevice& energy_statistics,
+												float3_t shading_point)
 {
-	float variance = light_tree_sg_node_raw_variance(node, shading_point);
+	float variance = light_tree_sg_node_raw_variance(node, energy_statistics, shading_point);
 
 	return hippt::sqrt(hippt::sqrt(1.0f / (1.0f + hippt::sqrt(variance))));
 }
@@ -443,19 +340,19 @@ HIPRT_DEVICE float light_tree_sg_node_best_first_split_score(const LightTreeSGDe
 															 float alpha_x,
 															 float alpha_y)
 {
-	float node_importance =
-		light_tree_sg_node_importance(light_tree, node_index, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
-	float left_importance  = light_tree_sg_node_importance(light_tree, node.left_child_index_or_first_triangle_index, spec_data, shading_point, view_direction,
-														   shading_normal, specular, alpha_x, alpha_y);
-	float right_importance = light_tree_sg_node_importance(light_tree, node.left_child_index_or_first_triangle_index + 1, spec_data, shading_point,
-														   view_direction, shading_normal, specular, alpha_x, alpha_y);
+	float node_importance  = light_tree_sg_node_importance(node, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+	float left_importance  = light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+	float right_importance = light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 
 	float importance_sum = left_importance + right_importance;
 	float q_left		 = left_importance / importance_sum;
 	float q_right		 = right_importance / importance_sum;
 
-	float variance_left	 = hippt::max(light_tree_sg_node_raw_variance(left_child, shading_point), 0.0f);
-	float variance_right = hippt::max(light_tree_sg_node_raw_variance(right_child, shading_point), 0.0f);
+	const LightTreeSGNodeEnergyStatisticsDevice& left_energy_statistics	 = light_tree.node_energy_statistics[node.left_child_index_or_first_triangle_index];
+	const LightTreeSGNodeEnergyStatisticsDevice& right_energy_statistics = light_tree.node_energy_statistics[node.left_child_index_or_first_triangle_index + 1];
+
+	float variance_left	 = hippt::max(light_tree_sg_node_raw_variance(left_child, left_energy_statistics, shading_point), 0.0f);
+	float variance_right = hippt::max(light_tree_sg_node_raw_variance(right_child, right_energy_statistics, shading_point), 0.0f);
 
 	float variance_reduction = variance_left * (q_right / q_left) + variance_right * (q_left / q_right);
 	float unsplit_variance	 = variance_left / q_left + variance_right / q_right;
@@ -498,7 +395,7 @@ HIPRT_DEVICE void light_tree_sg_build_best_first_split_plan(const LightTreeSGDev
 			const LightTreeSGNodeDevice& current_node = nodes[node_index];
 
 			float current_importance =
-				light_tree_sg_node_importance(light_tree, node_index, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+				light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 			if (current_importance <= 0.0f)
 			{
 				candidate_node_indices[candidate_position] = candidate_node_indices[--candidate_node_count];
@@ -513,10 +410,10 @@ HIPRT_DEVICE void light_tree_sg_build_best_first_split_plan(const LightTreeSGDev
 			const LightTreeSGNodeDevice& left_child	 = nodes[current_node.left_child_index_or_first_triangle_index];
 			const LightTreeSGNodeDevice& right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-			float left_importance  = light_tree_sg_node_importance(light_tree, current_node.left_child_index_or_first_triangle_index, spec_data, shading_point,
-																   view_direction, shading_normal, specular, alpha_x, alpha_y);
-			float right_importance = light_tree_sg_node_importance(light_tree, current_node.left_child_index_or_first_triangle_index + 1, spec_data,
-																   shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+			float left_importance =
+				light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+			float right_importance =
+				light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 			if (left_importance <= 0.0f && right_importance <= 0.0f)
 			{
 				candidate_node_indices[candidate_position] = candidate_node_indices[--candidate_node_count];
@@ -636,10 +533,10 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 			LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
 			LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-			float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index, spec_data,
-																   shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
-			float right_importance = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index + 1,
-																   spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+			float left_importance =
+				light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+			float right_importance =
+				light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 			if (left_importance <= 0.0f && right_importance <= 0.0f)
 				break;
 
@@ -714,21 +611,20 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 
 		light_samples_counter--;
 
-		float node_importance = light_tree_sg_node_importance(render_data.light_tree_sg, node_index, spec_data, shading_point, view_direction, shading_normal,
-															  sg_specular_weight, alpha_x, alpha_y);
+		float node_importance =
+			light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (node_importance > 0.0f)
 		{
-			float node_coherence = light_tree_sg_node_coherence(current_node, shading_point);
+			float node_coherence = light_tree_sg_node_coherence(current_node, render_data.light_tree_sg.node_energy_statistics[node_index], shading_point);
 			if (node_coherence < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold not met, exploring both branches of the tree
 
-				float node_importance_left =
-					light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index, spec_data, shading_point,
-												  view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+				float node_importance_left = light_tree_sg_node_importance(nodes[current_node.left_child_index_or_first_triangle_index], spec_data,
+																		   shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 				float node_importance_right =
-					light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index + 1, spec_data,
-												  shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+					light_tree_sg_node_importance(nodes[current_node.left_child_index_or_first_triangle_index + 1], spec_data, shading_point, view_direction,
+												  shading_normal, sg_specular_weight, alpha_x, alpha_y);
 				if (node_importance_left > node_importance_right)
 				{
 					// We're going to want to explore the left child first
@@ -792,11 +688,10 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 			LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
 			LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-			float left_importance = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index, spec_data,
-																  shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+			float left_importance =
+				light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 			float right_importance =
-				light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index + 1, spec_data, shading_point,
-											  view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+				light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 
 			float p_left = left_importance / (left_importance + right_importance);
 
@@ -850,11 +745,10 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 			LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
 			LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-			float left_importance = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index, spec_data,
-																  shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+			float left_importance =
+				light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 			float right_importance =
-				light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index + 1, spec_data, shading_point,
-											  view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+				light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 
 			float p_left = left_importance / (left_importance + right_importance);
 
@@ -936,21 +830,20 @@ HIPRT_DEVICE void replay_splitting(const HIPRTRenderData& render_data,
 
 		collected_split_samples--;
 
-		float node_importance = light_tree_sg_node_importance(render_data.light_tree_sg, node_index, spec_data, shading_point, view_direction, shading_normal,
-															  sg_specular_weight, alpha_x, alpha_y);
+		float node_importance =
+			light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (node_importance > 0.0f)
 		{
-			float node_coherence = light_tree_sg_node_coherence(current_node, shading_point);
+			float node_coherence = light_tree_sg_node_coherence(current_node, render_data.light_tree_sg.node_energy_statistics[node_index], shading_point);
 			if (node_coherence < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0)
 			{
 				// Variance threshold not met, exploring both branches of the tree
 
-				float node_importance_left =
-					light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index, spec_data, shading_point,
-												  view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+				float node_importance_left = light_tree_sg_node_importance(nodes[current_node.left_child_index_or_first_triangle_index], spec_data,
+																		   shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 				float node_importance_right =
-					light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index + 1, spec_data,
-												  shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+					light_tree_sg_node_importance(nodes[current_node.left_child_index_or_first_triangle_index + 1], spec_data, shading_point, view_direction,
+												  shading_normal, sg_specular_weight, alpha_x, alpha_y);
 				if (node_importance_left > node_importance_right)
 				{
 					if (node_importance_right > 0.0f)
@@ -1004,8 +897,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_best_first(const HIPRT
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 	LightTreeSGNodeDevice root_node	   = nodes[0];
 
-	float root_node_importance =
-		light_tree_sg_node_importance(render_data.light_tree_sg, 0, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+	float root_node_importance = light_tree_sg_node_importance(root_node, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
@@ -1027,10 +919,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_best_first(const HIPRT
 		const LightTreeSGNodeDevice& left_child	  = nodes[current_node.left_child_index_or_first_triangle_index];
 		const LightTreeSGNodeDevice& right_child  = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-		float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index, spec_data,
-															   shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
-		float right_importance = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index + 1, spec_data,
-															   shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+		float left_importance = light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, specular, alpha_x, alpha_y);
 		if (left_importance <= 0.0f && right_importance <= 0.0f)
 			return 0.0f;
 
@@ -1072,6 +963,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
 	LightTreeSGNodeDevice current_node = nodes[0];
+	unsigned int current_node_index	   = 0;
 
 	float sg_specular_weight = proposal_state.sg_specular_weight;
 	float alpha_x			 = proposal_state.alpha_x;
@@ -1087,8 +979,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	return pdf_of_emissive_triangle_light_tree_sg_best_first(render_data, shading_point, view_direction, shading_normal, spec_data, sg_specular_weight, alpha_x,
 															 alpha_y, global_emissive_triangle_index);
 #else
-	float root_node_importance = light_tree_sg_node_importance(render_data.light_tree_sg, 0, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
+	float root_node_importance =
+		light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
@@ -1108,10 +1000,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		LightTreeSGNodeDevice left_child  = nodes[current_node.left_child_index_or_first_triangle_index];
 		LightTreeSGNodeDevice right_child = nodes[current_node.left_child_index_or_first_triangle_index + 1];
 
-		float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index, spec_data,
-															   shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
-		float right_importance = light_tree_sg_node_importance(render_data.light_tree_sg, current_node.left_child_index_or_first_triangle_index + 1, spec_data,
-															   shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 
@@ -1119,8 +1011,9 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 
 		if (collected_split_samples < LightTreeSGSplittingMaxLightSamples && can_split)
 		{
-			float node_coherence = light_tree_sg_node_coherence(current_node, shading_point);
-			node_split			 = node_coherence < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0;
+			float node_coherence =
+				light_tree_sg_node_coherence(current_node, render_data.light_tree_sg.node_energy_statistics[current_node_index], shading_point);
+			node_split = node_coherence < render_data.light_tree_sg.settings.light_tree_sg_splitting_variance && current_node.triangle_count == 0;
 		}
 
 		if (node_split)
@@ -1178,14 +1071,16 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		if (!(bit_trail & (1 << current_depth)))
 		{
 			// If the bit is not set we're going to the left
-			current_node = left_child;
+			current_node_index = current_node.left_child_index_or_first_triangle_index;
+			current_node	   = left_child;
 
 			if (!node_split)
 				cumulative_probability *= p_left;
 		}
 		else
 		{
-			current_node = right_child;
+			current_node_index = current_node.left_child_index_or_first_triangle_index + 1;
+			current_node	   = right_child;
 
 			if (!node_split)
 				cumulative_probability *= 1.0f - p_left;
@@ -1241,8 +1136,8 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree
 
 		const LightTreeSGNodeDevice& node = nodes[node_index];
 
-		float node_importance = light_tree_sg_node_importance(render_data.light_tree_sg, node_index, spec_data, shading_point, view_direction, shading_normal,
-															  sg_specular_weight, alpha_x, alpha_y);
+		float node_importance =
+			light_tree_sg_node_importance(node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (node_importance <= 0.0f)
 			continue;
 
@@ -1270,10 +1165,10 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg_tree
 		const LightTreeSGNodeDevice& left_child	 = nodes[left_index];
 		const LightTreeSGNodeDevice& right_child = nodes[right_index];
 
-		float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, left_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
-		float right_importance = light_tree_sg_node_importance(render_data.light_tree_sg, right_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 
 		// If both children have zero importance, return an empty light sample
 		if (left_importance <= 0.0f && right_importance <= 0.0f)
@@ -1357,8 +1252,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRe
 		if (node_index == invalid_node_index)
 			continue;
 
-		float node_importance = light_tree_sg_node_importance(render_data.light_tree_sg, node_index, spec_data, shading_point, view_direction, shading_normal,
-															  sg_specular_weight, alpha_x, alpha_y);
+		float node_importance =
+			light_tree_sg_node_importance(nodes[node_index], spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		total_importance += node_importance;
 
 		if (node_index == target_tree_cut_node_index)
@@ -1379,10 +1274,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg_tree_cut(const HIPRTRe
 		const LightTreeSGNodeDevice& left_child	 = nodes[left_index];
 		const LightTreeSGNodeDevice& right_child = nodes[right_index];
 
-		float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, left_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
-		float right_importance = light_tree_sg_node_importance(render_data.light_tree_sg, right_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance <= 0.0f && right_importance <= 0.0f)
 			return 0.0f;
 
@@ -1446,10 +1341,10 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 		const LightTreeSGNodeDevice& left_child	  = nodes[left_index];
 		const LightTreeSGNodeDevice& right_child  = nodes[right_index];
 
-		float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, left_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
-		float right_importance = light_tree_sg_node_importance(render_data.light_tree_sg, right_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return LightSampleArray<1>{ LightSampleInformation() };
 
@@ -1524,8 +1419,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 														   alpha_y, global_emissive_triangle_index);
 #endif
 
-	float root_node_importance = light_tree_sg_node_importance(render_data.light_tree_sg, current_node_index, spec_data, shading_point, view_direction,
-															   shading_normal, sg_specular_weight, alpha_x, alpha_y);
+	float root_node_importance =
+		light_tree_sg_node_importance(current_node, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 	if (root_node_importance <= 0.0f)
 		return 0.0f;
 
@@ -1541,10 +1436,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		LightTreeSGNodeDevice left_child  = nodes[left_index];
 		LightTreeSGNodeDevice right_child = nodes[right_index];
 
-		float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, left_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
-		float right_importance = light_tree_sg_node_importance(render_data.light_tree_sg, right_index, spec_data, shading_point, view_direction, shading_normal,
-															   sg_specular_weight, alpha_x, alpha_y);
+		float left_importance =
+			light_tree_sg_node_importance(left_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
+		float right_importance =
+			light_tree_sg_node_importance(right_child, spec_data, shading_point, view_direction, shading_normal, sg_specular_weight, alpha_x, alpha_y);
 		if (left_importance == 0.0f && right_importance == 0.0f)
 			return 0.0f;
 

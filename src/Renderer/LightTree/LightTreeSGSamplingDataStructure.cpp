@@ -107,14 +107,12 @@ void LightTreeSGSamplingDataStructure::free()
 
 	HIPRTRenderData& render_data									  = m_renderer->get_render_data();
 	render_data.light_tree_sg.nodes									  = nullptr;
-	render_data.light_tree_sg.spatial_lobes							  = nullptr;
-	render_data.light_tree_sg.descent_records						  = nullptr;
+	render_data.light_tree_sg.node_energy_statistics				  = nullptr;
 	render_data.light_tree_sg.tree_cut_node_indices					  = nullptr;
 	render_data.light_tree_sg.second_tree_cut_node_indices			  = nullptr;
 	render_data.light_tree_sg.indices_array							  = nullptr;
 	render_data.light_tree_sg.bit_trails							  = nullptr;
 	render_data.light_tree_sg.node_path_codes						  = nullptr;
-	render_data.light_tree_sg.settings.spatial_lobe_count			  = 0;
 	render_data.light_tree_sg.settings.effective_tree_cut_size		  = 0;
 	render_data.light_tree_sg.settings.effective_second_tree_cut_size = 0;
 }
@@ -143,16 +141,6 @@ LightTreeSGBuilder& LightTreeSGSamplingDataStructure::get_builder()
 LightTreeSGBuilderOptions& LightTreeSGSamplingDataStructure::get_builder_options()
 {
 	return m_light_tree_builder_sg.get_build_options();
-}
-
-int LightTreeSGSamplingDataStructure::get_spatial_lobe_count() const
-{
-	return m_light_tree_builder_sg.get_spatial_lobe_count();
-}
-
-void LightTreeSGSamplingDataStructure::set_spatial_lobe_count(int spatial_lobe_count)
-{
-	m_light_tree_builder_sg.set_spatial_lobe_count(spatial_lobe_count);
 }
 
 int LightTreeSGSamplingDataStructure::get_tree_cut_size() const

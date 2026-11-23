@@ -32,6 +32,7 @@
 #define UNROLL_STR(x)	 UNROLL_STR2(x)
 #define UNROLL_PRAGMA(x) _Pragma(UNROLL_STR(x))
 #define UNROLL_LOOP		 UNROLL_PRAGMA(unroll)
+#define NO_UNROLL_LOOP	 UNROLL_PRAGMA(nounroll)
 
 #define HIPRT_NOINLINE __attribute__((noinline))
 // For small functions that the inliner keeps out of line: a call drains every outstanding memory operation of the caller on entry and the
@@ -68,6 +69,7 @@ static dummyVec3 blockDim, blockIdx, threadIdx, gridDim;
 #define HIPRT_FORCEINLINE inline
 
 #define UNROLL_LOOP
+#define NO_UNROLL_LOOP
 
 // TODO move all of this in Math.h
 inline void __syncthreads() {}
