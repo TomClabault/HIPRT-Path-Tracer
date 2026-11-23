@@ -58,24 +58,6 @@ struct SGSpecularImportanceData
 	float2_t projected_roughness_2;
 };
 
-struct SGImportanceDebug
-{
-	float squared_distance;
-	float emitter_facing;
-	float effective_spatial_variance;
-	float sharpness_clamp_variance;
-	float final_variance;
-	float emissive;
-	float light_sharpness;
-	float product_log_amplitude;
-	float product_sharpness;
-	float product_cosine;
-	float amplitude;
-	float diffuse_integral;
-	float final_importance;
-	float max_corner_dot;
-};
-
 /**
  * The early-outs of this function are selects at the end, not returns: with returns, the cone fields of the node would only be loaded after
  * the bounding sphere test, one more dependent memory round trip per node of the light tree traversal. A wave executes both sides of a
@@ -176,7 +158,7 @@ HIPRT_DEVICE float light_tree_sg_evaluate_spatial_lobe(const SpatialSGLobeDevice
 			float2x2(spec_data.projected_roughness_2.x, 0.0f, 0.0f, spec_data.projected_roughness_2.y) + 2.0f * light_lobe_variance * spec_data.jj_matrix;
 
 		float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z);
-		float det	  = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
+		float det = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
 					2.0f * light_lobe_variance *
 						(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
 					light_lobe_variance * light_lobe_variance * det_JJ4;
@@ -433,8 +415,8 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 	float mean_geometric	 = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
 	float variance			 = (node.energy_variance * variance_geometric + node.energy_variance * hippt::square(mean_geometric) +
-						hippt::square(node.get_energy_average()) * variance_geometric) *
-					 hippt::square(node.total_emitter_count);
+								hippt::square(node.get_energy_average()) * variance_geometric) *
+							   hippt::square(node.total_emitter_count);
 
 	return variance;
 }
@@ -1558,8 +1540,6 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 		unsigned int right_index		  = left_index + 1;
 		LightTreeSGNodeDevice left_child  = nodes[left_index];
 		LightTreeSGNodeDevice right_child = nodes[right_index];
-		SGImportanceDebug left_debug{};
-		SGImportanceDebug right_debug{};
 
 		float left_importance  = light_tree_sg_node_importance(render_data.light_tree_sg, left_index, spec_data, shading_point, view_direction, shading_normal,
 															   sg_specular_weight, alpha_x, alpha_y);
