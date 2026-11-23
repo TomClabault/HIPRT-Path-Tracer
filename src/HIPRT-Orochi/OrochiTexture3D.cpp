@@ -115,7 +115,6 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 	texture_descriptor.filterMode	  = filtering_mode;
 
 	OROCHI_CHECK_ERROR(oroTexObjectCreate(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
-	fprintf(stderr, "[GPU-MEM] ALLOC TEXTURE_OBJECT %p OrochiTexture3D.cpp:103\n", (void*)m_texture);
 }
 
 void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HIPfilter_mode filtering_mode, HIPaddress_mode address_mode)
