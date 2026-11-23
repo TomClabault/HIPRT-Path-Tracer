@@ -65,6 +65,9 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_update_ray_throughputs(HIPRTRenderData& 
 /**
  * Returns true if the bounce was sampled successfully,
  * false otherwise (is the BSDF sample failed, if russian roulette killed the sample, ...)
+ *
+ * 'primary_gbuffer_path_index' is the G-buffer index of the pixel at the primary hit, NEE_DEFERRED_INVALID_PATH_INDEX at the other vertices:
+ * the deferred MIS of the next vertex then reads the material of the primary hit from the G-buffer, with its textures resolved at the hit
  */
 HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRenderData& render_data,
 																	 RayPayload& ray_payload,
@@ -74,10 +77,11 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 																	 Xorshift32Generator& random_number_generator,
 																	 BSDFIncidentLightInfo& incident_light_info,
 																	 float& out_bsdf_pdf,
-																	 NEEDeferredMISContext& nee_deferred_MIS_context)
+																	 NEEDeferredMISContext& nee_deferred_MIS_context,
+																	 unsigned int primary_gbuffer_path_index)
 {
 	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, closest_hit_info.primitive_index,
-													   closest_hit_info.texcoords, NEE_DEFERRED_INVALID_PATH_INDEX, ray_payload.throughput);
+													   closest_hit_info.texcoords, primary_gbuffer_path_index, ray_payload.throughput);
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;

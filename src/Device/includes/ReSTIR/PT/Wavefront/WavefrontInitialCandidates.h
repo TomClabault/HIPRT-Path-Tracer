@@ -395,6 +395,9 @@ HIPRT_DEVICE ColorRGB32F ReSTIR_PT_wavefront_update_ray_throughputs(HIPRTRenderD
  *
  * Returns the unweighted throughput of the bounce or ReSTIR_PT_invalid_throughput if the bounce could not be sampled (the BSDF sample failed,
  * russian roulette killed the path, ...)
+ *
+ * 'primary_gbuffer_path_index' is the G-buffer index of the path at the primary hit, NEE_DEFERRED_INVALID_PATH_INDEX at the other vertices:
+ * the deferred MIS of the next vertex then reads the material of the primary hit from the G-buffer, with its textures resolved at the hit
  */
 template <typename MaterialType>
 HIPRT_DEVICE ColorRGB32F ReSTIR_PT_wavefront_compute_next_indirect_bounce(HIPRTRenderData& render_data,
@@ -406,10 +409,11 @@ HIPRT_DEVICE ColorRGB32F ReSTIR_PT_wavefront_compute_next_indirect_bounce(HIPRTR
 																		  Xorshift32Generator& random_number_generator,
 																		  BSDFIncidentLightInfo& incident_light_info,
 																		  float& out_bsdf_pdf,
-																		  NEEDeferredMISContext& nee_deferred_MIS_context)
+																		  NEEDeferredMISContext& nee_deferred_MIS_context,
+																		  unsigned int primary_gbuffer_path_index)
 {
 	nee_deferred_MIS_context.fill_last_hit_information(closest_hit_info, view_direction, ray_payload.volume_state, closest_hit_info.primitive_index,
-													   closest_hit_info.texcoords, NEE_DEFERRED_INVALID_PATH_INDEX, ray_payload.throughput);
+													   closest_hit_info.texcoords, primary_gbuffer_path_index, ray_payload.throughput);
 
 	ColorRGB32F bsdf_color;
 	float3_t bounce_direction;
@@ -722,7 +726,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 	RayPayloadT<ReSTIRPTWavefrontKernelMaterial> ray_payload(NoInitTag{});
 	hiprtRay ray;
 	// At the primary hit, the texture coordinates of the hit are not read from the G-buffer and stay at their default value, as in the initial
-	// candidates megakernel: the deferred light PDF of bounce 1 reads the material of the primary hit with them
+	// candidates megakernel: the deferred MIS of bounce 1 reads the material of the primary hit from the G-buffer, it does not need them
 	HitInfo closest_hit_info;
 
 	ResolvedMaterialUserControlsCache resolved_user_controls;
@@ -863,9 +867,12 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 
 	float bsdf_pdf;
 	BSDFIncidentLightInfo incident_light_info;
+	// A compile-time choice for the same reason as the bounce above: the secondary kernels have no primary hit branch
+	unsigned int primary_gbuffer_path_index = initialize_primary_path ? pixel_index : NEE_DEFERRED_INVALID_PATH_INDEX;
+
 	pending_throughput = ReSTIR_PT_wavefront_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction,
 																		  surface_transport_metadata.dispersion_scale, ray, random_number_generator,
-																		  incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
+																		  incident_light_info, bsdf_pdf, nee_deferred_MIS_context, primary_gbuffer_path_index);
 
 	// Bad BSDF sample (under the surface), killed by russian roulette, ...: the ray is still traced by a terminal trace for the last deferred
 	// MIS of the path, as the initial candidates megakernel traces it again for its last deferred MIS

@@ -456,9 +456,10 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_InitialCandidates(HIPRTRenderData
 					float bsdf_pdf;
 					BSDFIncidentLightInfo incident_light_info;
 
+					unsigned int primary_gbuffer_path_index = bounce == 0 ? pixel_index : NEE_DEFERRED_INVALID_PATH_INDEX;
 					pending_throughput =
 						ReSTIR_PT_compute_next_indirect_bounce(render_data, ray_payload, closest_hit_info, -ray.direction, ray, random_number_generator,
-															   incident_light_info, bsdf_pdf, nee_deferred_MIS_context);
+															   incident_light_info, bsdf_pdf, nee_deferred_MIS_context, primary_gbuffer_path_index);
 					if (pending_throughput == ReSTIR_PT_invalid_throughput)
 					{
 						// Bad BSDF sample (under the surface), killed by russian roulette, ...
