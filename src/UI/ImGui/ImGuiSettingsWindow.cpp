@@ -1194,7 +1194,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 					ImGuiRenderer::show_help_marker("Absolute display-space confidence interval threshold after exposure and tone mapping. "
 													"The default is two encoded display levels (2/255).");
 
-					// !Cannot use adaptive sampling without accumulation
+					// !render_settings.enable_adaptive_sampling
 					ImGui::EndDisabled();
 
 					const char* adaptive_sampling_debug_view_items[]	= { "- No debug", "- Pixel convergence heatmap", "- Converged pixels map" };
@@ -1224,9 +1224,10 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 							m_render_window->set_force_viewport_refresh(true);
 						}
 					}
-				}
 
-				ImGui::EndDisabled();
+					// !render_settings.enable_adaptive_sampling
+					ImGui::EndDisabled();
+				}
 
 				ImGui::Dummy(ImVec2(0.0f, 20.0f));
 				ImGui::TreePop();
