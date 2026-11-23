@@ -95,6 +95,16 @@ private:
 												 const Args&... args);
 
 	void draw_performance_metrics_panel();
+	void draw_memory_metrics_panel();
+	/**
+	 * Draws one row of the memory metrics table and returns whether its tree node is open
+	 */
+	static bool draw_memory_metrics_table_row(const std::string& label, size_t byte_size, size_t total_byte_size, ImGuiTreeNodeFlags tree_node_flags);
+	/**
+	 * Sorts the (name, byte size) entries of the memory metrics table by decreasing size
+	 */
+	static bool compare_memory_metrics_entries(const std::pair<std::string, size_t>& first, const std::pair<std::string, size_t>& second);
+	static std::string format_memory_size(size_t byte_size);
 	void draw_shader_kernels_panel();
 	void draw_debug_panel();
 

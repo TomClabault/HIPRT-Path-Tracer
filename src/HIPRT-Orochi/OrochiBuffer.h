@@ -8,6 +8,7 @@
 
 #include "GL/glew.h"
 #include "hiprt/hiprt.h"
+#include "HIPRT-Orochi/GPUMemoryTracker.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "Orochi/Orochi.h"
 #include "UI/DisplayView/DisplayTextureType.h"
@@ -139,6 +140,7 @@ template <typename T>
 OrochiBuffer<T>::OrochiBuffer(int element_count) : m_element_count(element_count), m_allocated_byte_size(sizeof(T) * element_count)
 {
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * element_count));
+	GPUMemoryTracker::register_allocation(m_data_pointer, sizeof(T) * element_count);
 }
 
 template <typename T>
@@ -148,6 +150,7 @@ OrochiBuffer<T>::OrochiBuffer(const std::vector<T>& data)
 		return;
 
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), sizeof(T) * data.size()));
+	GPUMemoryTracker::register_allocation(m_data_pointer, sizeof(T) * data.size());
 	m_element_count		  = data.size();
 	m_allocated_byte_size = sizeof(T) * data.size();
 
@@ -252,6 +255,10 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 		// Nothing to resize
 		return;
 
+	// A buffer reallocated outside of any memory category scope (resized from the UI for example)
+	// stays in the category it was allocated in
+	std::string previous_memory_category = GPUMemoryTracker::get_allocation_category(m_data_pointer);
+
 	if (m_data_pointer)
 		free();
 
@@ -263,6 +270,7 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 	}
 
 	OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), buffer_size));
+	GPUMemoryTracker::register_allocation(m_data_pointer, buffer_size, GPUMemoryType::DEVICE, previous_memory_category);
 
 	m_element_count		  = new_element_count;
 	m_allocated_byte_size = buffer_size;
@@ -271,11 +279,14 @@ void OrochiBuffer<T>::resize(int new_element_count, size_t type_size_override)
 template <typename T>
 void OrochiBuffer<T>::resize_host_pinned_mem(int new_element_count, size_t type_size_override)
 {
+	std::string previous_memory_category = GPUMemoryTracker::get_allocation_category(m_data_pointer);
+
 	if (m_data_pointer)
 		free();
 
 	size_t buffer_size = type_size_override != 0 ? (type_size_override * new_element_count) : (sizeof(T) * new_element_count);
 	OROCHI_CHECK_ERROR(oroHostMalloc(reinterpret_cast<oroDeviceptr*>(&m_data_pointer), buffer_size, 0));
+	GPUMemoryTracker::register_allocation(m_data_pointer, buffer_size, GPUMemoryType::HOST_PINNED, previous_memory_category);
 
 	m_element_count		  = new_element_count;
 	m_allocated_byte_size = buffer_size;
@@ -645,6 +656,8 @@ void OrochiBuffer<T>::free()
 {
 	if (m_data_pointer)
 	{
+		GPUMemoryTracker::unregister_allocation(m_data_pointer);
+
 		if (m_pinned_memory)
 			OROCHI_CHECK_ERROR(oroHostFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 		else
@@ -670,6 +683,8 @@ void OrochiBuffer<T>::free_no_error()
 {
 	if (m_data_pointer)
 	{
+		GPUMemoryTracker::unregister_allocation(m_data_pointer);
+
 		if (m_pinned_memory)
 			OROCHI_CHECK_ERROR(oroHostFree(reinterpret_cast<oroDeviceptr>(m_data_pointer)));
 		else

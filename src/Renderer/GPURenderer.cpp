@@ -58,6 +58,8 @@ GPURenderer::GPURenderer(RenderWindow* render_window, std::shared_ptr<HIPRTOroch
 	setup_filter_functions();
 	m_render_thread.setup_render_graphs();
 
+	GPUMemoryCategoryScope status_buffers_memory_category_scope(GPUMemoryTracker::RENDERER_STATUS_BUFFERS_CATEGORY);
+
 	// Buffer that keeps track of whether at least one ray is still alive or not
 	m_status_buffers.still_one_ray_active_buffer.resize(1);
 	m_status_buffers.still_one_ray_active_buffer.memset_whole_buffer(1);
@@ -86,6 +88,8 @@ void GPURenderer::setup_brdfs_data()
 
 void GPURenderer::load_sheen_ltc_texture()
 {
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_BSDF_PRECOMPUTED_TABLES_CATEGORY);
+
 	// CUDA/HIP do not handle 3 channels textures so we're padding it to 4 channels
 	std::vector<float> padded_ltc(32 * 32 * 4);
 
@@ -109,6 +113,8 @@ void GPURenderer::load_sheen_ltc_texture()
 
 void GPURenderer::load_ltc_textures()
 {
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_BSDF_PRECOMPUTED_TABLES_CATEGORY);
+
 	Image32Bit GGX_conductor_ltc_params(reinterpret_cast<const float*>(ggx_conductor_ltc_fit.data()), GGX_CONDUCTOR_LTC_FIT_SIZE, GGX_CONDUCTOR_LTC_FIT_SIZE,
 										4);
 	Image32Bit GGX_conductor_amplitude_ltc_data(reinterpret_cast<const float*>(ggx_conductor_ltc_amplitude_data.data()), GGX_CONDUCTOR_LTC_FIT_SIZE,
@@ -123,6 +129,8 @@ void GPURenderer::load_ltc_textures()
 
 void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_BSDF_PRECOMPUTED_TABLES_CATEGORY);
+
 	Image32Bit GGXEss_image =
 		Image32Bit::read_image_hdr(BRDFS_DATA_DIRECTIONAL_ALBEDO_DIRECTORY "/GGX/" +
 									   GPUBakerConstants::get_GGX_conductor_directional_albedo_texture_filename(m_render_data.bsdfs_data.GGX_masking_shadowing),
@@ -134,6 +142,8 @@ void GPURenderer::load_GGX_energy_compensation_textures(hipTextureFilterMode fil
 
 void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_BSDF_PRECOMPUTED_TABLES_CATEGORY);
+
 	synchronize_all_kernels();
 
 	std::vector<Image32Bit> images(GPUBakerConstants::GLOSSY_DIELECTRIC_TEXTURE_SIZE_IOR);
@@ -153,6 +163,8 @@ void GPURenderer::load_glossy_dielectric_energy_compensation_textures(hipTexture
 
 void GPURenderer::load_GGX_glass_energy_compensation_textures(hipTextureFilterMode filtering_mode)
 {
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_BSDF_PRECOMPUTED_TABLES_CATEGORY);
+
 	synchronize_all_kernels();
 
 	std::vector<Image32Bit> images(GPUBakerConstants::GGX_GLASS_DIRECTIONAL_ALBEDO_TEXTURE_SIZE_IOR);
@@ -313,6 +325,8 @@ void GPURenderer::prepare_adaptive_sampling_buffers()
 {
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
+		GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_ADAPTIVE_SAMPLING_CATEGORY);
+
 		bool buffers_were_resized				   = false;
 		unsigned int adaptive_sampling_buffer_size = m_render_resolution.x * m_render_resolution.y;
 
@@ -385,10 +399,22 @@ void GPURenderer::recreate_global_bvh_stack_buffer()
 												  static_cast<uint32_t>(nbBlocksX * nbBlocksY) };
 
 	if (m_render_data.global_traversal_stack_buffer.stackData != nullptr)
+	{
 		// Freeing if the buffer already exists
+		GPUMemoryTracker::unregister_allocation(m_render_data.global_traversal_stack_buffer.stackData);
 		HIPRT_CHECK_ERROR(hiprtDestroyGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, m_render_data.global_traversal_stack_buffer));
+	}
 
 	HIPRT_CHECK_ERROR(hiprtCreateGlobalStackBuffer(m_hiprt_orochi_ctx->hiprt_ctx, stackBufferInput, m_render_data.global_traversal_stack_buffer));
+
+	// HIPRT allocates the stack buffer itself: the size of the device allocation that starts at the stack data is the size of the buffer
+	oroDeviceptr_t stack_allocation_base = nullptr;
+	size_t stack_allocation_size		 = 0;
+	OROCHI_CHECK_ERROR(oroMemGetAddressRange(&stack_allocation_base, &stack_allocation_size,
+											 reinterpret_cast<oroDeviceptr_t>(m_render_data.global_traversal_stack_buffer.stackData)));
+
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_BVH_TRAVERSAL_STACK_CATEGORY);
+	GPUMemoryTracker::register_allocation(m_render_data.global_traversal_stack_buffer.stackData, stack_allocation_size);
 }
 
 void GPURenderer::synchronize_all_kernels()
@@ -435,14 +461,25 @@ void GPURenderer::resize(int new_width, int new_height)
 
 	m_render_resolution = make_int2(new_width, new_height);
 
-	m_framebuffer->resize(new_width * new_height);
-	m_display_post_process_framebuffer->resize(new_width * new_height);
-	m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
-	m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
-	m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
+	{
+		GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_FRAMEBUFFERS_CATEGORY);
+
+		m_framebuffer->resize(new_width * new_height);
+		m_display_post_process_framebuffer->resize(new_width * new_height);
+	}
+
+	{
+		GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_DENOISER_CATEGORY);
+
+		m_denoiser_buffers.m_denoised_framebuffer->resize(new_width * new_height);
+		m_denoiser_buffers.resize_normals_buffer(new_width * new_height);
+		m_denoiser_buffers.resize_albedo_buffer(new_width * new_height);
+	}
 
 	if (m_render_data.render_settings.has_access_to_adaptive_sampling_buffers())
 	{
+		GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_ADAPTIVE_SAMPLING_CATEGORY);
+
 		m_pixels_converged_sample_count_buffer.resize(new_width * new_height);
 		m_pixels_luminance_buffer.resize(new_width * new_height);
 		m_pixels_squared_luminance_buffer.resize(new_width * new_height);
@@ -450,12 +487,17 @@ void GPURenderer::resize(int new_width, int new_height)
 	}
 
 	m_render_thread.resize(new_width, new_height);
-	m_pixel_active.resize(new_width * new_height);
 
-	m_last_frame_ray_colors.resize(new_width * new_height);
+	{
+		GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_PER_PIXEL_BUFFERS_CATEGORY);
 
-	m_input_seeds.resize(new_width * new_height);
-	m_updated_random_seeds.resize(new_width * new_height);
+		m_pixel_active.resize(new_width * new_height);
+
+		m_last_frame_ray_colors.resize(new_width * new_height);
+
+		m_input_seeds.resize(new_width * new_height);
+		m_updated_random_seeds.resize(new_width * new_height);
+	}
 
 	// Recomputing the perspective projection matrix since the aspect ratio
 	// may have changed
@@ -948,13 +990,19 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 	// via destructors of HIPRTGeometry, OrochiBuffer, and OrochiTexture.
 	m_hiprt_scene = HIPRTScene();
 
+	GPUMemoryCategoryScope geometry_memory_category_scope(GPUMemoryTracker::SCENE_GEOMETRY_CATEGORY);
+
 	m_hiprt_scene.whole_scene_BLAS.upload_triangle_indices(scene.triangles_vertex_indices);
 	m_hiprt_scene.whole_scene_BLAS.upload_vertices_positions(scene.vertices_positions);
 	m_hiprt_scene.whole_scene_BLAS.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
 	m_hiprt_scene.total_triangle_count		   = scene.triangles_vertex_indices.size() / 3;
 	rebuild_bvh(m_hiprt_scene.whole_scene_BLAS, hiprtBuildFlagBitPreferHighQualityBuild, true, true);
 
-	m_hiprt_scene.emissive_triangles_BLAS.upload_triangle_indices(scene.emissive_triangle_vertex_indices);
+	{
+		GPUMemoryCategoryScope emissive_memory_category_scope(GPUMemoryTracker::SCENE_EMISSIVE_TRIANGLES_CATEGORY);
+
+		m_hiprt_scene.emissive_triangles_BLAS.upload_triangle_indices(scene.emissive_triangle_vertex_indices);
+	}
 	m_hiprt_scene.emissive_triangles_BLAS.copy_vertices_positions_from(m_hiprt_scene.whole_scene_BLAS);
 	m_hiprt_scene.emissive_triangles_BLAS.m_hiprt_ctx = m_hiprt_orochi_ctx->hiprt_ctx;
 	rebuild_bvh(m_hiprt_scene.emissive_triangles_BLAS, hiprtBuildFlagBitPreferHighQualityBuild, true, true);
@@ -985,8 +1033,15 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 									for (int i = 0; i < scene.materials.size(); i++)
 										packed_gpu_materials[i] = pack_material_to_GPU(scene.materials[i]);
 
-									m_hiprt_scene.materials_buffer.resize(scene.materials.size());
-									m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
+									{
+										GPUMemoryCategoryScope materials_memory_category_scope(GPUMemoryTracker::SCENE_MATERIALS_CATEGORY);
+
+										m_hiprt_scene.materials_buffer.resize(scene.materials.size());
+										m_hiprt_scene.materials_buffer.upload_data(packed_gpu_materials);
+									}
+
+									// The opacity bitfield and the texture coordinates are per-triangle and per-vertex data
+									GPUMemoryCategoryScope geometry_memory_category_scope(GPUMemoryTracker::SCENE_GEOMETRY_CATEGORY);
 
 									// Computing the opaqueness of materials i.e. whether or not they are FULLY opaque
 									std::vector<unsigned char> material_opaque(scene.materials.size());
@@ -1010,6 +1065,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 								[this, &scene]()
 								{
 									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+									GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::SCENE_GEOMETRY_CATEGORY);
 
 									m_hiprt_scene.triangle_areas.resize(scene.triangle_areas.size());
 									m_hiprt_scene.triangle_areas.upload_data(scene.triangle_areas.data());
@@ -1020,6 +1076,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 								[this, &scene]()
 								{
 									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+									GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::SCENE_TEXTURES_CATEGORY);
 
 									if (scene.textures.size() > 0)
 									{
@@ -1061,6 +1118,7 @@ void GPURenderer::set_hiprt_scene_from_scene(const Scene& scene)
 			if (m_hiprt_scene.emissive_triangles_count > 0)
 			{
 				OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_hiprt_orochi_ctx->orochi_ctx));
+				GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::SCENE_EMISSIVE_TRIANGLES_CATEGORY);
 
 				m_hiprt_scene.triangle_average_emissive_luminance.resize(scene.triangles_average_emissive_luminance.size());
 				m_hiprt_scene.triangle_average_emissive_luminance.upload_data(scene.triangles_average_emissive_luminance.data());

@@ -6,6 +6,7 @@
 #ifndef RENDERER_RENDER_GRAPH_H
 #define RENDERER_RENDER_GRAPH_H
 
+#include "HIPRT-Orochi/GPUMemoryTracker.h"
 #include "Renderer/RenderPasses/RenderPass.h"
 
 #include <functional>
@@ -69,6 +70,11 @@ public:
 	std::unordered_map<std::string, std::shared_ptr<RenderPass>> get_render_passes();
 
 private:
+	/**
+	 * Category of the memory tracker that the GPU allocations made by the given render pass are attributed to
+	 */
+	static std::string get_render_pass_memory_category(RenderPass* render_pass);
+
 	// Visits all render passes after recursively visiting their dependencies.
 	// Each render pass is visited at most once during a traversal.
 	void traverse_render_passes_in_dependency_order(const std::function<void(RenderPass*)>& callback);

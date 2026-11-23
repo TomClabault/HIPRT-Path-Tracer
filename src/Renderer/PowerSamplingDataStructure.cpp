@@ -52,6 +52,7 @@ void PowerSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompilerOption
 								[this, compiler_options, &emissive_triangle_indices, &triangles_average_emissive_power_luminance, &power_alias_table]()
 								{
 									OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
+									GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::LIGHT_SAMPLING_POWER_ALIAS_TABLE_CATEGORY);
 
 									if (!is_needed(emissive_triangle_indices.size(), compiler_options))
 									{
@@ -86,7 +87,7 @@ void PowerSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompilerOption
 									power_alias_table.alias_table_probas = m_alias_table_probas.get_device_pointer();
 									power_alias_table.alias_table_alias	 = m_alias_table_aliases.get_device_pointer();
 									power_alias_table.set_size(emissive_triangle_indices.size());
-									power_alias_table.sum_elements		 = power_sum;
+									power_alias_table.sum_elements = power_sum;
 								});
 }
 
@@ -103,7 +104,7 @@ void PowerSamplingDataStructure::free()
 	render_data.buffers.emissive_triangles_power_alias_table.alias_table_alias	= nullptr;
 	render_data.buffers.emissive_triangles_power_alias_table.alias_table_probas = nullptr;
 	render_data.buffers.emissive_triangles_power_alias_table.set_size(0);
-	render_data.buffers.emissive_triangles_power_alias_table.sum_elements		= 0;
+	render_data.buffers.emissive_triangles_power_alias_table.sum_elements = 0;
 }
 
 bool PowerSamplingDataStructure::is_needed(unsigned int emissive_count, std::shared_ptr<GPUKernelCompilerOptions> compiler_options)

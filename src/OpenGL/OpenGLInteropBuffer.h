@@ -6,6 +6,7 @@
 #ifndef OPENGL_INTEROP_BUFFER_H
 #define OPENGL_INTEROP_BUFFER_H
 
+#include "HIPRT-Orochi/GPUMemoryTracker.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "UI/DisplayView/DisplayTextureType.h"
 #include "UI/ImGui/ImGuiLogger.h"
@@ -67,6 +68,8 @@ OpenGLInteropBuffer<T>::OpenGLInteropBuffer(int element_count)
 	glCreateBuffers(1, &m_buffer_name);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_buffer_name);
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, element_count * sizeof(T), nullptr, GL_DYNAMIC_DRAW);
+	// The OpenGL buffer has no device pointer of its own: the buffer object identifies the allocation
+	GPUMemoryTracker::register_allocation(this, element_count * sizeof(T));
 
 	OROCHI_CHECK_ERROR(oroGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, oroGraphicsRegisterFlagsNone));
 
@@ -124,6 +127,9 @@ void OpenGLInteropBuffer<T>::resize(int new_element_count)
 	oroGraphicsGLRegisterBuffer(&m_buffer_resource, m_buffer_name, oroGraphicsRegisterFlagsNone);
 
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+	// A buffer resized outside of any memory category scope stays in the category it was allocated in
+	GPUMemoryTracker::register_allocation(this, new_element_count * sizeof(T), GPUMemoryType::DEVICE, GPUMemoryTracker::get_allocation_category(this));
 
 	m_initialized	= true;
 	m_element_count = new_element_count;
@@ -197,6 +203,7 @@ void OpenGLInteropBuffer<T>::free()
 {
 	if (m_initialized)
 	{
+		GPUMemoryTracker::unregister_allocation(this);
 		glDeleteBuffers(1, &m_buffer_name);
 
 		if (m_mapped)

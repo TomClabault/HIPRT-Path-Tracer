@@ -12,6 +12,8 @@
 
 void RendererEnvmap::init_from_image(const Image32Bit& image, const std::string& envmap_filepath)
 {
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::SCENE_ENVMAP_CATEGORY);
+
 	float envmap_scaling_factor;
 	m_envmap_data.pack_from(image, envmap_scaling_factor);
 	m_envmap_filepath = envmap_filepath;
@@ -32,6 +34,8 @@ void RendererEnvmap::update(GPURenderer* renderer, float delta_time)
 
 void RendererEnvmap::recompute_sampling_data_structure(GPURenderer* renderer, const Image32Bit* image)
 {
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::SCENE_ENVMAP_CATEGORY);
+
 	if (renderer->get_global_compiler_options()->get_macro_value(GPUKernelCompilerOptions::ENVMAP_SAMPLING_STRATEGY) == ESS_NO_SAMPLING)
 	{
 		if (m_cdf.size() > 0)

@@ -37,6 +37,7 @@ void LightTreeSGSamplingDataStructure::compute(std::shared_ptr<GPUKernelCompiler
 		 &vertices_positions]()
 		{
 			OROCHI_CHECK_ERROR(oroCtxSetCurrent(m_renderer->get_hiprt_orochi_ctx()->orochi_ctx));
+			GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::LIGHT_SAMPLING_LIGHT_TREE_SG_CATEGORY);
 
 			if (!is_needed(emissive_triangles_primitive_indices.size(), compiler_options))
 			{

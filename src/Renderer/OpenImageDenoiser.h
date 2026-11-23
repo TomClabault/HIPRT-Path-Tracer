@@ -68,6 +68,11 @@ private:
 	bool check_device();
 	bool check_buffer_sizes();
 
+	/**
+	 * Updates the memory tracker with the current allocation of the given buffer member, which may be empty
+	 */
+	void track_buffer_memory(const oidn::BufferRef& buffer);
+
 	// Internal denoise function that takes raw pointers
 	void denoise(ColorRGB32F* data_to_denoise, float3_t* normals_aov, ColorRGB32F*);
 

@@ -6,6 +6,7 @@
 #ifndef HIPRT_SCENE_H
 #define HIPRT_SCENE_H
 
+#include "HIPRT-Orochi/GPUMemoryTracker.h"
 #include "HIPRT-Orochi/HIPRTOrochiUtils.h"
 #include "HIPRT-Orochi/OrochiTexture.h"
 #include "HIPRT-Orochi/OrochiBuffer.h"
@@ -25,13 +26,22 @@ struct HIPRTGeometry
 	~HIPRTGeometry()
 	{
 		if (m_mesh.triangleIndices)
+		{
+			GPUMemoryTracker::unregister_allocation(m_mesh.triangleIndices);
 			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_mesh.triangleIndices)));
+		}
 
 		if (m_mesh.vertices && m_allow_free_mesh_vertices)
+		{
+			GPUMemoryTracker::unregister_allocation(m_mesh.vertices);
 			OROCHI_CHECK_ERROR(oroFree(reinterpret_cast<oroDeviceptr>(m_mesh.vertices)));
+		}
 
 		if (m_geometry)
+		{
+			GPUMemoryTracker::unregister_allocation(m_geometry);
 			HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
+		}
 	}
 
 	HIPRTGeometry& operator=(HIPRTGeometry&& other) noexcept
@@ -51,6 +61,7 @@ struct HIPRTGeometry
 		m_mesh.triangleCount  = triangle_count;
 		m_mesh.triangleStride = sizeof(int3_t);
 		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_mesh.triangleIndices), triangle_count * sizeof(int3_t)));
+		GPUMemoryTracker::register_allocation(m_mesh.triangleIndices, triangle_count * sizeof(int3_t));
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_mesh.triangleIndices), triangles_indices.data(), triangle_count * sizeof(int3_t),
 									 oroMemcpyHostToDevice));
 	}
@@ -69,6 +80,7 @@ struct HIPRTGeometry
 		m_mesh.vertexCount	= vertices_positions.size();
 		m_mesh.vertexStride = sizeof(float3_t);
 		OROCHI_CHECK_ERROR(oroMalloc(reinterpret_cast<oroDeviceptr*>(&m_mesh.vertices), m_mesh.vertexCount * sizeof(float3_t)));
+		GPUMemoryTracker::register_allocation(m_mesh.vertices, m_mesh.vertexCount * sizeof(float3_t));
 		OROCHI_CHECK_ERROR(oroMemcpy(reinterpret_cast<oroDeviceptr>(m_mesh.vertices), vertices_positions.data(), m_mesh.vertexCount * sizeof(float3_t),
 									 oroMemcpyHostToDevice));
 	}
@@ -103,6 +115,9 @@ struct HIPRTGeometry
 		if (m_mesh.vertexCount == 0 || m_mesh.triangleCount == 0)
 			// No BVH to build
 			return;
+
+		// The BVH can be rebuilt from the UI, outside of the scene loading
+		GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::SCENE_BVH_CATEGORY);
 
 		hiprtBuildOptions build_options;
 		hiprtGeometryBuildInput geometry_build_input;
@@ -146,6 +161,7 @@ struct HIPRTGeometry
 
 			if (m_geometry != nullptr)
 			{
+				GPUMemoryTracker::unregister_allocation(m_geometry);
 				HIPRT_CHECK_ERROR(hiprtDestroyGeometry(m_hiprt_ctx, m_geometry));
 
 				m_geometry = nullptr;
@@ -187,6 +203,13 @@ struct HIPRTGeometry
 
 		if (do_compaction)
 			HIPRT_CHECK_ERROR(hiprtCompactGeometry(m_hiprt_ctx, 0, m_geometry, m_geometry));
+
+		// HIPRT allocates the BVH itself and doesn't expose its size: the size of the device allocation that
+		// starts at the geometry pointer is the size of the BVH
+		oroDeviceptr_t bvh_allocation_base = nullptr;
+		size_t bvh_allocation_size		   = 0;
+		OROCHI_CHECK_ERROR(oroMemGetAddressRange(&bvh_allocation_base, &bvh_allocation_size, reinterpret_cast<oroDeviceptr_t>(m_geometry)));
+		GPUMemoryTracker::register_allocation(m_geometry, bvh_allocation_size);
 
 		auto stop = std::chrono::high_resolution_clock::now();
 		g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "BVH built in %ldms",

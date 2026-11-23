@@ -34,7 +34,10 @@ OrochiTexture::~OrochiTexture()
 		oroDestroyTextureObject(m_texture);
 
 	if (m_texture_array)
+	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
+	}
 }
 
 void OrochiTexture::operator=(OrochiTexture&& other) noexcept
@@ -43,7 +46,10 @@ void OrochiTexture::operator=(OrochiTexture&& other) noexcept
 		oroDestroyTextureObject(m_texture);
 
 	if (m_texture_array)
+	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
+	}
 
 	m_texture_array = std::move(other.m_texture_array);
 	m_texture		= std::move(other.m_texture);
@@ -79,7 +85,7 @@ void OrochiTexture::create_texture_from_array(hipTextureFilterMode filtering_mod
 	texture_descriptor.sRGB		= false;
 
 	OROCHI_CHECK_ERROR(hipCreateTextureObject(&m_texture, &resource_descriptor, &texture_descriptor, nullptr));
-#else // #ifndef OROCHI_ENABLE_CUEW
+#else  // #ifndef OROCHI_ENABLE_CUEW
 	// Using native CUDA here to access 'normalizedCoords' which isn't  exposed by Orochi
 	// Note that this function is defined in another compile unit because we need to include CUDA headers
 	// and they conflict with HIP headers (structures redefinition, float2_t, float4_t, ...) it seems so we need to separate them
@@ -91,6 +97,7 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 {
 	if (m_texture_array)
 	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
 		m_texture_array = nullptr;
 	}
@@ -131,6 +138,7 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 	oroChannelFormatDesc channel_descriptor =
 		oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindUnsigned);
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
+	GPUMemoryTracker::register_allocation(m_texture_array, m_byte_size);
 	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(unsigned char),
 										  image.width * sizeof(unsigned char) * channels, image.height, oroMemcpyHostToDevice));
 
@@ -141,6 +149,7 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 {
 	if (m_texture_array)
 	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
 		m_texture_array = nullptr;
 	}
@@ -181,6 +190,7 @@ void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMod
 	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindFloat);
 
 	OROCHI_CHECK_ERROR(oroMallocArray(&m_texture_array, &channel_descriptor, image.width, image.height, oroArrayDefault));
+	GPUMemoryTracker::register_allocation(m_texture_array, m_byte_size);
 	OROCHI_CHECK_ERROR(oroMemcpy2DToArray(m_texture_array, 0, 0, image.data().data(), image.width * channels * sizeof(float),
 										  image.width * sizeof(float) * channels, image.height, oroMemcpyHostToDevice));
 

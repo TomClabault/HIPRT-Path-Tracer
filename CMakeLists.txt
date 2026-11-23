@@ -128,8 +128,8 @@ find_package(OpenGL REQUIRED)
 find_package(OpenImageDenoise REQUIRED HINTS ${oidnbinaries_SOURCE_DIR}) # HINTS to indicate a folder to search for the library in
 
 if (WIN32)
-	# "version" is a library from the Windows SDK
-	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt03001 clip version)
+	# "version", "dxgi" and "pdh" are libraries from the Windows SDK
+	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw3 glew32 hiprt03001 clip version dxgi pdh)
 elseif(UNIX)
 	find_package(GLEW REQUIRED)
 	target_link_libraries(HIPRTPathTracer PRIVATE OpenMP::OpenMP_CXX assimp OpenImageDenoise ${OPENGL_LIBRARY} glfw GLEW::GLEW hiprt03001 clip)

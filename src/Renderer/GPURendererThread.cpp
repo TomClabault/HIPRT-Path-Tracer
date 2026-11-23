@@ -263,6 +263,8 @@ void GPURendererThread::internal_pre_render_update_adaptive_sampling_buffers()
 			// At least on buffer is going to be resized so buffers are invalidated
 			m_renderer->m_render_data_buffers_invalidated = true;
 
+		GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_ADAPTIVE_SAMPLING_CATEGORY);
+
 		if (pixels_luminance_needs_resize)
 			// Only allocating if it isn't already
 			m_renderer->m_pixels_luminance_buffer.resize(m_renderer->m_render_resolution.x * m_renderer->m_render_resolution.y);
@@ -311,6 +313,7 @@ void GPURendererThread::internal_pre_render_update_global_stack_buffer()
 		if (m_renderer->get_render_data().global_traversal_stack_buffer.stackData != nullptr)
 		{
 			// Freeing if the buffer already exists
+			GPUMemoryTracker::unregister_allocation(m_renderer->get_render_data().global_traversal_stack_buffer.stackData);
 			HIPRT_CHECK_ERROR(
 				hiprtDestroyGlobalStackBuffer(m_renderer->m_hiprt_orochi_ctx->hiprt_ctx, m_renderer->get_render_data().global_traversal_stack_buffer));
 			m_renderer->get_render_data().global_traversal_stack_buffer.stackData = nullptr;

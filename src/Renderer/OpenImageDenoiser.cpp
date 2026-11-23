@@ -45,6 +45,9 @@ void OpenImageDenoiser::resize(int new_width, int new_height)
 
 	m_denoised_buffer		  = m_device.newBuffer(sizeof(ColorRGB32F) * new_width * new_height, oidn::Storage::Managed);
 	m_input_color_buffer_oidn = m_device.newBuffer(sizeof(ColorRGB32F) * new_width * new_height, oidn::Storage::Managed);
+
+	track_buffer_memory(m_denoised_buffer);
+	track_buffer_memory(m_input_color_buffer_oidn);
 }
 
 void OpenImageDenoiser::initialize()
@@ -77,6 +80,8 @@ void OpenImageDenoiser::finalize()
 		// Destroying the filter & buffer to free memory
 		m_normals_buffer_denoised_oidn = nullptr;
 
+	track_buffer_memory(m_normals_buffer_denoised_oidn);
+
 	if (m_denoise_normals && m_use_normals)
 	{
 		m_normals_filter = m_device.newFilter("RT");
@@ -99,6 +104,8 @@ void OpenImageDenoiser::finalize()
 	else
 		// Destroying the filter & buffer to free memory
 		m_albedo_buffer_denoised_oidn = nullptr;
+
+	track_buffer_memory(m_albedo_buffer_denoised_oidn);
 
 	if (m_denoise_albedo && m_use_albedo)
 	{
@@ -209,6 +216,20 @@ bool OpenImageDenoiser::check_buffer_sizes()
 	}
 
 	return true;
+}
+
+void OpenImageDenoiser::track_buffer_memory(const oidn::BufferRef& buffer)
+{
+	// The buffers of a CPU device are in system memory, not on the GPU
+	if (buffer.getHandle() == nullptr || m_cpu_device)
+	{
+		GPUMemoryTracker::unregister_allocation(&buffer);
+
+		return;
+	}
+
+	GPUMemoryCategoryScope memory_category_scope(GPUMemoryTracker::RENDERER_DENOISER_CATEGORY);
+	GPUMemoryTracker::register_allocation(&buffer, buffer.getSize());
 }
 
 void OpenImageDenoiser::denoise(ColorRGB32F* data_to_denoise_device_pointer, float3_t* normals_aov_device_pointer, ColorRGB32F* albedo_aov_device_pointer)

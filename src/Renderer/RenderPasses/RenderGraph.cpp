@@ -41,19 +41,31 @@ void RenderGraph::set_compiler_options(std::shared_ptr<GPUKernelCompilerOptions>
 void RenderGraph::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets)
 {
 	for (auto& name_to_render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(name_to_render_pass.second.get()));
+
 		name_to_render_pass.second->compile(hiprt_orochi_ctx, func_name_sets);
+	}
 }
 
 void RenderGraph::recompile(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx, const std::vector<hiprtFuncNameSet>& func_name_sets, bool silent, bool use_cache)
 {
 	for (auto& name_to_render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(name_to_render_pass.second.get()));
+
 		name_to_render_pass.second->recompile(hiprt_orochi_ctx, func_name_sets, silent, use_cache);
+	}
 }
 
 void RenderGraph::resize(unsigned int new_width, unsigned int new_height)
 {
 	for (auto& name_to_render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(name_to_render_pass.second.get()));
+
 		name_to_render_pass.second->resize(new_width, new_height);
+	}
 }
 
 bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& hiprt_orochi_ctx,
@@ -65,7 +77,11 @@ bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& 
 
 	bool recompiled = false;
 	for (auto& name_to_render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(name_to_render_pass.second.get()));
+
 		recompiled |= name_to_render_pass.second->pre_render_compilation_check(hiprt_orochi_ctx, func_name_sets, silent, use_cache);
+	}
 
 	return recompiled;
 }
@@ -73,14 +89,22 @@ bool RenderGraph::pre_render_compilation_check(std::shared_ptr<HIPRTOrochiCtx>& 
 void RenderGraph::prepass()
 {
 	for (auto& name_to_render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(name_to_render_pass.second.get()));
+
 		name_to_render_pass.second->prepass();
+	}
 }
 
 bool RenderGraph::pre_frame_render_update(float delta_time)
 {
 	bool render_data_invalidated = false;
 	for (auto& name_to_render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(name_to_render_pass.second.get()));
+
 		render_data_invalidated |= name_to_render_pass.second->pre_frame_render_update(delta_time);
+	}
 
 	// pre_frame_render_update means that this is a new frame
 	m_new_frame = true;
@@ -136,8 +160,13 @@ void RenderGraph::traverse_render_pass_in_dependency_order(std::shared_ptr<Rende
 
 	for (std::shared_ptr<RenderPass> dependency : render_pass->get_dependencies())
 		traverse_render_pass_in_dependency_order(dependency, visited_render_passes, callback);
+
 	// Visiting the render pass itself since all dependencies have been visited
-	callback(render_pass.get());
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(render_pass.get()));
+
+		callback(render_pass.get());
+	}
 	visited_render_passes[render_pass.get()] = true;
 }
 
@@ -158,13 +187,21 @@ void RenderGraph::traverse_render_passes_in_dependency_order(const std::function
 void RenderGraph::update_render_data()
 {
 	for (auto& render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(render_pass.second.get()));
+
 		render_pass.second->update_render_data();
+	}
 }
 
 void RenderGraph::reset(bool reset_by_camera_movement)
 {
 	for (auto& render_pass : m_render_passes)
+	{
+		GPUMemoryCategoryScope memory_category_scope(get_render_pass_memory_category(render_pass.second.get()));
+
 		render_pass.second->reset(reset_by_camera_movement);
+	}
 }
 
 void RenderGraph::compute_render_times()
@@ -256,4 +293,9 @@ std::shared_ptr<RenderPass> RenderGraph::get_render_pass(const std::string& rend
 std::unordered_map<std::string, std::shared_ptr<RenderPass>> RenderGraph::get_render_passes()
 {
 	return m_render_passes;
+}
+
+std::string RenderGraph::get_render_pass_memory_category(RenderPass* render_pass)
+{
+	return GPUMemoryTracker::RENDER_PASSES_GROUP + "/" + render_pass->get_name();
 }

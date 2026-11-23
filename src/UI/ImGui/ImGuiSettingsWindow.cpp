@@ -5,6 +5,7 @@
 
 #include "Compiler/GPUKernelCompiler.h"
 #include "Device/includes/BSDFs/MicrofacetRegularization.h"
+#include "HIPRT-Orochi/GPUMemoryTracker.h"
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 #include "HostDeviceCommon/KernelOptions/HeatmapOptions.h"
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeLearningToClusterOptions.h"
@@ -189,6 +190,7 @@ void ImGuiSettingsWindow::draw()
 	ImGui::SeparatorText("Other settings");
 	draw_performance_settings_panel();
 	draw_performance_metrics_panel();
+	draw_memory_metrics_panel();
 	draw_shader_kernels_panel();
 	draw_debug_panel();
 
@@ -5334,6 +5336,159 @@ void ImGuiSettingsWindow::draw_performance_metrics_panel()
 	ImGui::Dummy(ImVec2(0.0f, 20.0f));
 
 	ImGui::TreePop();
+}
+
+void ImGuiSettingsWindow::draw_memory_metrics_panel()
+{
+	if (!ImGui::CollapsingHeader("Memory metrics"))
+		return;
+
+	ImGui::TreePush("Memory metrics tree");
+
+	oroDeviceProp device_properties			 = m_renderer->get_device_properties();
+	GPUProcessMemoryInfo process_memory_info = GPUMemoryTracker::query_process_memory_info(device_properties.name, device_properties.totalGlobalMem);
+
+	size_t tracked_byte_size = GPUMemoryTracker::get_total_byte_size(GPUMemoryType::DEVICE);
+	// The operating system only reports the memory of the whole process, which is never less than what the renderer
+	// allocated: what the tracker doesn't see is allocated by the HIP runtime (kernel scratch memory, freed memory kept for later
+	// allocations), the compiled kernels, the internals of HIPRT and OpenImageDenoise, OpenGL and the UI
+	size_t renderer_byte_size = tracked_byte_size;
+	if (process_memory_info.available)
+		renderer_byte_size = std::max(tracked_byte_size, process_memory_info.dedicated_memory_used_bytes);
+
+	size_t untracked_byte_size = renderer_byte_size - tracked_byte_size;
+
+	// Grouping the categories by the part of their name before the '/'
+	std::map<std::string, size_t> category_byte_sizes = GPUMemoryTracker::get_category_byte_sizes(GPUMemoryType::DEVICE);
+	std::map<std::string, std::vector<std::pair<std::string, size_t>>> group_to_categories;
+	std::map<std::string, size_t> group_byte_sizes;
+	for (const auto& category_to_byte_size : category_byte_sizes)
+	{
+		size_t separator_position = category_to_byte_size.first.find('/');
+		std::string group_name	  = category_to_byte_size.first.substr(0, separator_position);
+		std::string category_name =
+			separator_position == std::string::npos ? category_to_byte_size.first : category_to_byte_size.first.substr(separator_position + 1);
+
+		group_to_categories[group_name].push_back(std::make_pair(category_name, category_to_byte_size.second));
+		group_byte_sizes[group_name] += category_to_byte_size.second;
+	}
+
+	// Largest groups first
+	std::vector<std::pair<std::string, size_t>> sorted_groups(group_byte_sizes.begin(), group_byte_sizes.end());
+	std::sort(sorted_groups.begin(), sorted_groups.end(), compare_memory_metrics_entries);
+
+	ImGui::Text("Renderer memory usage: %s", format_memory_size(renderer_byte_size).c_str());
+	ImGuiRenderer::show_help_marker("GPU memory used by the renderer. All the lines below sum up to this total.\n\n"
+									"The total is the dedicated GPU memory that the operating system attributes to this process "
+									"(the same number as in the task manager). Everything that the renderer allocates itself is "
+									"broken down by category, the remainder is shown as 'Untracked'.");
+
+	if (!process_memory_info.available)
+		ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.0f, 1.0f), "The memory usage of the process could not be queried: only the tracked allocations are counted.");
+
+	ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+	ImGuiTableFlags table_flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersOuter;
+	if (ImGui::BeginTable("Memory metrics table", 3, table_flags))
+	{
+		ImGui::TableSetupColumn("Category", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Size", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("0000.00 MiB").x);
+		ImGui::TableSetupColumn("Share", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("000.0 %").x * 2.0f);
+		ImGui::TableHeadersRow();
+
+		for (const std::pair<std::string, size_t>& group : sorted_groups)
+		{
+			bool group_open = draw_memory_metrics_table_row(group.first, group.second, renderer_byte_size, ImGuiTreeNodeFlags_SpanFullWidth);
+			if (!group_open)
+				continue;
+
+			std::vector<std::pair<std::string, size_t>>& categories = group_to_categories[group.first];
+			std::sort(categories.begin(), categories.end(), compare_memory_metrics_entries);
+
+			for (const std::pair<std::string, size_t>& category : categories)
+				draw_memory_metrics_table_row(category.first, category.second, renderer_byte_size,
+											  ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+
+			ImGui::TreePop();
+		}
+
+		if (process_memory_info.available)
+		{
+			draw_memory_metrics_table_row("Untracked", untracked_byte_size, renderer_byte_size,
+										  ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+			ImGuiRenderer::add_tooltip("Memory of the process that the renderer doesn't allocate itself:\n"
+									   "- scratch memory of the kernels (register spills and stacks): each stream that launches "
+									   "kernels with scratch gets its own, so overlapping the wavefront material family kernels "
+									   "multiplies it\n"
+									   "- memory freed by the renderer but kept by the HIP runtime for later allocations "
+									   "(BVH build buffers, buffers reallocated on resize, ...)\n"
+									   "- internal buffers of OpenImageDenoise and HIPRT\n"
+									   "- HIP and HIPRT contexts, compiled kernels, OpenGL textures of the UI, ...");
+		}
+
+		draw_memory_metrics_table_row("Total", renderer_byte_size, renderer_byte_size,
+									  ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanFullWidth);
+
+		ImGui::EndTable();
+	}
+
+	ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+	if (process_memory_info.available)
+	{
+		ImGui::Text("Current VRAM usage: %s / %s", format_memory_size(process_memory_info.adapter_dedicated_memory_used_bytes).c_str(),
+					format_memory_size(process_memory_info.adapter_dedicated_memory_bytes).c_str());
+
+		ImGui::Text("Shared system memory used by the renderer: %s", format_memory_size(process_memory_info.shared_memory_used_bytes).c_str());
+		ImGuiRenderer::show_help_marker("System memory that the GPU accesses directly, attributed to this process by the operating system. "
+										"It is not counted in the total above.");
+	}
+
+	ImGui::Text("Pinned host memory: %s", format_memory_size(GPUMemoryTracker::get_total_byte_size(GPUMemoryType::HOST_PINNED)).c_str());
+	ImGuiRenderer::show_help_marker("Page-locked system memory allocated by the renderer for fast transfers with the GPU. "
+									"It is not counted in the total above.");
+
+	ImGui::Dummy(ImVec2(0.0f, 20.0f));
+
+	ImGui::TreePop();
+}
+
+bool ImGuiSettingsWindow::draw_memory_metrics_table_row(const std::string& label, size_t byte_size, size_t total_byte_size, ImGuiTreeNodeFlags tree_node_flags)
+{
+	float share = total_byte_size == 0 ? 0.0f : static_cast<float>(byte_size) / static_cast<float>(total_byte_size);
+
+	ImGui::TableNextRow();
+
+	ImGui::TableNextColumn();
+	bool open = ImGui::TreeNodeEx(label.c_str(), tree_node_flags);
+
+	ImGui::TableNextColumn();
+	ImGui::TextUnformatted(format_memory_size(byte_size).c_str());
+
+	ImGui::TableNextColumn();
+	std::string share_text = std::format("{:.1f} %", share * 100.0f);
+	ImGui::ProgressBar(share, ImVec2(-FLT_MIN, 0.0f), share_text.c_str());
+
+	return open;
+}
+
+bool ImGuiSettingsWindow::compare_memory_metrics_entries(const std::pair<std::string, size_t>& first, const std::pair<std::string, size_t>& second)
+{
+	return first.second > second.second;
+}
+
+std::string ImGuiSettingsWindow::format_memory_size(size_t byte_size)
+{
+	double kibibytes = byte_size / 1024.0;
+	double mebibytes = kibibytes / 1024.0;
+	double gibibytes = mebibytes / 1024.0;
+
+	if (gibibytes >= 1.0)
+		return std::format("{:.2f} GiB", gibibytes);
+	else if (mebibytes >= 1.0)
+		return std::format("{:.1f} MiB", mebibytes);
+	else
+		return std::format("{:.1f} KiB", kibibytes);
 }
 
 void ImGuiSettingsWindow::draw_perf_metric_specific_panel(std::shared_ptr<PerformanceMetricsComputer> perf_metrics,

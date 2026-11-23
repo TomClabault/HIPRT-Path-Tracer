@@ -32,7 +32,10 @@ OrochiTexture3D::~OrochiTexture3D()
 		oroDestroyTextureObject(m_texture);
 
 	if (m_texture_array)
+	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
+	}
 }
 
 void OrochiTexture3D::operator=(OrochiTexture3D&& other) noexcept
@@ -41,7 +44,10 @@ void OrochiTexture3D::operator=(OrochiTexture3D&& other) noexcept
 		oroDestroyTextureObject(m_texture);
 
 	if (m_texture_array)
+	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
+	}
 
 	m_texture_array = std::move(other.m_texture_array);
 	m_texture		= std::move(other.m_texture);
@@ -54,6 +60,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 {
 	if (m_texture_array)
 	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
 		m_texture_array = nullptr;
 	}
@@ -86,6 +93,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image8Bit>& images, HIP
 		oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindUnsigned);
 
 	OROCHI_CHECK_ERROR(oroMalloc3DArray(&m_texture_array, &channel_descriptor, oroExtent{ width, height, depth }, oroArrayDefault));
+	GPUMemoryTracker::register_allocation(m_texture_array, width * height * depth * channels * sizeof(unsigned char));
 
 	// Because we're copying to a CUDA/HIP array, we need the input data
 	// to be in a single linear block of data
@@ -121,6 +129,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 {
 	if (m_texture_array)
 	{
+		GPUMemoryTracker::unregister_allocation(m_texture_array);
 		oroFreeArray(m_texture_array);
 		m_texture_array = nullptr;
 	}
@@ -152,6 +161,7 @@ void OrochiTexture3D::init_from_images(const std::vector<Image32Bit>& images, HI
 	oroChannelFormatDesc channel_descriptor = oroCreateChannelDesc(bits_channel_x, bits_channel_y, bits_channel_z, bits_channel_w, oroChannelFormatKindFloat);
 
 	OROCHI_CHECK_ERROR(oroMalloc3DArray(&m_texture_array, &channel_descriptor, oroExtent{ width, height, depth }, oroArrayDefault));
+	GPUMemoryTracker::register_allocation(m_texture_array, width * height * depth * channels * sizeof(float));
 
 	// Because we're copying to a CUDA/HIP array, we need the input data
 	// to be in a single linear block of data
