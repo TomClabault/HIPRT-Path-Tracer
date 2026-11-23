@@ -155,6 +155,15 @@ private:
 
 	bool is_using_learning_to_cluster(const GPUKernelCompilerOptions& compiler_options) const;
 
+	/**
+	 * Whether the tree refines from the training samples after the sample 'render_data.render_settings.sample_number'
+	 */
+	bool is_tree_refining(const HIPRTRenderData& render_data) const;
+	/**
+	 * Whether learning to cluster learns from the training samples after the sample 'render_data.render_settings.sample_number'
+	 */
+	bool is_learning_to_cluster_learning(const HIPRTRenderData& render_data) const;
+
 	bool m_frozen_tree				 = false;
 	bool m_buffers_need_reallocation = true;
 

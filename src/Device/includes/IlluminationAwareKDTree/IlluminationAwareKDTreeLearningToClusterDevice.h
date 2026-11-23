@@ -237,6 +237,8 @@ struct IlluminationAwareKDTreeLearningToClusterDevice
 	IlluminationAwareKDTreeLearningToClusterTrainingSampleSoADevice training_samples_soa;
 	AtomicType<unsigned int>* training_sample_count = nullptr;
 	unsigned int training_sample_capacity			= 0;
+	// Set by the host before each sample: false when learning to cluster does not learn after the sample, nothing then reads its training samples
+	bool training_sample_appends_enabled = true;
 
 	AtomicType<unsigned int>* lightcut_count		   = nullptr;
 	AtomicType<unsigned int>* allocated_lightcut_count = nullptr;

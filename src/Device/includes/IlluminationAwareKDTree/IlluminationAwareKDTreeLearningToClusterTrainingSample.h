@@ -38,6 +38,10 @@ HIPRT_DEVICE HIPRT_INLINE unsigned int IlluminationAwareKDTreeLearningToClusterD
 	return training_sample_capacity;
 #endif
 
+	// No kernel reads the training samples of the current sample: appending would only cost the atomics and the stores
+	if (!training_sample_appends_enabled)
+		return training_sample_capacity;
+
 	unsigned int sample_index = hippt::atomic_fetch_add(training_sample_count, 0u);
 	if (sample_index >= training_sample_capacity)
 		return training_sample_capacity;

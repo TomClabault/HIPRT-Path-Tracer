@@ -358,6 +358,10 @@ struct IlluminationAwareKDTreeCoreDevice
 		return training_sample_capacity;
 #endif
 
+		// No kernel reads the training samples of the current sample: appending would only cost the atomics and the stores
+		if (!training_sample_appends_enabled)
+			return training_sample_capacity;
+
 		// Invalid samples must not consume buffer space or affect b0.
 		if (!sample.valid_for_spatial_training)
 			return training_sample_capacity;
@@ -576,6 +580,8 @@ struct IlluminationAwareKDTreeCoreDevice
 	IlluminationAwareKDTreeDirectIlluminationTrainingSample* training_samples = nullptr;
 	AtomicType<unsigned int>* training_sample_count							  = nullptr;
 	unsigned int training_sample_capacity									  = 0;
+	// Set by the host before each sample: false when the tree does not refine after the sample, nothing then reads its training samples
+	bool training_sample_appends_enabled = true;
 
 	IlluminationAwareKDTreeIlluminationSignature* batch_signatures	 = nullptr;
 	IlluminationAwareKDTreeIlluminationSignature* history_signatures = nullptr;

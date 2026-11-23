@@ -390,6 +390,12 @@ void IlluminationAwareKDTreeRenderPass::pre_sample_update_async(HIPRTRenderData&
 
 		return;
 
+	// The kernels of the sample append training samples only for the passes that read them after the sample. 'render_data' is the render data of
+	// the sample, its kernels are launched after this update
+	render_data.kd_tree_device.core.training_sample_appends_enabled = is_tree_refining(render_data);
+	render_data.kd_tree_device.learning_to_cluster.training_sample_appends_enabled =
+		is_using_learning_to_cluster(compiler_options) && is_learning_to_cluster_learning(render_data);
+
 	IlluminationAwareKDTreeDevice kd_tree_device = render_data.kd_tree_device;
 	unsigned int node_reset_thread_count		 = kd_tree_device.core.node_capacity;
 	void* launch_args[]							 = { &kd_tree_device };
@@ -412,6 +418,24 @@ bool IlluminationAwareKDTreeRenderPass::is_using_learning_to_cluster(const GPUKe
 															 compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_SAMPLING_STRATEGY));
 }
 
+bool IlluminationAwareKDTreeRenderPass::is_tree_refining(const HIPRTRenderData& render_data) const
+{
+	// Using -1 because this counter is 0-based but the SPPs displayed at the top of the UI are 1-based. This is just to match the user's HUD
+	bool refinement_spp_budget_reached = render_data.render_settings.sample_number > render_data.kd_tree_device.core.user_settings.stop_refining_after_SPP - 1;
+
+	return !m_frozen_tree && !refinement_spp_budget_reached;
+}
+
+bool IlluminationAwareKDTreeRenderPass::is_learning_to_cluster_learning(const HIPRTRenderData& render_data) const
+{
+	bool learning_to_cluster_learning_spp_budget_reached =
+		render_data.render_settings.sample_number >= m_learning_to_cluster_learning_spp && m_learning_to_cluster_learning_spp > 0;
+	bool learning_to_cluster_learning_time_budget_reached =
+		m_learning_to_cluster_elapsed_seconds >= m_learning_to_cluster_learning_seconds && m_learning_to_cluster_learning_seconds > 0;
+
+	return !learning_to_cluster_learning_spp_budget_reached && !learning_to_cluster_learning_time_budget_reached;
+}
+
 bool IlluminationAwareKDTreeRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCompilerOptions& compiler_options)
 {
 	if (!is_render_pass_used(compiler_options))
@@ -430,9 +454,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	IlluminationAwareKDTreeDevice kd_tree_device = render_data.kd_tree_device;
 
-	// Using -1 because this counter is 0-based but the SPPs displayed at the top of the UI are 1-based. This is just to match the user's HUD
-	bool refinement_spp_budget_reached = render_data.render_settings.sample_number > kd_tree_device.core.user_settings.stop_refining_after_SPP - 1;
-	if (!m_frozen_tree && !refinement_spp_budget_reached)
+	if (is_tree_refining(render_data))
 	{
 		// TODO maybe download the training_sample_count and launch the kernel with a single thread per sample instead of launching a fixed number of threads
 		// and
@@ -500,11 +522,7 @@ void IlluminationAwareKDTreeRenderPass::post_sample_update_async(HIPRTRenderData
 
 	if (is_using_learning_to_cluster(compiler_options))
 	{
-		bool learning_to_cluster_learning_spp_budget_reached =
-			render_data.render_settings.sample_number >= m_learning_to_cluster_learning_spp && m_learning_to_cluster_learning_spp > 0;
-		bool learning_to_cluster_learning_time_budget_reached =
-			m_learning_to_cluster_elapsed_seconds >= m_learning_to_cluster_learning_seconds && m_learning_to_cluster_learning_seconds > 0;
-		if (learning_to_cluster_learning_spp_budget_reached || learning_to_cluster_learning_time_budget_reached)
+		if (!is_learning_to_cluster_learning(render_data))
 		{
 			m_illumination_aware_kd_tree.m_learning_to_cluster_data.m_allocated_lightcut_count.download_data_async(
 				m_cached_current_allocated_lightcut_count.get_host_pinned_pointer(), m_renderer->get_main_stream());

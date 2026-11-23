@@ -401,11 +401,13 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 
 	if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 	{
+		bool update_training_samples	  = render_data.kd_tree_device.shadow_rays_update_training_samples();
+		unsigned int training_update_flag = update_training_samples ? WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER : 0u;
+
 		// The shadow sink multiplies the contribution by the path throughput
-		unsigned int queue_slot =
-			shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction, mis_estimator,
-							  WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
-		if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
+		unsigned int queue_slot = shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction,
+													mis_estimator, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | training_update_flag);
+		if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT && update_training_samples)
 		{
 			WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
 			sidecar.spatial_training_sample_index = render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
@@ -532,10 +534,13 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 					render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, light_sample, shadow_direction, solid_angle_pdf,
 					triangle_sample.cluster_probability, random_number_generator, spatial_radiance_weight, cluster_reward);
 
+				bool update_training_samples	  = render_data.kd_tree_device.shadow_rays_update_training_samples();
+				unsigned int training_update_flag = update_training_samples ? WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER : 0u;
+
 				unsigned int queue_slot =
 					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index, light_sample.point_on_light,
-									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER);
-				if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
+									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | training_update_flag);
+				if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT && update_training_samples)
 				{
 					WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
 					sidecar.spatial_training_sample_index = render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);

@@ -57,6 +57,14 @@ struct IlluminationAwareKDTreeDevice
 		return lightcut_index;
 	}
 
+	/**
+	 * Whether the shadow rays of the light samples of learning to cluster have to write their visibility into the training samples
+	 */
+	HIPRT_DEVICE bool shadow_rays_update_training_samples() const
+	{
+		return core.training_sample_appends_enabled || learning_to_cluster.training_sample_appends_enabled;
+	}
+
 	IlluminationAwareKDTreeCoreDevice core;
 	IlluminationAwareKDTreeLearningToClusterDevice learning_to_cluster;
 
