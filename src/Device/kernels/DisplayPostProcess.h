@@ -56,12 +56,24 @@ inline DisplayPostProcess(HIPRTRenderData render_data, int x, int y)
 		break;
 
 	case DISPLAY_POST_PROCESS_DENOISED_BLEND:
-		final_color = display_view_denoised_blend(render_data, source_pixel_index);
-		break;
-
 	case DISPLAY_POST_PROCESS_GMON_BLEND:
-		final_color = display_view_gmon_blend(render_data, source_pixel_index);
+	{
+		// An adaptive sampling debug view replaces the blended image, as it replaces the accumulated image in the default view
+		bool has_adaptive_sampling_debug_color = display_view_compute_adaptive_sampling_debug_color(
+			render_data, static_cast<int>(source_pixel_index), display_settings.adaptive_sampling_display_view,
+			display_settings.adaptive_sampling_heatmap_index, final_color);
+		if (has_adaptive_sampling_debug_color)
+		{
+			// The blend functions tonemap their colors themselves
+			if (display_settings.do_tonemapping == 1)
+				final_color = tonemap_exponential(final_color, display_settings.exposure, display_settings.gamma);
+		}
+		else if (display_settings.display_view == DISPLAY_POST_PROCESS_GMON_BLEND)
+			final_color = display_view_gmon_blend(render_data, source_pixel_index);
+		else
+			final_color = display_view_denoised_blend(render_data, source_pixel_index);
 		break;
+	}
 
 	case DISPLAY_POST_PROCESS_WHITE_FURNACE_THRESHOLD:
 	{
