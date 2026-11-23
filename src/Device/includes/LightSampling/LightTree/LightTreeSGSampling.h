@@ -126,12 +126,14 @@ HIPRT_DEVICE bool light_tree_sg_node_rejected(const LightTreeSGNodeDevice& node,
 	// rejected for sure so the bounds test does not matter).
 	bool mean_behind_surface = hippt::dot(shading_normal, node.spatial_mean - shading_point) <= 0.0f;
 
-	float3_t max_corner;
-	max_corner.x = (shading_normal.x >= 0.0f) ? node.bounds_max.x : node.bounds_min.x;
-	max_corner.y = (shading_normal.y >= 0.0f) ? node.bounds_max.y : node.bounds_min.y;
-	max_corner.z = (shading_normal.z >= 0.0f) ? node.bounds_max.z : node.bounds_min.z;
+	float3_t to_bounds_min = node.bounds_min - shading_point;
+	float3_t to_bounds_max = node.bounds_max - shading_point;
 
-	bool bounds_behind_surface = hippt::dot(max_corner - shading_point, shading_normal) <= 0.0f;
+	float farthest_corner_distance = hippt::max(shading_normal.x * to_bounds_min.x, shading_normal.x * to_bounds_max.x) +
+									 hippt::max(shading_normal.y * to_bounds_min.y, shading_normal.y * to_bounds_max.y) +
+									 hippt::max(shading_normal.z * to_bounds_min.z, shading_normal.z * to_bounds_max.z);
+
+	bool bounds_behind_surface = farthest_corner_distance <= 0.0f;
 
 	// Bitwise | and & instead of || and &&: the short-circuit operators would compile to a branch around the cone test, which would delay the
 	// loads of the cone fields behind the other tests
@@ -194,7 +196,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 			float2x2(spec_data.projected_roughness_2.x, 0.0f, 0.0f, spec_data.projected_roughness_2.y) + 2.0f * light_lobe_variance * spec_data.jj_matrix;
 
 		float det_JJ4 = 1.0f / (4.0f * spec_data.wi.z * spec_data.wi.z);
-		float det	  = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
+		float det = spec_data.projected_roughness_2.x * spec_data.projected_roughness_2.y +
 					2.0f * light_lobe_variance *
 						(spec_data.projected_roughness_2.x * spec_data.jj_matrix.m[0][0] + spec_data.projected_roughness_2.y * spec_data.jj_matrix.m[1][1]) +
 					light_lobe_variance * light_lobe_variance * det_JJ4;
@@ -310,8 +312,8 @@ HIPRT_DEVICE float light_tree_sg_node_raw_variance(const LightTreeSGNodeDevice& 
 	float mean_geometric	 = 1.0f / (a * b);
 	float variance_geometric = (b3 - a3) / (3.0f * (b - a) * a3 * b3) - 1.0f / (a * a * b * b);
 	float variance			 = (energy_statistics.energy_variance * variance_geometric + energy_statistics.energy_variance * hippt::square(mean_geometric) +
-						hippt::square(energy_statistics.get_energy_average()) * variance_geometric) *
-					 hippt::square(energy_statistics.total_emitter_count);
+								hippt::square(energy_statistics.get_energy_average()) * variance_geometric) *
+							   hippt::square(energy_statistics.total_emitter_count);
 
 	return variance;
 }
