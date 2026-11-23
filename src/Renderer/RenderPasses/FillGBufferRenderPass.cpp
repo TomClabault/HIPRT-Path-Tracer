@@ -9,6 +9,7 @@
 #include "Threads/ThreadManager.h"
 #include "UI/RenderWindow.h"
 
+#include <algorithm>
 #include <memory>
 
 const std::string FillGBufferRenderPass::FILL_GBUFFER_RENDER_PASS_NAME = "Fill G-Buffer Render Pass";
@@ -50,19 +51,35 @@ void FillGBufferRenderPass::compile(std::shared_ptr<HIPRTOrochiCtx> hiprt_orochi
 
 void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_height)
 {
-	m_g_buffer.resize(new_width * new_height, get_ray_volume_state_byte_size());
+	m_render_resolution = m_renderer->m_render_resolution;
+
+	// The owner of the G-buffers resizes them for all the render passes that fill them
+	if (m_g_buffers_owner != nullptr)
+	{
+		m_ray_volume_state_byte_size = query_ray_volume_state_byte_size();
+
+		return;
+	}
+
+	size_t g_buffers_ray_volume_state_byte_size = get_g_buffers_ray_volume_state_byte_size();
+
+	m_g_buffer.resize(new_width * new_height, g_buffers_ray_volume_state_byte_size);
 
 	if (mis_target_function_bsdf_approximation_lobe_records_needed())
 		m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.resize(new_width * new_height);
 
 	if (m_renderer->get_render_data().render_settings.use_prev_frame_g_buffer(m_renderer))
-		m_g_buffer_prev_frame.resize(new_width * new_height, get_ray_volume_state_byte_size());
-
-	m_render_resolution = m_renderer->m_render_resolution;
+		m_g_buffer_prev_frame.resize(new_width * new_height, g_buffers_ray_volume_state_byte_size);
 }
 
 bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 {
+	// The G-buffers that this render pass fills are allocated by their owner, when the render graph of the owner renders.
+	// The lobe records and the G-buffer of the previous frame are only written by ReSTIR PT, which the render graphs that
+	// use the G-buffers of another render pass don't run
+	if (m_g_buffers_owner != nullptr)
+		return false;
+
 	HIPRTRenderData& render_data = m_renderer->get_render_data();
 
 	bool render_data_invalidated = false;
@@ -89,7 +106,7 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 		bool prev_frame_g_buffer_needs_resize = m_g_buffer_prev_frame.first_hit_prim_index.size() == 0;
 		if (prev_frame_g_buffer_needs_resize)
 		{
-			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
+			m_g_buffer_prev_frame.resize(m_render_resolution.x * m_render_resolution.y, get_g_buffers_ray_volume_state_byte_size());
 
 			return true;
 		}
@@ -142,11 +159,12 @@ void FillGBufferRenderPass::update_render_data()
 	HIPRTRenderData& render_data		   = m_renderer->get_render_data();
 	render_data.ray_volume_state_byte_size = m_ray_volume_state_byte_size;
 
-	render_data.g_buffer = m_g_buffer.get_device_g_buffer();
+	FillGBufferRenderPass* g_buffers_owner = m_g_buffers_owner != nullptr ? m_g_buffers_owner : this;
+	render_data.g_buffer				   = g_buffers_owner->m_g_buffer.get_device_g_buffer();
 
 	if (render_data.render_settings.use_prev_frame_g_buffer(m_renderer))
 		// Only setting the pointers of the buffers if we're actually using the g-buffer of the previous frame
-		render_data.g_buffer_prev_frame = m_g_buffer_prev_frame.get_device_g_buffer();
+		render_data.g_buffer_prev_frame = g_buffers_owner->m_g_buffer_prev_frame.get_device_g_buffer();
 	else
 	{
 		render_data.g_buffer_prev_frame.materials			 = nullptr;
@@ -157,6 +175,14 @@ void FillGBufferRenderPass::update_render_data()
 }
 
 size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
+{
+	m_ray_volume_state_byte_size							 = query_ray_volume_state_byte_size();
+	m_renderer->get_render_data().ray_volume_state_byte_size = m_ray_volume_state_byte_size;
+
+	return m_ray_volume_state_byte_size;
+}
+
+size_t FillGBufferRenderPass::query_ray_volume_state_byte_size()
 {
 	OrochiBuffer<size_t> out_size_buffer(1);
 	size_t* out_size_buffer_pointer = out_size_buffer.get_device_pointer();
@@ -171,20 +197,42 @@ size_t FillGBufferRenderPass::get_ray_volume_state_byte_size()
 		// That's too much of a difference, there must be an issue
 		Debug::debugbreak();
 
-	m_ray_volume_state_byte_size							 = size;
-	m_renderer->get_render_data().ray_volume_state_byte_size = m_ray_volume_state_byte_size;
+	return size;
+}
 
-	return m_ray_volume_state_byte_size;
+size_t FillGBufferRenderPass::get_g_buffers_ray_volume_state_byte_size()
+{
+	size_t byte_size = get_ray_volume_state_byte_size();
+	for (FillGBufferRenderPass* g_buffers_user : m_g_buffers_users)
+		byte_size = std::max(byte_size, g_buffers_user->query_ray_volume_state_byte_size());
+
+	return byte_size;
 }
 
 void FillGBufferRenderPass::resize_g_buffer_ray_volume_states()
 {
 	m_renderer->synchronize_all_kernels();
 
-	m_g_buffer.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
+	// The owner of the G-buffers resizes them for all the render passes that fill them
+	if (m_g_buffers_owner != nullptr)
+	{
+		m_ray_volume_state_byte_size = query_ray_volume_state_byte_size();
+
+		return;
+	}
+
+	size_t g_buffers_ray_volume_state_byte_size = get_g_buffers_ray_volume_state_byte_size();
+
+	m_g_buffer.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, g_buffers_ray_volume_state_byte_size);
 
 	if (m_renderer->get_render_data().render_settings.use_prev_frame_g_buffer())
-		m_g_buffer_prev_frame.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, get_ray_volume_state_byte_size());
+		m_g_buffer_prev_frame.ray_volume_states.resize(m_render_resolution.x * m_render_resolution.y, g_buffers_ray_volume_state_byte_size);
 
 	m_renderer->invalidate_render_data_buffers();
+}
+
+void FillGBufferRenderPass::use_g_buffers_of(FillGBufferRenderPass* g_buffers_owner)
+{
+	m_g_buffers_owner = g_buffers_owner;
+	g_buffers_owner->m_g_buffers_users.push_back(this);
 }

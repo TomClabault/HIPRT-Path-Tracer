@@ -54,7 +54,29 @@ public:
 
 	void resize_g_buffer_ray_volume_states();
 
+	/**
+	 * Makes this render pass fill the G-buffers of 'g_buffers_owner' instead of allocating its own.
+	 *
+	 * Only one render graph renders at a time so the passes of two render graphs can fill the same G-buffers: a second set of
+	 * G-buffers would only take VRAM. The owner keeps allocating, resizing and freeing them.
+	 *
+	 * Must be called before the first resize()
+	 */
+	void use_g_buffers_of(FillGBufferRenderPass* g_buffers_owner);
+
 private:
+	/**
+	 * Launches the kernel that returns the size of the RayVolumeState structure on the GPU for the compiler options of this
+	 * render pass. Unlike get_ray_volume_state_byte_size(), the render data isn't updated
+	 */
+	size_t query_ray_volume_state_byte_size();
+	/**
+	 * Size of the elements of the RayVolumeState buffers of the G-buffers: the largest RayVolumeState of this render pass and of
+	 * the render passes that fill its G-buffers. The render graphs have their own compiler options so the nested dielectrics stack,
+	 * and with it the RayVolumeState, can have a different size in each of them
+	 */
+	size_t get_g_buffers_ray_volume_state_byte_size();
+
 	/**
 	 * Whether the G-buffer needs the lobe records of the MIS target function BSDF approximation of ReSTIR PT
 	 * (GBufferDevice::mis_target_function_bsdf_approximation_lobe_records): ReSTIR PT path sampling with the union domain SPMIS reuse, the approximation
@@ -67,6 +89,11 @@ private:
 	// G-buffers of the current frame (camera rays hits) and previous frame
 	GBufferGPURenderer m_g_buffer;
 	GBufferGPURenderer m_g_buffer_prev_frame;
+
+	// Render pass whose G-buffers this render pass fills, nullptr if this render pass fills its own G-buffers
+	FillGBufferRenderPass* m_g_buffers_owner = nullptr;
+	// Render passes that fill the G-buffers of this render pass
+	std::vector<FillGBufferRenderPass*> m_g_buffers_users;
 
 	// Kernel used for retrieving the size of the RayVolumeState structure on the GPU
 	std::shared_ptr<GPUKernel> m_ray_volume_state_byte_size_kernel = nullptr;

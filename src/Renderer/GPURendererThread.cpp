@@ -155,7 +155,9 @@ void GPURendererThread::setup_render_graphs()
 	render_graph_interactivity.get_compiler_options()->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_BSDF);
 
 	std::shared_ptr<FillGBufferRenderPass> camera_rays_render_pass_interactivity = render_graph_interactivity.create_render_pass<FillGBufferRenderPass>();
-	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass_interactivity	 = render_graph_interactivity.create_render_pass<MegaKernelRenderPass>();
+	// The interactivity render graph never renders at the same time as the full render graph: it fills the G-buffers of the full render graph
+	camera_rays_render_pass_interactivity->use_g_buffers_of(camera_rays_render_pass.get());
+	std::shared_ptr<MegaKernelRenderPass> megakernel_render_pass_interactivity = render_graph_interactivity.create_render_pass<MegaKernelRenderPass>();
 	megakernel_render_pass_interactivity->add_dependency(camera_rays_render_pass_interactivity);
 	std::shared_ptr<HierarchicalAdaptiveSamplingRenderPass> hierarchical_adaptive_sampling_render_pass_interactivity =
 		render_graph_interactivity.create_render_pass<HierarchicalAdaptiveSamplingRenderPass>();
