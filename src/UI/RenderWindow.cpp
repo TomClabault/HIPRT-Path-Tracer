@@ -210,6 +210,8 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Some NEE radiance cache that is able to tell us in advance where in the scene NEE is weak. In those places, we can just russian roulette NEE ot save perf
+// for no that much added noise
 // - Radiance caching SHaRC, ORCA, SH, double buffering for updating while tracing, how to handle specular? ...
 // - Denoiser-aware adaptive sampling: we don't need to make diffuse flat surface super noise-free because a denoiser is just going to do a super good job here,
 //	so we can reliably samples less and let that to the denoiser

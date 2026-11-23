@@ -44,13 +44,14 @@ HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_bsd
 		float3_t shading_normal_sample_point	 = sample.rc_vertex_shading_normal.unpack();
 		float3_t geometric_normal_sample_point	 = sample.rc_vertex_geometric_normal.unpack();
 
+		int rc_vertex_material_index = render_data.buffers.material_indices[sample.rc_vertex_primitive_index];
+
 		RayVolumeState ray_volume_state_copy = surface_ray_volume_state;
 		// TODO reproduce roughness accumumlation
 		// ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
 		ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_volume_state_copy, surface_material, sample.incident_light_info_at_visible_point,
-													   surface_primitive_index);
+													   rc_vertex_material_index);
 
-		int rc_vertex_material_index = render_data.buffers.material_indices[sample.rc_vertex_primitive_index];
 		DeviceUnpackedPrincipledFullMaterial rc_vertex_material =
 			get_intersection_material(render_data, rc_vertex_material_index, make_float2(sample.rc_vertex_texcoords_u, sample.rc_vertex_texcoords_v));
 		BSDFContext secondary_hit_eval_context(view_direction, shading_normal_sample_point, geometric_normal_sample_point, to_light_direction_sample_point,

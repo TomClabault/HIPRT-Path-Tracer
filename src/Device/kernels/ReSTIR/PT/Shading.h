@@ -116,12 +116,13 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 			float3_t shading_normal_sample_point	 = resampling_reservoir.sample.rc_vertex_shading_normal.unpack();
 			float3_t geometric_normal_sample_point	 = resampling_reservoir.sample.rc_vertex_geometric_normal.unpack();
 
+			int rc_vertex_material_index = render_data.buffers.material_indices[resampling_reservoir.sample.rc_vertex_primitive_index];
+
 			ReSTIR_PT_update_volume_state_for_sample_point(render_data, ray_payload.volume_state, ray_payload.material,
-														   resampling_reservoir.sample.incident_light_info_at_visible_point, closest_hit_info.primitive_index);
+														   resampling_reservoir.sample.incident_light_info_at_visible_point, rc_vertex_material_index);
 			// Reproducing roughness accumulation
 			ray_payload.accumulate_roughness(resampling_reservoir.sample.incident_light_info_at_visible_point);
 
-			int rc_vertex_material_index = render_data.buffers.material_indices[resampling_reservoir.sample.rc_vertex_primitive_index];
 			DeviceUnpackedPrincipledFullMaterial rc_vertex_material =
 				get_intersection_material(render_data, rc_vertex_material_index,
 										  make_float2(resampling_reservoir.sample.rc_vertex_texcoords_u, resampling_reservoir.sample.rc_vertex_texcoords_v));
@@ -140,14 +141,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline ReSTIR_PT_Shading(HIPRTRenderData render_da
 		if (bsdf_pdf_first_hit > 0.0f)
 			camera_outgoing_radiance +=
 				first_hit_throughput * secondary_hit_throughput * resampling_reservoir.sample.rc_vertex_incident_radiance * resampling_reservoir.UCW;
-			// DEBUG_GLASS_FRAME
-			if (ray_payload.material.ior == 1.0f && ray_payload.material.specular_transmission == 1.0f && ray_payload.material.roughness == 0.0f && x % 8 == 0 && y % 8 == 0 && render_data.render_settings.sample_number < 2)
-				printf("DBG px %u %u spp %d UCW %g tf %g di %d ili0 %u ili1 %u pdf1 %g bsdf1 %g thr1 %g sec %g Li %g rcprim %d
-", x, y, render_data.render_settings.sample_number, resampling_reservoir.UCW, resampling_reservoir.sample.target_function, (int)resampling_reservoir.sample.di_sample, (unsigned int)resampling_reservoir.sample.incident_light_info_at_visible_point, (unsigned int)resampling_reservoir.sample.incident_light_info_at_sample_point, bsdf_pdf_first_hit, bsdf_first_hit.luminance(), first_hit_throughput.luminance(), secondary_hit_throughput.luminance(), resampling_reservoir.sample.rc_vertex_incident_radiance.luminance(), resampling_reservoir.sample.rc_vertex_primitive_index);
-		}
-		else if (ray_payload.material.ior == 1.0f && ray_payload.material.specular_transmission == 1.0f && ray_payload.material.roughness == 0.0f && x % 8 == 0 && y % 8 == 0 && render_data.render_settings.sample_number < 2)
-			printf("DBG px %u %u spp %d EMPTY UCW %g wsum %g conf %d di %d
-", x, y, render_data.render_settings.sample_number, resampling_reservoir.UCW, resampling_reservoir.weight_sum, (int)resampling_reservoir.confidence, (int)resampling_reservoir.sample.di_sample);
+	}
 
 	render_data.store_updated_random_seed(pixel_index, random_number_generator.m_state.seed);
 

@@ -76,22 +76,34 @@ HIPRT_DEVICE bool ReSTIR_PT_visibility_validation(const HIPRTRenderData& render_
 	return false;
 }
 
+/**
+ * Brings 'volume_state', the volume state at the visible point as reconstruct_first_hit() leaves it (visible point material pushed), to the volume
+ * state that the path tracer has when it evaluates the BSDF at the sample point: the stack update of the BSDF sample at the visible point, then
+ * the push of the material of the sample point by trace_main_path_ray()
+ *
+ * The material pushed is the one of the sample point, not of the visible point. Through a glass surface that does not close a volume (a pane in
+ * front of a picture), a second push of the glass of the visible point would mark the ray as exiting the glass at the sample point: the BSDF
+ * evaluation of an opaque sample point then only keeps its glass lobe and returns 0
+ */
 // Forced inline: out of line, the volume state and the material passed by reference live in scratch memory in the caller
 HIPRT_DEVICE HIPRT_FORCEINLINE void ReSTIR_PT_update_volume_state_for_sample_point(const HIPRTRenderData& render_data,
 																				   RayVolumeState& volume_state,
 																				   DeviceUnpackedPrincipledFullMaterial& material_at_visible_point,
 																				   BSDFIncidentLightInfo incident_light_info_visible_point,
-																				   int visible_point_primitive_index)
+																				   int sample_point_material_index)
 {
-	if (bsdf_incident_light_info_transmission_lobe(incident_light_info_visible_point))
-	{
-		// If we refracted at the visible point, we need to push the material index of the visible point into the interior stack of the ray volume state
-		// so that the BSDF evaluation at the sample point is correct and has the expected ray volume state
-		int material_index = render_data.buffers.material_indices[visible_point_primitive_index];
+	// The BSDF sampling pops the visible point off the stack when it reflects and when it refracts through a thin walled glass (both interfaces of
+	// a thin walled glass are in the one surface, the ray leaves the glass right away)
+	bool refracted			= bsdf_incident_light_info_transmission_lobe(incident_light_info_visible_point);
+	bool refracted_by_glass = (incident_light_info_visible_point & BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFRACT_LOBE) != 0;
+	if (!refracted || (refracted_by_glass && material_at_visible_point.thin_walled))
+		volume_state.interior_stack.pop(false);
 
-		volume_state.interior_stack.push(material_index, material_at_visible_point.get_dielectric_priority(), volume_state.incident_mat_index,
-										 volume_state.outgoing_mat_index, volume_state.inside_material);
-	}
+	// If we refracted at the visible point, the material of the visible point stays in the interior stack of the ray volume state so that the BSDF
+	// evaluation at the sample point has the expected ray volume state (incident medium of the sample point)
+	unsigned char sample_point_dielectric_priority = get_intersection_dielectric_priority(render_data, sample_point_material_index);
+	volume_state.interior_stack.push(sample_point_material_index, sample_point_dielectric_priority, volume_state.incident_mat_index,
+									 volume_state.outgoing_mat_index, volume_state.inside_material);
 }
 
 #endif // #ifndef DEVICE_RESTIR_PT_UTILS_H
