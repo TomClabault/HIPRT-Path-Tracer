@@ -199,11 +199,22 @@ HIPRT_DEVICE void ReSTIR_PT_add_candidate(int bounce,
 }
 
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+/**
+ * Solid angle PDF with which the light candidates of the previous vertex sample the emissive triangle hit by the deferred BSDF candidate.
+ * 0 when the lightcut of the previous vertex is unresolved: no light candidate sampled emissive geometry there.
+ *
+ * The material reloaded by get_last_material() cannot decide that: for the primary hit it is read at default texture coordinates, so a
+ * textured material that is perfectly smooth at the hit (no light sampling, lightcut left unresolved) can be rough there. The PDF would
+ * then read the lightcut data at the unresolved index, far out of bounds
+ */
 // Not inlined: inlined into the initial candidates kernel, this PDF raises the register count of the kernel above an allocation step
 HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_angle_pdf(const HIPRTRenderData& render_data,
 																					   const NEEDeferredMISContext& nee_deferred_MIS_context,
 																					   const HitInfo& light_hit_info)
 {
+	if (nee_deferred_MIS_context.last_lightcut_index == IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX)
+		return 0.0f;
+
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 											   nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data));
