@@ -210,6 +210,7 @@ extern ImGuiLogger g_imgui_logger;
 // ------------------- DO AFTER WAVEFRONT -------------------
 
 // TODO Features:
+// - Radiance caching SHaRC, ORCA, SH, double buffering for updating while tracing, how to handle specular? ...
 // - Denoiser-aware adaptive sampling: we don't need to make diffuse flat surface super noise-free because a denoiser is just going to do a super good job here,
 //	so we can reliably samples less and let that to the denoiser
 // - Stop paths on the primary surface if the primary surface is super bright: emissives seens directly, envmap shining bright, ... it's unlikely that longer

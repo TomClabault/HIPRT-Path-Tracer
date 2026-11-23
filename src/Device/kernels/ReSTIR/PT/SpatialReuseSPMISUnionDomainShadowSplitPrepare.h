@@ -36,8 +36,12 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_duplicate_map_identity
 /**
  * 'duplicate_map' with the ray 'ray_bit' marked as a duplicate of the earlier ray 'source_ray_bit' of the same class (stage-2 pick or canonical
  * probe)
+ *
+ * Forced inline for the reason given above spmis_union_domain_shadow_split_canonical_probe_value() further down
  */
-HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_set_duplicate_source(unsigned int duplicate_map, unsigned int ray_bit, unsigned int source_ray_bit)
+HIPRT_DEVICE HIPRT_FORCEINLINE unsigned int spmis_union_domain_shadow_split_set_duplicate_source(unsigned int duplicate_map,
+																								 unsigned int ray_bit,
+																								 unsigned int source_ray_bit)
 {
 	bool stage2_ray			  = ray_bit < RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
 	unsigned int source_index = stage2_ray ? source_ray_bit : source_ray_bit - RESTIR_PT_SPMIS_UNION_DOMAIN_SHADOW_SPLIT_CANONICAL_RAY_SHIFT;
@@ -52,8 +56,10 @@ HIPRT_DEVICE unsigned int spmis_union_domain_shadow_split_set_duplicate_source(u
  * True when ReSTIR_PT_sample_visible_at_surface() (stage 2 of the neighbor selection of SpatialSPMISUnionDomain.h) traces its shadow ray for this sample at
  * this surface. These are the zero tests of ReSTIR_PT_evaluate_target_function() (degenerate distance, backfacing light of a DI sample, cosine <= 0 outside of
  * a transmission lobe), duplicated here because that function traces the ray right after them: keep both in sync
+ *
+ * Forced inline for the reason given above spmis_union_domain_shadow_split_canonical_probe_value() further down
  */
-HIPRT_DEVICE bool spmis_union_domain_shadow_split_stage2_needs_ray(const ReSTIRPTReservoirSample& sample, const ReSTIRPTSurface& surface)
+HIPRT_DEVICE HIPRT_FORCEINLINE bool spmis_union_domain_shadow_split_stage2_needs_ray(const ReSTIRPTReservoirSample& sample, const ReSTIRPTSurface& surface)
 {
 	float3_t incident_light_direction;
 	if (sample.is_envmap_path())
@@ -81,22 +87,30 @@ HIPRT_DEVICE bool spmis_union_domain_shadow_split_stage2_needs_ray(const ReSTIRP
 }
 
 /**
- * spmis_target_function_at_domain_pixel() for the canonical probes, out of line: inlined in the probe loop, the target function evaluation raises the
- * register pressure of the whole prepare kernel, which then keeps more of its state in scratch memory than this call costs (measured slower)
+ * spmis_target_function_at_domain_pixel() for the canonical probes
+ *
+ * Forced inline, as every function that the prepare kernel calls on its common path. Out of line, the sample and the random number generator passed by
+ * reference live in scratch memory and the kernel keeps its values live across the call in scratch memory too. Inlined alone, the target function
+ * evaluation pushes the kernel past the size budget of the inliner, which then keeps other functions of the kernel out of line (get_pixel_surface(),
+ * spmis_get_union_domain(), spmis_union_domain_select_pool_candidates(), even spmis_union_domain_shadow_split_prepare_pixel()), which was measured slower
  */
-HIPRT_DEVICE HIPRT_NOINLINE float spmis_union_domain_shadow_split_canonical_probe_value(const HIPRTRenderData& render_data,
-																						const ReSTIRPTReservoirSample& sample,
-																						float3_t center_pixel_shading_point,
-																						unsigned int pixel_index,
-																						Xorshift32Generator& random_number_generator)
+HIPRT_DEVICE HIPRT_FORCEINLINE float spmis_union_domain_shadow_split_canonical_probe_value(const HIPRTRenderData& render_data,
+																						   const ReSTIRPTReservoirSample& sample,
+																						   float3_t center_pixel_shading_point,
+																						   unsigned int pixel_index,
+																						   Xorshift32Generator& random_number_generator)
 {
 	return spmis_target_function_at_domain_pixel(render_data, sample, center_pixel_shading_point, pixel_index, random_number_generator);
 }
 
 /**
  * Prepare kernel for the center pixel: everything of the spatial reuse before its first shadow ray, see the top of SpatialSPMISUnionDomainShadowSplit.h
+ *
+ * Forced inline for the reason given above spmis_union_domain_shadow_split_canonical_probe_value()
  */
-HIPRT_DEVICE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData& render_data, unsigned int center_pixel_index, int2_t center_pixel_coords)
+HIPRT_DEVICE HIPRT_FORCEINLINE void spmis_union_domain_shadow_split_prepare_pixel(HIPRTRenderData& render_data,
+																				  unsigned int center_pixel_index,
+																				  int2_t center_pixel_coords)
 {
 	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings		   = render_data.render_settings.restir_pt_settings.spmis_settings.union_domain;
 	const ReSTIRPTSPMISUnionDomainShadowSplitBuffers& shadow_split_buffers = union_domain_settings.shadow_split_buffers;

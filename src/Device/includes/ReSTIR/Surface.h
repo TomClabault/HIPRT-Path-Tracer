@@ -22,7 +22,15 @@ struct ReSTIRPTSurface
 	float3_t shading_point	  = { 0.0f, 0.0f, 0.0f };
 };
 
-HIPRT_DEVICE static ReSTIRPTSurface get_pixel_surface(const HIPRTRenderData& render_data, int pixel_index, Xorshift32Generator& random_number_generator)
+/**
+ * Returns the surface at a pixel in the current frame
+ *
+ * Forced inline for the prepare kernel of the shadow split union domain spatial reuse, for the reason given above
+ * spmis_union_domain_shadow_split_canonical_probe_value() in SpatialReuseSPMISUnionDomainShadowSplitPrepare.h
+ */
+HIPRT_DEVICE HIPRT_FORCEINLINE static ReSTIRPTSurface get_pixel_surface(const HIPRTRenderData& render_data,
+																		int pixel_index,
+																		Xorshift32Generator& random_number_generator)
 {
 	ReSTIRPTSurface surface;
 

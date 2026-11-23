@@ -201,12 +201,15 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_search_union_domain(const HIPRTRende
  * and undefined cells skipped.
  *
  * After the search, the domain is then a function of the pixel and of the cells of this frame, not of the random numbers of the frame
+ *
+ * Forced inline for the prepare kernel of the shadow split union domain spatial reuse, for the reason given above
+ * spmis_union_domain_shadow_split_canonical_probe_value() in SpatialReuseSPMISUnionDomainShadowSplitPrepare.h
  */
-HIPRT_DEVICE ReSTIRPTSPMISUnionDomain spmis_get_union_domain(const HIPRTRenderData& render_data,
-															 unsigned int center_pixel_index,
-															 int2_t center_pixel_coords,
-															 const ReSTIRPTSurface& center_pixel_surface,
-															 Xorshift32Generator& rng)
+HIPRT_DEVICE HIPRT_FORCEINLINE ReSTIRPTSPMISUnionDomain spmis_get_union_domain(const HIPRTRenderData& render_data,
+																			   unsigned int center_pixel_index,
+																			   int2_t center_pixel_coords,
+																			   const ReSTIRPTSurface& center_pixel_surface,
+																			   Xorshift32Generator& rng)
 {
 	const ReSTIRPTSPMISSettings& spmis_settings = render_data.render_settings.restir_pt_settings.spmis_settings;
 
@@ -301,8 +304,13 @@ HIPRT_DEVICE unsigned int spmis_union_domain_pixel_at_index(const HIPRTRenderDat
 /**
  * One pixel drawn uniformly over all the pixels of the domain's cells, zero reservoirs included (as the canonical MIS weight estimator of the legacy SPMIS
  * path does over one cell). The probability is 1 / domain.pixel_count
+ *
+ * Forced inline for the prepare kernel of the shadow split union domain spatial reuse, for the reason given above
+ * spmis_union_domain_shadow_split_canonical_probe_value() in SpatialReuseSPMISUnionDomainShadowSplitPrepare.h
  */
-HIPRT_DEVICE unsigned int spmis_union_domain_uniform_pixel(const HIPRTRenderData& render_data, const ReSTIRPTSPMISUnionDomain& domain, Xorshift32Generator& rng)
+HIPRT_DEVICE HIPRT_FORCEINLINE unsigned int spmis_union_domain_uniform_pixel(const HIPRTRenderData& render_data,
+																			 const ReSTIRPTSPMISUnionDomain& domain,
+																			 Xorshift32Generator& rng)
 {
 	return spmis_union_domain_pixel_at_index(render_data, domain, rng.random_index(domain.pixel_count));
 }
@@ -543,16 +551,19 @@ HIPRT_DEVICE float spmis_union_domain_cell_confidence_scale(const ReSTIRPTSPMISS
  * [1, RESTIR_PT_SPMIS_UNION_DOMAIN_MAX_VISIBILITY_POOL_SIZE].
  *
  * Returns false (nothing written) when the domain has no candidate with a non-zero selection target
+ *
+ * Forced inline for the prepare kernel of the shadow split union domain spatial reuse, for the reason given above
+ * spmis_union_domain_shadow_split_canonical_probe_value() in SpatialReuseSPMISUnionDomainShadowSplitPrepare.h
  */
-HIPRT_DEVICE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderData& render_data,
-															ReSTIRPTSurface& center_surface,
-															const ReSTIRPTSPMISUnionDomain& domain,
-															int center_pixel_reservoir_confidence,
-															int pool_size,
-															unsigned int* out_pixel_indices,
-															float* out_selection_probabilities,
-															float* out_selection_targets,
-															Xorshift32Generator& rng)
+HIPRT_DEVICE HIPRT_FORCEINLINE bool spmis_union_domain_select_pool_candidates(const HIPRTRenderData& render_data,
+																			  ReSTIRPTSurface& center_surface,
+																			  const ReSTIRPTSPMISUnionDomain& domain,
+																			  int center_pixel_reservoir_confidence,
+																			  int pool_size,
+																			  unsigned int* out_pixel_indices,
+																			  float* out_selection_probabilities,
+																			  float* out_selection_targets,
+																			  Xorshift32Generator& rng)
 {
 	const ReSTIRPTSPMISSettings& spmis_settings					  = render_data.render_settings.restir_pt_settings.spmis_settings;
 	const ReSTIRPTSPMISUnionDomainSettings& union_domain_settings = spmis_settings.union_domain;
