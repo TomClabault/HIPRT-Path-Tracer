@@ -193,10 +193,8 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 											  Xorshift32Generator& random_number_generator,
 											  IlluminationAwareKDTreeLearningToClusterCutTriangleSample& sample)
 {
-	const LightTreeSGNodeDevice* nodes		 = render_data.light_tree_sg.nodes;
-	const SpatialSGLobeDevice* spatial_lobes = render_data.light_tree_sg.spatial_lobes;
-	unsigned int spatial_lobe_count			 = render_data.light_tree_sg.settings.spatial_lobe_count;
-	float cumulative_probability			 = 1.0f;
+	const LightTreeSGNodeDevice* nodes = render_data.light_tree_sg.nodes;
+	float cumulative_probability	   = 1.0f;
 
 	// The traversal fields of the chosen child are carried to the next level: loading them again from the node at the next level would be one
 	// more dependent memory round trip per level
@@ -211,24 +209,21 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 
 	while (current_triangle_count == 0)
 	{
-		unsigned int left_index					= current_left_child_or_first_triangle;
-		unsigned int right_index				= left_index + 1;
-		const LightTreeSGNodeDevice& left_node	= nodes[left_index];
-		const LightTreeSGNodeDevice& right_node = nodes[right_index];
+		unsigned int left_index	 = current_left_child_or_first_triangle;
+		unsigned int right_index = left_index + 1;
 
-		// The lobes are addressed from the node index, not through the lobe pointer of the node, so that they load together with the node
-		float left_importance =
-			light_tree_sg_node_importance(left_node, spatial_lobes + left_index * spatial_lobe_count, spatial_lobe_count, specular_data, context.position,
-										  context.view_direction, context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
-		float right_importance =
-			light_tree_sg_node_importance(right_node, spatial_lobes + right_index * spatial_lobe_count, spatial_lobe_count, specular_data, context.position,
-										  context.view_direction, context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+		LightTreeSGDescentNode left_node =
+			light_tree_sg_descent_node(render_data.light_tree_sg, left_index, specular_data, context.position, context.view_direction, context.shading_normal,
+									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
+		LightTreeSGDescentNode right_node =
+			light_tree_sg_descent_node(render_data.light_tree_sg, right_index, specular_data, context.position, context.view_direction, context.shading_normal,
+									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
 
-		float importance_sum = left_importance + right_importance;
+		float importance_sum = left_node.importance + right_node.importance;
 		if (importance_sum <= 0.0f)
 			return false;
 
-		float left_probability = left_importance / importance_sum;
+		float left_probability = left_node.importance / importance_sum;
 		bool go_left		   = random_number_generator() < left_probability;
 
 		cumulative_probability *= go_left ? left_probability : 1.0f - left_probability;
@@ -418,10 +413,8 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 		return 0.0f;
 
 	// Replay the unsplit SG traversal inside the selected cluster, including uniform triangle selection at the leaf.
-	// Same load pattern as sample_light_inside_cluster(): lobes addressed from the node index, traversal fields of the chosen child carried to
-	// the next level
-	const SpatialSGLobeDevice* spatial_lobes		  = render_data.light_tree_sg.spatial_lobes;
-	unsigned int spatial_lobe_count					  = render_data.light_tree_sg.settings.spatial_lobe_count;
+	// Same nodes as sample_light_inside_cluster(), read through light_tree_sg_descent_node() (descent records or nodes and lobes), traversal fields
+	// of the chosen child carried to the next level
 	unsigned int current_triangle_count				  = nodes[current_node_index].triangle_count;
 	unsigned int current_left_child_or_first_triangle = nodes[current_node_index].left_child_index_or_first_triangle_index;
 
@@ -432,23 +425,21 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 		if (current_depth >= sizeof(unsigned int) * 8u)
 			return 0.0f;
 
-		unsigned int left_index					= current_left_child_or_first_triangle;
-		unsigned int right_index				= left_index + 1u;
-		const LightTreeSGNodeDevice& left_node	= nodes[left_index];
-		const LightTreeSGNodeDevice& right_node = nodes[right_index];
+		unsigned int left_index	 = current_left_child_or_first_triangle;
+		unsigned int right_index = left_index + 1u;
 
-		float left_importance =
-			light_tree_sg_node_importance(left_node, spatial_lobes + left_index * spatial_lobe_count, spatial_lobe_count, specular_data, context.position,
-										  context.view_direction, context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
-		float right_importance =
-			light_tree_sg_node_importance(right_node, spatial_lobes + right_index * spatial_lobe_count, spatial_lobe_count, specular_data, context.position,
-										  context.view_direction, context.shading_normal, context.sg_specular_weight, context.alpha_x, context.alpha_y);
+		LightTreeSGDescentNode left_node =
+			light_tree_sg_descent_node(render_data.light_tree_sg, left_index, specular_data, context.position, context.view_direction, context.shading_normal,
+									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
+		LightTreeSGDescentNode right_node =
+			light_tree_sg_descent_node(render_data.light_tree_sg, right_index, specular_data, context.position, context.view_direction, context.shading_normal,
+									   context.sg_specular_weight, context.alpha_x, context.alpha_y);
 
-		float importance_sum = left_importance + right_importance;
+		float importance_sum = left_node.importance + right_node.importance;
 		if (importance_sum <= 0.0f)
 			return 0.0f;
 
-		float left_probability = left_importance / importance_sum;
+		float left_probability = left_node.importance / importance_sum;
 		bool go_left		   = (bit_trail & (1u << current_depth)) == 0u;
 
 		conditional_probability *= go_left ? left_probability : 1.0f - left_probability;

@@ -4,9 +4,12 @@
  */
 
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
+#include "UI/ImGui/ImGuiLogger.h"
 
 #include <algorithm>
 #include <limits>
+
+extern ImGuiLogger g_imgui_logger;
 
 void LightTreeSGBuilder::build_light_tree(const std::vector<int>& emissive_triangles_primitive_indices,
 										  const std::vector<float>& triangles_average_emissive_power_luminance,
@@ -400,6 +403,64 @@ float3_t LightTreeSGBuilder::light_tree_sg_lobes_mean(const LightTreeSGSpatialLo
 		return make_float3(0.0f, 0.0f, 0.0f);
 
 	return make_float3(static_cast<float>(mean.x / total_power), static_cast<float>(mean.y / total_power), static_cast<float>(mean.z / total_power));
+}
+
+void LightTreeSGBuilder::fill_descent_records(const std::vector<LightTreeSGNodeDevice>& nodes_device,
+											  const std::vector<SpatialSGLobeDevice>& spatial_lobes_device,
+											  std::vector<LightTreeSGDescentRecordDevice>& descent_records_device)
+{
+	descent_records_device.resize(nodes_device.size());
+
+	// Nodes for which the record changes an input of the rejection tests: the mean of the lobe is not exactly the spatial mean of the node, or
+	// the zero power test of the lobe does not agree with the zero power test of the node
+	unsigned int mean_mismatch_count	   = 0;
+	unsigned int zero_power_mismatch_count = 0;
+	float max_mean_difference			   = 0.0f;
+
+	for (int node_index = 0; node_index < nodes_device.size(); node_index++)
+	{
+		const LightTreeSGNodeDevice& node		= nodes_device[node_index];
+		const SpatialSGLobeDevice& spatial_lobe = spatial_lobes_device[node_index];
+		LightTreeSGDescentRecordDevice& record	= descent_records_device[node_index];
+
+		record.lobe_mean		   = spatial_lobe.mean;
+		record.lobe_power		   = spatial_lobe.power;
+		record.lobe_variance	   = spatial_lobe.variance;
+		record.lobe_support_radius = spatial_lobe.support_radius;
+
+		record.vmf_axis		 = node.vmf.axis;
+		record.vmf_sharpness = node.vmf.sharpness;
+
+		record.orientation_axis		  = node.orientation_axis;
+		record.bounding_sphere_radius = node.bounding_sphere_radius;
+		record.cos_theta_o			  = node.cos_theta_o;
+		record.sin_theta_o			  = node.sin_theta_o;
+
+		record.bounds_min	= node.bounds_min;
+		record.bounds_max_x = node.bounds_max.x;
+		record.bounds_max_y = node.bounds_max.y;
+		record.bounds_max_z = node.bounds_max.z;
+
+		record.left_child_index_or_first_triangle_index = node.left_child_index_or_first_triangle_index;
+		record.triangle_count							= node.triangle_count;
+
+		bool mean_differs = spatial_lobe.mean.x != node.gaussian_spatial_mean.x || spatial_lobe.mean.y != node.gaussian_spatial_mean.y ||
+							spatial_lobe.mean.z != node.gaussian_spatial_mean.z;
+		if (mean_differs)
+		{
+			mean_mismatch_count++;
+			max_mean_difference = hippt::max(max_mean_difference, hippt::length(spatial_lobe.mean - node.gaussian_spatial_mean));
+		}
+
+		bool zero_power_differs = (spatial_lobe.power <= 0.0f) != (node.total_power <= 0.0f);
+		if (zero_power_differs)
+			zero_power_mismatch_count++;
+	}
+
+	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO,
+							"SG light tree descent records: %u nodes, %u with a lobe mean different from the node mean (largest distance %g), %u with a "
+							"different zero power test",
+							static_cast<unsigned int>(nodes_device.size()), mean_mismatch_count, max_mean_difference, zero_power_mismatch_count);
 }
 
 void LightTreeSGBuilder::cleanup()

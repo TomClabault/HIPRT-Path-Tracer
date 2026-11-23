@@ -67,6 +67,50 @@ struct LightTreeSGNodeDevice
 	float3_t bounds_max;
 };
 
+/**
+ * Everything that the SG importance of a node and a descent of the light tree read of a node and of its spatial lobe, in 96 bytes: the
+ * record of a node loads with six 16-byte loads. The full node and its lobe live in two arrays and take 112 + 24 bytes, of which a descent
+ * reads 88 + 24 with 9 loads per node.
+ *
+ * Only built when every node of the light tree has exactly one spatial lobe (the default). The power and mean of that lobe stand for the total
+ * power and spatial mean of the node in the rejection tests (zero power, node behind the surface, backfacing cone): with a single lobe they are
+ * the same values up to float rounding, LightTreeSGBuilder::fill_descent_records() logs the number of nodes for which they differ.
+ *
+ * Read through light_tree_sg_descent_node(); the statistics used by the splitting heuristics (energy variance and average, emitter count) are
+ * not in the record and are still read from the nodes
+ */
+struct alignas(16) LightTreeSGDescentRecordDevice
+{
+	float3_t lobe_mean;
+	// Contains the same baked-in division by SG_integral(vmf_sharpness) as LightTreeSGNodeDevice::total_power
+	float lobe_power = 0.0f;
+
+	float3_t vmf_axis;
+	float vmf_sharpness = VMF::INVALID_SHARPNESS;
+
+	float3_t orientation_axis;
+	float bounding_sphere_radius = 0.0f;
+
+	float3_t bounds_min;
+	float bounds_max_x = 0.0f;
+
+	float bounds_max_y = 0.0f;
+	float bounds_max_z = 0.0f;
+	// Orientation cone angle
+	float cos_theta_o = 0.0f;
+	float sin_theta_o = 0.0f;
+
+	float lobe_variance		  = 0.0f;
+	float lobe_support_radius = 0.0f;
+
+	// If triangle count is 0, this contains the left child index
+	// If triangle count is > 0, this is the first triangle index in the leaf node
+	unsigned int left_child_index_or_first_triangle_index = 0;
+	unsigned int triangle_count							  = 0;
+};
+
+static_assert(sizeof(LightTreeSGDescentRecordDevice) == 96, "The descent record must stay six 16-byte loads");
+
 struct LightTreeSGDevice
 {
 	// Depth stored in 'node_path_codes' for a node that is too deep for its path to fit in a 32-bit trail
@@ -74,10 +118,13 @@ struct LightTreeSGDevice
 
 	LightTreeSGSettings settings;
 
-	LightTreeSGNodeDevice* nodes			   = nullptr;
-	SpatialSGLobeDevice* spatial_lobes		   = nullptr;
-	unsigned int* tree_cut_node_indices		   = nullptr;
-	unsigned int* second_tree_cut_node_indices = nullptr;
+	LightTreeSGNodeDevice* nodes	   = nullptr;
+	SpatialSGLobeDevice* spatial_lobes = nullptr;
+	// One record per node, same indexing as 'nodes'. nullptr when the nodes have more than one spatial lobe: the descents of the tree then read
+	// the nodes and their lobes
+	LightTreeSGDescentRecordDevice* descent_records = nullptr;
+	unsigned int* tree_cut_node_indices				= nullptr;
+	unsigned int* second_tree_cut_node_indices		= nullptr;
 
 	int* indices_array		 = nullptr;
 	unsigned int* bit_trails = nullptr;

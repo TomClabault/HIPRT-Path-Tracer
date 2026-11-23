@@ -68,6 +68,13 @@ private:
 	void compute_tree_cut(std::vector<unsigned int>& tree_cut_node_indices, unsigned int& effective_tree_cut_size, int tree_cut_size);
 	template <template <typename> typename DataContainer>
 	LightTreeSGBuilderDeviceData<DataContainer> compute_device_data() const;
+	/**
+	 * Fills one LightTreeSGDescentRecordDevice per node from the device nodes and their single spatial lobe and logs the number of nodes whose
+	 * lobe power / mean differ from the node total power / spatial mean that the records stand in for
+	 */
+	static void fill_descent_records(const std::vector<LightTreeSGNodeDevice>& nodes_device,
+									 const std::vector<SpatialSGLobeDevice>& spatial_lobes_device,
+									 std::vector<LightTreeSGDescentRecordDevice>& descent_records_device);
 
 private:
 	LightTreeATSBuilder m_light_tree_ats_builder;
@@ -156,6 +163,10 @@ LightTreeSGBuilderDeviceData<DataContainer> LightTreeSGBuilder::compute_device_d
 			device_data_out.nodes_device[i].left_child_index_or_first_triangle_index = m_nodes[i].first_triangle_index;
 	}
 
+	// The descent records fuse the single lobe of a node into its record: with more lobes per node, the descents of the tree read the nodes and their lobes
+	if (m_build_options.spatial_lobe_count == 1)
+		fill_descent_records(device_data_out.nodes_device, device_data_out.spatial_lobes_device, device_data_out.descent_records_device);
+
 	// Path from the root to every node, with the encoding of the bit trails of the triangles: the device finds the node of a light cut that
 	// contains a triangle by comparing these paths with the bit trail of the triangle. Nodes deeper than 32 keep the invalid depth: their path
 	// does not fit in a bit trail
@@ -199,6 +210,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 		render_data.light_tree_sg.settings.effective_second_tree_cut_size = 0;
 		render_data.light_tree_sg.nodes									  = nullptr;
 		render_data.light_tree_sg.spatial_lobes							  = nullptr;
+		render_data.light_tree_sg.descent_records						  = nullptr;
 		render_data.light_tree_sg.tree_cut_node_indices					  = nullptr;
 		render_data.light_tree_sg.second_tree_cut_node_indices			  = nullptr;
 		render_data.light_tree_sg.node_path_codes						  = nullptr;
@@ -215,6 +227,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	if constexpr (std::is_same_v<DataContainer<int>, std::vector<int>>)
 	{
 		device_data.m_device_spatial_lobes_buffer				 = device_data.spatial_lobes_device;
+		device_data.m_device_descent_records_buffer				 = device_data.descent_records_device;
 		device_data.m_device_tree_cut_node_indices_buffer		 = device_data.tree_cut_node_indices_device;
 		device_data.m_device_second_tree_cut_node_indices_buffer = device_data.second_tree_cut_node_indices_device;
 
@@ -230,6 +243,7 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	else
 	{
 		device_data.m_device_spatial_lobes_buffer				 = OrochiBuffer<SpatialSGLobeDevice>(device_data.spatial_lobes_device);
+		device_data.m_device_descent_records_buffer				 = OrochiBuffer<LightTreeSGDescentRecordDevice>(device_data.descent_records_device);
 		device_data.m_device_tree_cut_node_indices_buffer		 = OrochiBuffer<unsigned int>(device_data.tree_cut_node_indices_device);
 		device_data.m_device_second_tree_cut_node_indices_buffer = OrochiBuffer<unsigned int>(device_data.second_tree_cut_node_indices_device);
 
@@ -248,11 +262,12 @@ void LightTreeSGBuilder::to_device(HIPRTRenderData& render_data,
 	render_data.light_tree_sg.settings.effective_second_tree_cut_size = build_result.effective_second_tree_cut_size;
 	render_data.light_tree_sg.nodes									  = device_data.m_device_nodes_buffer.data();
 	render_data.light_tree_sg.spatial_lobes							  = device_data.m_device_spatial_lobes_buffer.data();
-	render_data.light_tree_sg.tree_cut_node_indices					  = device_data.m_device_tree_cut_node_indices_buffer.data();
-	render_data.light_tree_sg.second_tree_cut_node_indices			  = device_data.m_device_second_tree_cut_node_indices_buffer.data();
-	render_data.light_tree_sg.indices_array							  = device_data.m_device_indices_array_buffer.data();
-	render_data.light_tree_sg.bit_trails							  = device_data.m_bit_trails_buffer.data();
-	render_data.light_tree_sg.node_path_codes						  = device_data.m_device_node_path_codes_buffer.data();
+	render_data.light_tree_sg.descent_records		= device_data.descent_records_device.empty() ? nullptr : device_data.m_device_descent_records_buffer.data();
+	render_data.light_tree_sg.tree_cut_node_indices = device_data.m_device_tree_cut_node_indices_buffer.data();
+	render_data.light_tree_sg.second_tree_cut_node_indices = device_data.m_device_second_tree_cut_node_indices_buffer.data();
+	render_data.light_tree_sg.indices_array				   = device_data.m_device_indices_array_buffer.data();
+	render_data.light_tree_sg.bit_trails				   = device_data.m_bit_trails_buffer.data();
+	render_data.light_tree_sg.node_path_codes			   = device_data.m_device_node_path_codes_buffer.data();
 }
 
 #endif // #ifndef RENDERER_LIGHT_TREE_SG_BUILDER_H

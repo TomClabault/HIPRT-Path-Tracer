@@ -15,14 +15,15 @@ struct LightTreeSGBuilderDeviceData
 {
 	void free()
 	{
-		if (m_device_nodes_buffer.size() == 0 && m_device_spatial_lobes_buffer.size() == 0 && m_device_tree_cut_node_indices_buffer.size() == 0 &&
-			m_device_second_tree_cut_node_indices_buffer.size() == 0)
+		if (m_device_nodes_buffer.size() == 0 && m_device_spatial_lobes_buffer.size() == 0 && m_device_descent_records_buffer.size() == 0 &&
+			m_device_tree_cut_node_indices_buffer.size() == 0 && m_device_second_tree_cut_node_indices_buffer.size() == 0)
 			return;
 
 		if constexpr (std::is_same_v<std::vector<int>, DataContainer<int>>)
 		{
 			m_device_nodes_buffer						 = std::vector<LightTreeSGNodeDevice>();
 			m_device_spatial_lobes_buffer				 = std::vector<SpatialSGLobeDevice>();
+			m_device_descent_records_buffer				 = std::vector<LightTreeSGDescentRecordDevice>();
 			m_device_tree_cut_node_indices_buffer		 = std::vector<unsigned int>();
 			m_device_second_tree_cut_node_indices_buffer = std::vector<unsigned int>();
 			m_device_indices_array_buffer				 = std::vector<int>();
@@ -33,6 +34,7 @@ struct LightTreeSGBuilderDeviceData
 		{
 			m_device_nodes_buffer.free();
 			m_device_spatial_lobes_buffer.free();
+			m_device_descent_records_buffer.free();
 			m_device_tree_cut_node_indices_buffer.free();
 			m_device_second_tree_cut_node_indices_buffer.free();
 			m_device_indices_array_buffer.free();
@@ -43,19 +45,22 @@ struct LightTreeSGBuilderDeviceData
 
 	size_t get_VRAM_usage_bytes() const
 	{
-		return m_device_nodes_buffer.get_byte_size() + m_device_spatial_lobes_buffer.get_byte_size() + m_device_tree_cut_node_indices_buffer.get_byte_size() +
-			   m_device_second_tree_cut_node_indices_buffer.get_byte_size() + m_device_indices_array_buffer.get_byte_size() +
-			   m_bit_trails_buffer.get_byte_size() + m_device_node_path_codes_buffer.get_byte_size();
+		return m_device_nodes_buffer.get_byte_size() + m_device_spatial_lobes_buffer.get_byte_size() + m_device_descent_records_buffer.get_byte_size() +
+			   m_device_tree_cut_node_indices_buffer.get_byte_size() + m_device_second_tree_cut_node_indices_buffer.get_byte_size() +
+			   m_device_indices_array_buffer.get_byte_size() + m_bit_trails_buffer.get_byte_size() + m_device_node_path_codes_buffer.get_byte_size();
 	}
 
 	std::vector<LightTreeSGNodeDevice> nodes_device;
 	std::vector<SpatialSGLobeDevice> spatial_lobes_device;
+	// Empty when the nodes have more than one spatial lobe, see LightTreeSGDescentRecordDevice
+	std::vector<LightTreeSGDescentRecordDevice> descent_records_device;
 	std::vector<unsigned int> tree_cut_node_indices_device;
 	std::vector<unsigned int> second_tree_cut_node_indices_device;
 	std::vector<uint2_t> node_path_codes_device;
 
 	DataContainer<LightTreeSGNodeDevice> m_device_nodes_buffer;
 	DataContainer<SpatialSGLobeDevice> m_device_spatial_lobes_buffer;
+	DataContainer<LightTreeSGDescentRecordDevice> m_device_descent_records_buffer;
 	DataContainer<unsigned int> m_device_tree_cut_node_indices_buffer;
 	DataContainer<unsigned int> m_device_second_tree_cut_node_indices_buffer;
 	DataContainer<int> m_device_indices_array_buffer;

@@ -108,6 +108,7 @@ void LightTreeSGSamplingDataStructure::free()
 	HIPRTRenderData& render_data									  = m_renderer->get_render_data();
 	render_data.light_tree_sg.nodes									  = nullptr;
 	render_data.light_tree_sg.spatial_lobes							  = nullptr;
+	render_data.light_tree_sg.descent_records						  = nullptr;
 	render_data.light_tree_sg.tree_cut_node_indices					  = nullptr;
 	render_data.light_tree_sg.second_tree_cut_node_indices			  = nullptr;
 	render_data.light_tree_sg.indices_array							  = nullptr;
