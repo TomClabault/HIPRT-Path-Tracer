@@ -6,7 +6,6 @@
 #ifndef DEVICE_INCLUDES_BSDFS_SHEEN_LTC
 #define DEVICE_INCLUDES_BSDFS_SHEEN_LTC
 
-#include "Device/includes/BSDFs/LTCsData/ZeltnerSheenLTCFitData.h"
 #include "Device/includes/ONB.h"
 #include "Device/includes/Texture.h"
 

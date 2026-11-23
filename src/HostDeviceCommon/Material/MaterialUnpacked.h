@@ -11,8 +11,6 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 
-#include <type_traits>
-
 /**
  * How to add a material property:
  *

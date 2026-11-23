@@ -9,8 +9,6 @@
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/Maths/Math.h"
 
-#include <cstddef>
-
 struct HitInfo
 {
 	float3_t inter_point	= { 0, 0, 0 };

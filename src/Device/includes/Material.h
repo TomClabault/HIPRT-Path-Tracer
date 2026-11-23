@@ -14,8 +14,7 @@
 #include "HostDeviceCommon/Material/MaterialUtils.h"
 #include "HostDeviceCommon/Material/PrincipledLobeClassification.h"
 #include "HostDeviceCommon/RenderData.h"
-
-#include <type_traits>
+#include "HostDeviceCommon/TypeTraits.h"
 
 #ifndef __KERNELCC__
 #include "Image/Image.h"
@@ -493,13 +492,13 @@ HIPRT_DEVICE static void load_effective_emission(const HIPRTRenderData& render_d
 template <typename MaterialType>
 HIPRT_DEVICE static void load_packed_effective_material_lobe_parameters(const DevicePackedEffectiveMaterial& packed_material, MaterialType& out_material)
 {
-	if constexpr (std::is_same_v<MaterialType, DeviceOrenNayarMaterial>)
+	if constexpr (hippt::is_same_v<MaterialType, DeviceOrenNayarMaterial>)
 		out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
-	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledDiffuseMaterial>)
+	else if constexpr (hippt::is_same_v<MaterialType, DevicePrincipledDiffuseMaterial>)
 		out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
 #endif
-	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledGlassMaterial>)
+	else if constexpr (hippt::is_same_v<MaterialType, DevicePrincipledGlassMaterial>)
 	{
 		out_material.roughness					  = packed_material.get_roughness();
 		out_material.anisotropy					  = packed_material.get_anisotropy();
@@ -507,7 +506,7 @@ HIPRT_DEVICE static void load_packed_effective_material_lobe_parameters(const De
 		out_material.ior						  = packed_material.get_ior();
 		out_material.do_glass_energy_compensation = packed_material.get_do_glass_energy_compensation();
 	}
-	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial>)
+	else if constexpr (hippt::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial>)
 	{
 		out_material.roughness						 = packed_material.get_roughness();
 		out_material.anisotropy						 = packed_material.get_anisotropy();
@@ -517,7 +516,7 @@ HIPRT_DEVICE static void load_packed_effective_material_lobe_parameters(const De
 		out_material.metallic_F90_falloff_exponent	 = packed_material.get_metallic_F90_falloff_exponent();
 		out_material.do_metallic_energy_compensation = packed_material.get_do_metallic_energy_compensation();
 	}
-	else if constexpr (std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
+	else if constexpr (hippt::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
 	{
 #if PrincipledBSDFDiffuseLobe == PRINCIPLED_DIFFUSE_LOBE_OREN_NAYAR
 		out_material.oren_nayar_sigma = packed_material.get_oren_nayar_sigma();
@@ -537,7 +536,7 @@ HIPRT_DEVICE static void load_packed_effective_material_lobe_parameters(const De
 template <typename MaterialType>
 HIPRT_DEVICE static void load_effective_material(const DevicePackedEffectiveMaterial& packed_material, MaterialType& out_material)
 {
-	if constexpr (std::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
+	if constexpr (hippt::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
 		out_material = packed_material.unpack();
 	else
 	{
@@ -555,7 +554,7 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 												 const ResolvedMaterialUserControlsCache& resolved_user_controls,
 												 MaterialType& out_material)
 {
-	if constexpr (std::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
+	if constexpr (hippt::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
 		get_intersection_material_into(render_data, material_index, texcoords, out_material, &resolved_user_controls);
 	else
 	{
@@ -582,9 +581,9 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 
 		// Overriding the parameters of the packed material with the user controls already resolved from the
 		// textures and with the anisotropy texture
-		constexpr bool has_specular_roughness_parameters = std::is_same_v<MaterialType, DevicePrincipledGlassMaterial> ||
-														   std::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial> ||
-														   std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>;
+		constexpr bool has_specular_roughness_parameters = hippt::is_same_v<MaterialType, DevicePrincipledGlassMaterial> ||
+														   hippt::is_same_v<MaterialType, DevicePrincipledSingleMetallicMaterial> ||
+														   hippt::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>;
 		if constexpr (has_specular_roughness_parameters)
 		{
 			if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlRoughness)
@@ -597,7 +596,7 @@ HIPRT_DEVICE static void load_effective_material(const HIPRTRenderData& render_d
 #endif // #if UseMaterialTextures == KERNEL_OPTION_TRUE
 		}
 
-		if constexpr (std::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
+		if constexpr (hippt::is_same_v<MaterialType, DevicePrincipledSpecularDiffuseMaterial>)
 		{
 			if (resolved_user_controls.validity_mask & ResolvedMaterialUserControlSpecular)
 				out_material.specular = resolved_user_controls.specular;

@@ -17,6 +17,7 @@
 #include "Device/includes/SanityCheck.h"
 #include "Device/includes/Wavefront/WavefrontShading.h"
 
+#include "HostDeviceCommon/TypeTraits.h"
 #include "HostDeviceCommon/Xorshift.h"
 
 /**
@@ -465,7 +466,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_rc_vertex_fill_information(const HIPRTRend
 
 	// Material part of the MIS target function BSDF approximation flags and lobe of the sample. It is computed from the material that the target
 	// function fetches for the reconnection vertex: get_intersection_material() with the same primitive and texcoords
-	if constexpr (std::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
+	if constexpr (hippt::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
 		ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_vertex(render_data, material, restir_pt_initial_sample);
 	else
 	{

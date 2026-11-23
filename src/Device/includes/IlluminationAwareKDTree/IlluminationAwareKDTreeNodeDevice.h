@@ -8,7 +8,10 @@
 
 #include "HostDeviceCommon/Maths/VecTypes.h"
 
+#ifndef __KERNELCC__
+// The kernels get the fixed-width integer types from HIPRT (hiprt_common.h)
 #include <cstdint>
+#endif
 
 enum IlluminationAwareKDTreeNodeFlags : uint8_t
 {

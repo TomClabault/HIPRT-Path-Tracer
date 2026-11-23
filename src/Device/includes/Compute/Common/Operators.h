@@ -6,8 +6,7 @@
 #include "Device/includes/FixIntellisense.h"
 
 #include "HostDeviceCommon/Maths/Math.h"
-
-#include <limits>
+#include "HostDeviceCommon/TypeTraits.h"
 
 #ifndef DEVICE_INCLUDES_COMPUTE_COMMON_OPERATORS_H
 #define DEVICE_INCLUDES_COMPUTE_COMMON_OPERATORS_H
@@ -26,7 +25,7 @@ struct OperatorSum
 template <typename T>
 struct OperatorMin
 {
-	static constexpr T identity = std::numeric_limits<T>::max();
+	static constexpr T identity = hippt::numeric_limits<T>::max();
 
 	HIPRT_DEVICE static T apply(T a, T b)
 	{
@@ -37,7 +36,7 @@ struct OperatorMin
 template <typename T>
 struct OperatorMax
 {
-	static constexpr T identity = std::numeric_limits<T>::lowest();
+	static constexpr T identity = hippt::numeric_limits<T>::lowest();
 
 	HIPRT_DEVICE static T apply(T a, T b)
 	{

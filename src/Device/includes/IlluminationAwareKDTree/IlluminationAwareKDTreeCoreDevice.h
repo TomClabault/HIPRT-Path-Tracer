@@ -15,7 +15,10 @@
 #include "HostDeviceCommon/KernelOptions/IlluminationAwareKDTreeOptions.h"
 #include "HostDeviceCommon/Xorshift.h"
 
+#ifndef __KERNELCC__
+// The kernels get the fixed-width integer types from HIPRT (hiprt_common.h)
 #include <cstdint>
+#endif
 
 // Indexed by sqrtf(1.0f / effectiveKappa) to get the cosine of the maximum angle allowed between two distributions VMF for the mean radiance weighted
 // directions split criterion.
