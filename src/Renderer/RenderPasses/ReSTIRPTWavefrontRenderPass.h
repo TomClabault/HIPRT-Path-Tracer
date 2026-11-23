@@ -51,7 +51,7 @@ public:
 
 	virtual std::map<std::string, std::shared_ptr<GPUKernel>> get_all_kernels() override;
 
-	virtual float get_VRAM_usage() const override;
+	virtual ReSTIRPTVRAMUsage get_VRAM_usage_breakdown() const override;
 
 protected:
 	virtual int get_path_sampling_strategy() const override;

@@ -1778,10 +1778,44 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				{
 					ImGui::TreePush("ReSTIR PT tree");
 
-					static float last_VRAM_usage = 0.0f;
+					static ReSTIRPTVRAMUsage last_vram_usage;
 					if (m_renderer->get_ReSTIR_PT_render_pass())
-						last_VRAM_usage = m_renderer->get_ReSTIR_PT_render_pass()->get_VRAM_usage();
-					ImGui::Text("VRAM Usage: %.3fMB", last_VRAM_usage);
+						last_vram_usage = m_renderer->get_ReSTIR_PT_render_pass()->get_VRAM_usage_breakdown();
+					ImGui::Text("VRAM Usage: %.3fMB", last_vram_usage.get_total_bytes() / 1000000.0f);
+
+					std::string restir_pt_vram_tooltip =
+						std::format("Breakdown:\n"
+									"  - Reservoirs: {:.3f}MB\n"
+									"    - Initial candidates: {:.3f}MB\n"
+									"    - Initial candidates working samples: {:.3f}MB\n"
+									"    - Temporal reuse: {:.3f}MB\n"
+									"    - Spatial reuse: {:.3f}MB\n"
+									"  - SPMIS spatial reuse: {:.3f}MB\n"
+									"    - Pixel hashes and checksums: {:.3f}MB\n"
+									"    - Pixel cell indices: {:.3f}MB\n"
+									"    - Cell counters and offsets: {:.3f}MB\n"
+									"    - Cell CDFs and LUTs: {:.3f}MB\n"
+									"    - Cell variance: {:.3f}MB\n"
+									"    - Union domain neighbor records: {:.3f}MB\n"
+									"    - Union domain cell alias tables: {:.3f}MB\n"
+									"    - Union domain cache: {:.3f}MB\n"
+									"    - Union domain shadow split state: {:.3f}MB\n"
+									"  - Wavefront initial candidates: {:.3f}MB\n"
+									"    - Staging buffers: {:.3f}MB\n"
+									"    - Path data: {:.3f}MB\n"
+									"    - Primary material family queues backup: {:.3f}MB\n",
+									last_vram_usage.get_reservoirs_bytes() / 1000000.0f, last_vram_usage.initial_candidates_reservoirs / 1000000.0f,
+									last_vram_usage.initial_candidates_working_samples / 1000000.0f, last_vram_usage.temporal_reservoirs / 1000000.0f,
+									last_vram_usage.spatial_reservoirs / 1000000.0f, last_vram_usage.get_spmis_bytes() / 1000000.0f,
+									last_vram_usage.spmis_pixel_hashes / 1000000.0f, last_vram_usage.spmis_pixel_cell_indices / 1000000.0f,
+									last_vram_usage.spmis_cell_counters_and_offsets / 1000000.0f, last_vram_usage.spmis_cell_cdfs / 1000000.0f,
+									last_vram_usage.spmis_cell_variance / 1000000.0f, last_vram_usage.spmis_union_domain_neighbor_records / 1000000.0f,
+									last_vram_usage.spmis_union_domain_cell_alias_tables / 1000000.0f, last_vram_usage.spmis_union_domain_cache / 1000000.0f,
+									last_vram_usage.spmis_union_domain_shadow_split / 1000000.0f, last_vram_usage.get_wavefront_bytes() / 1000000.0f,
+									last_vram_usage.wavefront_staging_buffers / 1000000.0f, last_vram_usage.wavefront_path_data / 1000000.0f,
+									last_vram_usage.wavefront_primary_material_family_queues_backup / 1000000.0f);
+
+					ImGuiRenderer::show_help_marker(restir_pt_vram_tooltip.c_str());
 
 					ImGui::Dummy(ImVec2(0.0f, 20.0f));
 

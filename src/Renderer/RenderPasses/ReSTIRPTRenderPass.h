@@ -13,6 +13,50 @@
 
 class GPURenderer;
 
+struct ReSTIRPTVRAMUsage
+{
+	std::size_t initial_candidates_reservoirs	   = 0;
+	std::size_t initial_candidates_working_samples = 0;
+	std::size_t temporal_reservoirs				   = 0;
+	std::size_t spatial_reservoirs				   = 0;
+
+	std::size_t spmis_pixel_hashes					 = 0;
+	std::size_t spmis_pixel_cell_indices			 = 0;
+	std::size_t spmis_cell_counters_and_offsets		 = 0;
+	std::size_t spmis_cell_cdfs						 = 0;
+	std::size_t spmis_cell_variance					 = 0;
+	std::size_t spmis_union_domain_neighbor_records	 = 0;
+	std::size_t spmis_union_domain_cell_alias_tables = 0;
+	std::size_t spmis_union_domain_cache			 = 0;
+	std::size_t spmis_union_domain_shadow_split		 = 0;
+
+	// Only allocated by ReSTIRPTWavefrontRenderPass
+	std::size_t wavefront_staging_buffers						= 0;
+	std::size_t wavefront_path_data								= 0;
+	std::size_t wavefront_primary_material_family_queues_backup = 0;
+
+	std::size_t get_reservoirs_bytes() const
+	{
+		return initial_candidates_reservoirs + initial_candidates_working_samples + temporal_reservoirs + spatial_reservoirs;
+	}
+
+	std::size_t get_spmis_bytes() const
+	{
+		return spmis_pixel_hashes + spmis_pixel_cell_indices + spmis_cell_counters_and_offsets + spmis_cell_cdfs + spmis_cell_variance +
+			   spmis_union_domain_neighbor_records + spmis_union_domain_cell_alias_tables + spmis_union_domain_cache + spmis_union_domain_shadow_split;
+	}
+
+	std::size_t get_wavefront_bytes() const
+	{
+		return wavefront_staging_buffers + wavefront_path_data + wavefront_primary_material_family_queues_backup;
+	}
+
+	std::size_t get_total_bytes() const
+	{
+		return get_reservoirs_bytes() + get_spmis_bytes() + get_wavefront_bytes();
+	}
+};
+
 class ReSTIRPTRenderPass : public RenderPass
 {
 public:
@@ -99,7 +143,11 @@ public:
 	/**
 	 * Returns the VRAM used by ReSTIR PT in MB
 	 */
-	virtual float get_VRAM_usage() const;
+	float get_VRAM_usage() const;
+	/**
+	 * Returns the VRAM used by each buffer of ReSTIR PT, in bytes
+	 */
+	virtual ReSTIRPTVRAMUsage get_VRAM_usage_breakdown() const;
 
 protected:
 	/**

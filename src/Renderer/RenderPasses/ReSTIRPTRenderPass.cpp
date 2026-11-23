@@ -1054,7 +1054,39 @@ void ReSTIRPTRenderPass::request_temporal_bufffers_clear()
 
 float ReSTIRPTRenderPass::get_VRAM_usage() const
 {
-	return (m_initial_candidates_buffer.get_byte_size() + m_initial_candidates_working_samples_buffer.get_byte_size() + m_temporal_buffer.get_byte_size() +
-			m_spatial_buffer.get_byte_size() + m_spmis_data.get_byte_size() + m_spmis_union_domain_shadow_split_buffer.get_byte_size()) /
-		   1000000.0f;
+	return get_VRAM_usage_breakdown().get_total_bytes() / 1000000.0f;
+}
+
+ReSTIRPTVRAMUsage ReSTIRPTRenderPass::get_VRAM_usage_breakdown() const
+{
+	ReSTIRPTVRAMUsage vram_usage;
+
+	vram_usage.initial_candidates_reservoirs	  = m_initial_candidates_buffer.get_byte_size();
+	vram_usage.initial_candidates_working_samples = m_initial_candidates_working_samples_buffer.get_byte_size();
+	vram_usage.temporal_reservoirs				  = m_temporal_buffer.get_byte_size();
+	vram_usage.spatial_reservoirs				  = m_spatial_buffer.get_byte_size();
+
+	const ReSTIRPTSPMISDataHostInternal<OrochiBuffer>& spmis_data = m_spmis_data.m_spmis_data;
+	vram_usage.spmis_pixel_hashes								  = spmis_data.get_buffer<RESTIR_PT_SPMIS_ALL_PIXEL_HASHES>().get_byte_size() +
+									spmis_data.get_buffer<RESTIR_PT_SPMIS_ALL_PIXEL_HASHES_CHECKSUMS>().get_byte_size();
+	vram_usage.spmis_pixel_cell_indices = spmis_data.get_buffer<RESTIR_PT_SPMIS_ALL_PIXEL_INDEX_IN_CELL>().get_byte_size() +
+										  spmis_data.get_buffer<RESTIR_PT_SPMIS_ALL_PIXEL_REUSE_CELL_PIXEL_INDEX>().get_byte_size() +
+										  spmis_data.get_buffer<RESTIR_PT_SPMIS_PIXEL_INDICES_SORTED>().get_byte_size();
+	vram_usage.spmis_cell_counters_and_offsets =
+		spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_COUNTERS>().get_byte_size() +
+		spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_NON_ZERO_RESERVOIR_COUNTERS>().get_byte_size() +
+		spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_GLOBAL_OFFSET_COUNTER>().get_byte_size() +
+		spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_TOTAL_COUNT_COUNTER>().get_byte_size() +
+		spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_OCCUPIED>().get_byte_size() + spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_ALIVE_LIST>().get_byte_size() +
+		spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_OFFSETS>().get_byte_size() + spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_CONFIDENCE_SUMS>().get_byte_size();
+	vram_usage.spmis_cell_cdfs = spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_CDFS>().get_byte_size() +
+								 spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_CDF_LUTS>().get_byte_size() +
+								 spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_CDF_LUT_OFFSETS>().get_byte_size();
+	vram_usage.spmis_cell_variance					= spmis_data.get_buffer<RESTIR_PT_SPMIS_CELL_VARIANCE>().get_byte_size();
+	vram_usage.spmis_union_domain_neighbor_records	= spmis_data.get_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_NEIGHBOR_RECORDS>().get_byte_size();
+	vram_usage.spmis_union_domain_cell_alias_tables = spmis_data.get_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_CELL_ALIAS_TABLES>().get_byte_size();
+	vram_usage.spmis_union_domain_cache				= spmis_data.get_buffer<RESTIR_PT_SPMIS_UNION_DOMAIN_CACHE>().get_byte_size();
+	vram_usage.spmis_union_domain_shadow_split		= m_spmis_union_domain_shadow_split_buffer.get_byte_size();
+
+	return vram_usage;
 }

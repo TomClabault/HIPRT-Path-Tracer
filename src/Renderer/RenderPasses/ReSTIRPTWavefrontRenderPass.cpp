@@ -378,12 +378,16 @@ std::map<std::string, std::shared_ptr<GPUKernel>> ReSTIRPTWavefrontRenderPass::g
 	return active_kernels;
 }
 
-float ReSTIRPTWavefrontRenderPass::get_VRAM_usage() const
+ReSTIRPTVRAMUsage ReSTIRPTWavefrontRenderPass::get_VRAM_usage_breakdown() const
 {
-	std::size_t wavefront_byte_size = m_wavefront_common.get_staging_buffers_byte_size() + m_restir_pt_wavefront_data.get_byte_size() +
-									  m_primary_material_family_indices_backup.get_byte_size() + m_primary_material_family_counts_backup.get_byte_size();
+	ReSTIRPTVRAMUsage vram_usage = ReSTIRPTRenderPass::get_VRAM_usage_breakdown();
 
-	return ReSTIRPTRenderPass::get_VRAM_usage() + wavefront_byte_size / 1000000.0f;
+	vram_usage.wavefront_staging_buffers = m_wavefront_common.get_staging_buffers_byte_size();
+	vram_usage.wavefront_path_data		 = m_restir_pt_wavefront_data.get_byte_size();
+	vram_usage.wavefront_primary_material_family_queues_backup =
+		m_primary_material_family_indices_backup.get_byte_size() + m_primary_material_family_counts_backup.get_byte_size();
+
+	return vram_usage;
 }
 
 int ReSTIRPTWavefrontRenderPass::get_path_sampling_strategy() const
