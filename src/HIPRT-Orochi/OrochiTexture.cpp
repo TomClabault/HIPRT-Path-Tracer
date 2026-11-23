@@ -139,6 +139,18 @@ void OrochiTexture::init_from_image(const Image8Bit& image, hipTextureFilterMode
 
 void OrochiTexture::init_from_image(const Image32Bit& image, hipTextureFilterMode filtering_mode, hipTextureAddressMode address_mode)
 {
+	if (m_texture_array)
+	{
+		oroFreeArray(m_texture_array);
+		m_texture_array = nullptr;
+	}
+
+	if (m_texture)
+	{
+		oroDestroyTextureObject(m_texture);
+		m_texture = nullptr;
+	}
+
 	m_byte_size = 0;
 
 	int channels = image.channels;
