@@ -73,24 +73,24 @@ IlluminationAwareKDTree_CoreReduceBatchStatisticsUpward(IlluminationAwareKDTreeD
 	if (source_signature.valid_observation_count == 0u)
 		return;
 
-	hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_signatures[parent_index].valid_observation_count, source_signature.valid_observation_count);
-	hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_signatures[parent_index].scalar_radiance_sum, source_signature.scalar_radiance_sum);
-	hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_signatures[parent_index].squared_scalar_radiance_sum, source_signature.squared_scalar_radiance_sum);
-	hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_signatures[parent_index].weighted_direction_sum.x, source_signature.weighted_direction_sum.x);
-	hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_signatures[parent_index].weighted_direction_sum.y, source_signature.weighted_direction_sum.y);
-	hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_signatures[parent_index].weighted_direction_sum.z, source_signature.weighted_direction_sum.z);
+	hippt::atomic_fetch_add(&kd_tree_device.core.batch_signatures[parent_index].valid_observation_count, source_signature.valid_observation_count);
+	hippt::atomic_fetch_add(&kd_tree_device.core.batch_signatures[parent_index].scalar_radiance_sum, source_signature.scalar_radiance_sum);
+	hippt::atomic_fetch_add(&kd_tree_device.core.batch_signatures[parent_index].squared_scalar_radiance_sum, source_signature.squared_scalar_radiance_sum);
+	hippt::atomic_fetch_add(&kd_tree_device.core.batch_signatures[parent_index].weighted_direction_sum.x, source_signature.weighted_direction_sum.x);
+	hippt::atomic_fetch_add(&kd_tree_device.core.batch_signatures[parent_index].weighted_direction_sum.y, source_signature.weighted_direction_sum.y);
+	hippt::atomic_fetch_add(&kd_tree_device.core.batch_signatures[parent_index].weighted_direction_sum.z, source_signature.weighted_direction_sum.z);
 
 	const IlluminationAwareKDTreeSpatialSampleMoments& source_spatial = kd_tree_device.core.batch_spatial_moments[node_index];
 	if (source_spatial.positive_radiance_sample_count > 0u)
 	{
-		hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_spatial_moments[parent_index].positive_radiance_sample_count,
-									source_spatial.positive_radiance_sample_count);
-		hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_spatial_moments[parent_index].position_sum.x, source_spatial.position_sum.x);
-		hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_spatial_moments[parent_index].position_sum.y, source_spatial.position_sum.y);
-		hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_spatial_moments[parent_index].position_sum.z, source_spatial.position_sum.z);
-		hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_spatial_moments[parent_index].position_squared_sum.x, source_spatial.position_squared_sum.x);
-		hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_spatial_moments[parent_index].position_squared_sum.y, source_spatial.position_squared_sum.y);
-		hippt::atomic_fetch_add_gpu(&kd_tree_device.core.batch_spatial_moments[parent_index].position_squared_sum.z, source_spatial.position_squared_sum.z);
+		hippt::atomic_fetch_add(&kd_tree_device.core.batch_spatial_moments[parent_index].positive_radiance_sample_count,
+								source_spatial.positive_radiance_sample_count);
+		hippt::atomic_fetch_add(&kd_tree_device.core.batch_spatial_moments[parent_index].position_sum.x, source_spatial.position_sum.x);
+		hippt::atomic_fetch_add(&kd_tree_device.core.batch_spatial_moments[parent_index].position_sum.y, source_spatial.position_sum.y);
+		hippt::atomic_fetch_add(&kd_tree_device.core.batch_spatial_moments[parent_index].position_sum.z, source_spatial.position_sum.z);
+		hippt::atomic_fetch_add(&kd_tree_device.core.batch_spatial_moments[parent_index].position_squared_sum.x, source_spatial.position_squared_sum.x);
+		hippt::atomic_fetch_add(&kd_tree_device.core.batch_spatial_moments[parent_index].position_squared_sum.y, source_spatial.position_squared_sum.y);
+		hippt::atomic_fetch_add(&kd_tree_device.core.batch_spatial_moments[parent_index].position_squared_sum.z, source_spatial.position_squared_sum.z);
 	}
 }
 

@@ -11,9 +11,9 @@
 #include "HostDeviceCommon/Maths/Math.h"
 
 HIPRT_DEVICE TransformedDataType block_scan_early_publish(TransformedDataType thread_input_value,
-											   unsigned int bid,
-											   int tid,
-											   ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs)
+														  unsigned int bid,
+														  int tid,
+														  ParallelPrefixScanDecoupledLookbackBlockDescriptor* __restrict__ block_descs)
 {
 	// Per-warp scan
 	TransformedDataType warp_prefix = warp_prefix_scan_inclusive(thread_input_value);
@@ -91,7 +91,7 @@ ParallelPrefixScanDecoupledLookback_Scan(const InputDataType* __restrict__ input
 	__shared__ unsigned int block_index;
 
 	if (tid == 0)
-		block_index = hippt::atomic_fetch_add_gpu(g_global_block_index_counter, 1u);
+		block_index = hippt::atomic_fetch_add(g_global_block_index_counter, 1u);
 	__syncthreads();
 
 	unsigned int bid		= block_index;
@@ -101,10 +101,10 @@ ParallelPrefixScanDecoupledLookback_Scan(const InputDataType* __restrict__ input
 		return;
 
 	// Input load
-	unsigned int global_tid				 = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
-	unsigned int input_read_id			 = ComputeDataTransforms::input_id_transform(global_tid, input_size);
+	unsigned int global_tid					  = bid * PARALLEL_PREFIX_SCAN_CHUNK_SIZE + tid;
+	unsigned int input_read_id				  = ComputeDataTransforms::input_id_transform(global_tid, input_size);
 	InputDataType thread_input_value_original = (global_tid < input_size) ? input[input_read_id] : 0;
-	TransformedDataType thread_input_value			 = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
+	TransformedDataType thread_input_value	  = ComputeDataTransforms::input_value_transform(thread_input_value_original, global_tid);
 
 	// Inclusive block scan for this thread.
 	//

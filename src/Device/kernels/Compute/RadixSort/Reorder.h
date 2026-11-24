@@ -46,7 +46,7 @@ RadixSort_Reorder(const unsigned int* __restrict__ input_keys,
 	__syncthreads();
 
 	if (index < size)
-		hippt::atomic_fetch_add_gpu(&digit_count_per_warp[warp_index][radix], (short int)1);
+		hippt::atomic_fetch_add(&digit_count_per_warp[warp_index][radix], (short int)1);
 
 	__syncthreads(); // We now have the count of each radix digit for each warp, we can compute inter-warp offset by summing the counts of the previous warps
 					 // (prefix scan)

@@ -36,7 +36,7 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t
 
 	K_v value = keys_uchar[thread_index_in_block];
 	if (value != INVALID_VALUE)
-		hippt::atomic_fetch_add_gpu(&values_counts[value], 1);
+		hippt::atomic_fetch_add(&values_counts[value], 1);
 
 	__syncthreads();
 
@@ -134,10 +134,10 @@ HIPRT_DEVICE void sort_counting_sort_8b_with_invalid_values(K_v* keys_uchar, V_t
 
 	int value_sorted_index;
 	if (value != INVALID_VALUE)
-		value_sorted_index = hippt::atomic_fetch_add_gpu(&values_counts[value], 1);
+		value_sorted_index = hippt::atomic_fetch_add(&values_counts[value], 1);
 	else
 	{
-		int invalid_value_index = hippt::atomic_fetch_add_gpu(&invalid_values_count, 1);
+		int invalid_value_index = hippt::atomic_fetch_add(&invalid_values_count, 1);
 
 		// Putting the invalid values at the end
 		value_sorted_index = SSBNPermutationBlockSize * SSBNPermutationBlockSize - 1 - invalid_value_index;
@@ -168,7 +168,7 @@ SSBNPermutationSortingPass(unsigned char* __restrict__ blue_noise_dither_texture
 						   unsigned int* __restrict__ in_seeds_to_sort,
 						   unsigned int* __restrict__ out_sorted_seeds_buffer,
 						   const int* __restrict__ in_hash_grid_cell_offsets_buffer)
-#else // #ifdef __KERNELCC__
+#else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
 inline SSBNPermutationSortingPass(HIPRTRenderData render_data,
 								  unsigned char* __restrict__ blue_noise_dither_texture_buffer,

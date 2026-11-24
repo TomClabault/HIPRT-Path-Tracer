@@ -52,7 +52,7 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 
 		// Count digits
 		int digit = (in_keys[thread_id_in_block] >> shift) & (RadixSortBlockRadix - 1);
-		hippt::atomic_fetch_add_gpu(&digit_counts[digit], 1);
+		hippt::atomic_fetch_add(&digit_counts[digit], 1);
 
 		__syncthreads();
 
@@ -63,8 +63,8 @@ HIPRT_DEVICE void radix_threadblock_sort_key_values(K_t* keys, V_t* values)
 		{
 			if (warp_index == 0)
 			{
-				int bucket_base_value = warp_prefix_scan_exclusive(thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0,
-																   thread_id_in_block);
+				int bucket_base_value =
+					warp_prefix_scan_exclusive(thread_id_in_block < RadixSortBlockRadix ? digit_counts[thread_id_in_block] : 0, thread_id_in_block);
 
 				if (thread_id_in_block < RadixSortBlockRadix)
 					bucket_base[thread_id_in_block] = bucket_base_value;

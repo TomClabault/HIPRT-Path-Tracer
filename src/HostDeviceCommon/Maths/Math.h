@@ -661,12 +661,6 @@ namespace hippt
 		return atomicMax(address, value);
 	}
 
-	template <typename T>
-	__device__ static T atomic_max_gpu(T* address, T value)
-	{
-		return atomic_max(address, value);
-	}
-
 	/**
 	 * Reads the 32-bit or 64-bit word 'old' located at 'address' in global or shared memory,
 	 * computes the minimum of 'old' and 'value', and stores the result back to memory at the
@@ -740,12 +734,6 @@ namespace hippt
 		return static_cast<unsigned short>((old & mask) >> shift);
 	}
 
-	template <typename T>
-	__device__ static T atomic_min_gpu(T* address, T value)
-	{
-		return atomic_min(address, value);
-	}
-
 	/**
 	 * The function returns the value at 'address' before the increment
 	 */
@@ -753,12 +741,6 @@ namespace hippt
 	__device__ static T atomic_fetch_add(T* address, T increment)
 	{
 		return atomicAdd(address, increment);
-	}
-
-	template <typename T>
-	__device__ static T atomic_fetch_add_gpu(T* address, T increment)
-	{
-		return atomic_fetch_add(address, increment);
 	}
 
 	/**
@@ -858,21 +840,9 @@ namespace hippt
 	}
 
 	template <typename T>
-	__device__ T atomic_or_gpu(T* address, T value)
-	{
-		return atomic_or(address, value);
-	}
-
-	template <typename T>
 	__device__ T atomic_and(T* address, T value)
 	{
 		return atomicAnd(address, value);
-	}
-
-	template <typename T>
-	__device__ T atomic_and_gpu(T* address, T value)
-	{
-		return atomic_and(address, value);
 	}
 
 	template <typename T>
@@ -933,12 +903,6 @@ namespace hippt
 		} while (expected == oldValue && longAssumed != longOldValue); // Repeat until other three 8-bit values stabilize.
 
 		return oldValue;
-	}
-
-	template <typename T>
-	__device__ static T atomic_compare_exchange_gpu(T* address, T expected, T new_value)
-	{
-		return atomic_compare_exchange<T>(address, expected, new_value);
 	}
 
 	/**
@@ -1768,13 +1732,21 @@ namespace hippt
 		return prev_value;
 	}
 
+	/**
+	 * Same as above for a value that is not a std::atomic on the CPU, a field of a struct for example: it is accessed through a std::atomic_ref
+	 * for the duration of the operation
+	 */
 	template <typename T>
-	T atomic_max_gpu(T* address, T value)
+	T atomic_max(T* address, T value)
 	{
-		// Should not be used on the CPU
+		std::atomic_ref<T> atomic_value(*address);
 
-		Debug::debugbreak();
-		return 0;
+		T prev_value = atomic_value.load();
+		while (prev_value < value && !atomic_value.compare_exchange_weak(prev_value, value))
+		{
+		}
+
+		return prev_value;
 	}
 
 	/**
@@ -1795,13 +1767,20 @@ namespace hippt
 		return prev_value;
 	}
 
+	/**
+	 * Same as above for a value that is not a std::atomic
+	 */
 	template <typename T>
-	T atomic_min_gpu(T* address, T value)
+	T atomic_min(T* address, T value)
 	{
-		// Should not be used on the CPU
+		std::atomic_ref<T> atomic_value(*address);
 
-		Debug::debugbreak();
-		return 0;
+		T prev_value = atomic_value.load();
+		while (prev_value > value && !atomic_value.compare_exchange_weak(prev_value, value))
+		{
+		}
+
+		return prev_value;
 	}
 
 	/**
@@ -1824,16 +1803,14 @@ namespace hippt
 	}
 
 	/**
-	 * This one is just an overload such that the code compiles on the CPU but this is meant to be used in kernels that will only ever run on the GPU. This is
-	 * just to make the CPU compiler happy
+	 * Same as above for a value that is not a std::atomic
+	 *
+	 * The function returns the value at 'address' before the increment
 	 */
 	template <typename T>
-	T atomic_fetch_add_gpu(T* atomic_address, T increment)
+	T atomic_fetch_add(T* address, T increment)
 	{
-		// Should not be used on the CPU
-
-		Debug::debugbreak();
-		return 0;
+		return std::atomic_ref<T>(*address).fetch_add(increment);
 	}
 
 	template <typename T>
@@ -1842,13 +1819,13 @@ namespace hippt
 		return address->fetch_or(value);
 	}
 
+	/**
+	 * Same as above for a value that is not a std::atomic
+	 */
 	template <typename T>
-	T atomic_or_gpu(T* address, T value)
+	T atomic_or(T* address, T value)
 	{
-		// Should not be used on the CPU
-
-		Debug::debugbreak();
-		return 0;
+		return std::atomic_ref<T>(*address).fetch_or(value);
 	}
 
 	template <typename T>
@@ -1857,13 +1834,13 @@ namespace hippt
 		return address->fetch_and(value);
 	}
 
+	/**
+	 * Same as above for a value that is not a std::atomic
+	 */
 	template <typename T>
-	T atomic_and_gpu(T* address, T value)
+	T atomic_and(T* address, T value)
 	{
-		// Should not be used on the CPU
-
-		Debug::debugbreak();
-		return 0;
+		return std::atomic_ref<T>(*address).fetch_and(value);
 	}
 
 	template <typename T>
@@ -1889,13 +1866,15 @@ namespace hippt
 		return expected;
 	}
 
+	/**
+	 * Same as above for a value that is not a std::atomic
+	 */
 	template <typename T>
-	T atomic_compare_exchange_gpu(T* address, T expected, T new_value)
+	T atomic_compare_exchange(T* address, T expected, T new_value)
 	{
-		// Should not be used on the CPU
+		std::atomic_ref<T>(*address).compare_exchange_strong(expected, new_value);
 
-		Debug::debugbreak();
-		return 0;
+		return expected;
 	}
 
 	/**

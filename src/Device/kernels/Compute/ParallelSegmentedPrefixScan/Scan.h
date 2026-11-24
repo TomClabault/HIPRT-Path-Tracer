@@ -128,7 +128,7 @@ ParallelSegmentedPrefixScanDecoupledLookback_Scan(const InputDataType* __restric
 	__shared__ unsigned int block_index;
 
 	if (tid == 0)
-		block_index = hippt::atomic_fetch_add_gpu(g_global_block_index_counter, 1u);
+		block_index = hippt::atomic_fetch_add(g_global_block_index_counter, 1u);
 	__syncthreads();
 
 	unsigned int bid		= block_index;

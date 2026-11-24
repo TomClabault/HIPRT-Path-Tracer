@@ -30,7 +30,7 @@ struct ParallelPrefixScanDecoupledLookbackBlockDescriptor
 		{
 			assumed = old_value;
 
-			old_value = hippt::atomic_compare_exchange_gpu(target_address, assumed, *reinterpret_cast<const unsigned long long int*>(&value));
+			old_value = hippt::atomic_compare_exchange(target_address, assumed, *reinterpret_cast<const unsigned long long int*>(&value));
 		} while (assumed != old_value);
 	}
 

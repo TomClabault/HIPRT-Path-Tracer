@@ -387,7 +387,7 @@ struct IlluminationAwareKDTreeCoreDevice
 		// training batch updates the single root or its first few lookahead children.
 		unsafeAtomicAdd(address, increment);
 #else
-		hippt::atomic_fetch_add_gpu(address, increment);
+		hippt::atomic_fetch_add(address, increment);
 #endif // #if defined(__KERNELCC__) && defined(__HIP_PLATFORM_AMD__)
 	}
 
@@ -397,7 +397,7 @@ struct IlluminationAwareKDTreeCoreDevice
 														float3_t incoming_direction)
 	{
 		// b0 counts all valid samples, including samples with L == 0.
-		hippt::atomic_fetch_add_gpu(&signatures[node_index].valid_observation_count, 1u);
+		hippt::atomic_fetch_add(&signatures[node_index].valid_observation_count, 1u);
 
 		atomic_add_training_statistic(&signatures[node_index].scalar_radiance_sum, spatial_radiance_weight);
 		atomic_add_training_statistic(&signatures[node_index].squared_scalar_radiance_sum, spatial_radiance_weight * spatial_radiance_weight);
@@ -409,7 +409,7 @@ struct IlluminationAwareKDTreeCoreDevice
 
 	HIPRT_DEVICE void atomic_add_spatial_moments(IlluminationAwareKDTreeSpatialSampleMoments* moments, unsigned int node_index, float3_t position)
 	{
-		hippt::atomic_fetch_add_gpu(&moments[node_index].positive_radiance_sample_count, 1u);
+		hippt::atomic_fetch_add(&moments[node_index].positive_radiance_sample_count, 1u);
 
 		atomic_add_training_statistic(&moments[node_index].position_sum.x, position.x);
 		atomic_add_training_statistic(&moments[node_index].position_sum.y, position.y);
