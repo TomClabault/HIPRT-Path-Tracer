@@ -3065,11 +3065,6 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			IlluminationAwareKDTreeLearningToClusterUserSettings& learning_to_cluster_user_settings =
 				render_data.kd_tree_device.learning_to_cluster.user_settings;
 
-			// ReSTIR PT samples the envmap as the slot of the lightcut
-			bool restir_pt_path_sampling =
-				path_sampling_strategy_is_restir_pt(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY));
-			ImGui::BeginDisabled(restir_pt_path_sampling);
-
 			if (ImGui::Checkbox("Separate envmap sample without learned lightcut",
 								&learning_to_cluster_user_settings.envmap_separate_sampling_without_learned_lightcut))
 				m_render_window->set_render_dirty(true);
@@ -3098,7 +3093,6 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				"being sampled with at least that probability: a probability of 0 would miss the light that only this technique reaches.");
 
 			ImGui::TreePop();
-			ImGui::EndDisabled();
 			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));

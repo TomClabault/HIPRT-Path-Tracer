@@ -117,7 +117,7 @@
  *		With an importance sampled envmap and emissive geometry, the envmap is one more cluster of every lightcut (always its slot 0, never refined):
  *		its sampling probability is learned like the probability of the emissive clusters.
  *
- *		Outside of ReSTIR PT, two cases do not select the envmap from the lightcut (see IlluminationAwareKDTreeLearningToClusterUserSettings):
+ *		Two cases do not select the envmap from the lightcut (see IlluminationAwareKDTreeLearningToClusterUserSettings):
  *		a shading point without a learned lightcut samples the envmap with its own NEE sample, and the primary hit chooses between the envmap
  *		and the emissive lights with a probability learned at its pixel
  *

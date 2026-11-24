@@ -183,11 +183,12 @@ struct NEEDeferredMISContextSpecialized<LSS_LEARNING_TO_CLUSTER_MIS, PathIntegra
 	// reads it to evaluate the envmap and its MIS weight: the miss has no hit point to derive the direction from
 	float3_t last_bsdf_sampled_direction = make_float3(0.0f, 0.0f, 0.0f);
 
-	// How the NEE of the previous vertex chose between the envmap and the emissive lights, written by the NEE of the megakernel and wavefront
-	// path tracers. Depending on that vertex, both are sampled with their own NEE sample, one of them is chosen with a probability learned at
-	// the pixel, or the envmap is a cluster of the learned lightcut.
+	// How the NEE of the previous vertex chose between the envmap and the emissive lights. Depending on that vertex, both are sampled with
+	// their own NEE sample, one of them is chosen with a probability learned at the pixel, or the envmap is a cluster of the learned lightcut.
 	//
-	// The PDF of an envmap direction is 'last_envmap_selection_probability' times its PDF in the envmap distribution
+	// The PDF of an envmap direction is 'last_envmap_selection_probability' times its PDF in the envmap distribution. When the envmap is a slot
+	// of the lightcut ('last_exclude_envmap_slot' false), ReSTIR PT leaves it at 0 and reads the probability of that slot from
+	// 'last_lightcut_index' instead
 	float last_envmap_selection_probability = 0.0f;
 	// The PDF of an emissive triangle is 'last_emissive_selection_probability' times its PDF in the lightcut, without the envmap slot of the
 	// lightcut if 'last_exclude_envmap_slot'

@@ -138,10 +138,11 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
 																				const DeviceUnpackedPrincipledFullMaterial& material,
 																				int emissive_triangle_global_index,
 																				const float3_t& point_on_light,
-																				const float3_t& light_normal)
+																				const float3_t& light_normal,
+																				bool exclude_envmap_slot = false)
 {
 	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, context, lightcut_index, material.can_do_light_sampling(), material,
-																		emissive_triangle_global_index, point_on_light, light_normal);
+																		emissive_triangle_global_index, point_on_light, light_normal, exclude_envmap_slot);
 }
 
 template <int lightSamplingStrategy = DirectLightSamplingStrategy, typename ProposalMaterialType>

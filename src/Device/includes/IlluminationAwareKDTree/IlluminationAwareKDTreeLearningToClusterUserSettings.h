@@ -23,7 +23,7 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 
 	bool enable_lightcut_refinement = true;
 
-	// The settings below only apply when the envmap is a cluster of the lightcuts, outside of ReSTIR PT.
+	// The settings below only apply when the envmap is a cluster of the lightcuts.
 	//
 	// A shading point without a learned lightcut samples the envmap with its own NEE sample and the emissive lights with a second NEE sample
 	// drawn from the lightcut without its envmap slot. The selection weight of the envmap in an unlearned lightcut is a prior that ignores

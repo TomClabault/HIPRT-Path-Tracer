@@ -222,10 +222,14 @@ HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_light_sampler_solid_ang
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
 											   nee_deferred_MIS_context.last_shading_normal, nee_deferred_MIS_context.get_last_material(render_data));
-	// The lightcut was resolved by the NEE of the previous vertex, at this same shading point
-	return pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(render_data, shading_context, nee_deferred_MIS_context.last_lightcut_index,
-																		nee_deferred_MIS_context.get_last_material(render_data), light_hit_info.primitive_index,
-																		light_hit_info.inter_point, light_hit_info.original_geometric_normal());
+	// The lightcut was resolved by the NEE of the previous vertex, at this same shading point. The emissive lights may have been one of two
+	// choices of that NEE, the other one being the envmap, and sampled from the lightcut without its envmap slot
+	float lightcut_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
+		render_data, shading_context, nee_deferred_MIS_context.last_lightcut_index, nee_deferred_MIS_context.get_last_material(render_data),
+		light_hit_info.primitive_index, light_hit_info.inter_point, light_hit_info.original_geometric_normal(),
+		nee_deferred_MIS_context.last_exclude_envmap_slot);
+
+	return lightcut_pdf * nee_deferred_MIS_context.last_emissive_selection_probability;
 }
 
 /**
@@ -239,6 +243,10 @@ HIPRT_DEVICE HIPRT_NOINLINE float ReSTIR_PT_get_deferred_envmap_cluster_probabil
 {
 	if (nee_deferred_MIS_context.last_lightcut_index == IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX)
 		return 0.0f;
+
+	// The NEE of the previous vertex sampled the envmap outside of the lightcut, with that probability
+	if (nee_deferred_MIS_context.last_exclude_envmap_slot)
+		return nee_deferred_MIS_context.last_envmap_selection_probability;
 
 	IlluminationAwareKDTreeSGShadingContext shading_context =
 		build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,

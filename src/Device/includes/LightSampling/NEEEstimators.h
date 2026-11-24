@@ -714,38 +714,19 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 
 	// The envmap is sampled on its own and the emissive lights from the lightcut without its envmap slot: both with their own NEE sample,
 	// or only one of them, chosen with the probability learned at the pixel
-	float envmap_selection_probability	 = 1.0f;
-	float emissive_selection_probability = 1.0f;
-	bool sample_envmap					 = true;
-	bool sample_emissive_lights			 = true;
+	LearningToClusterEnvmapNEESelection selection =
+		select_learning_to_cluster_envmap_nee_techniques(render_data, envmap_nee_mode, pixel_index, random_number_generator);
 
-	if (envmap_nee_mode == LEARNING_TO_CLUSTER_ENVMAP_NEE_PIXEL_PROBABILITY)
-	{
-		envmap_selection_probability   = learning_to_cluster_pixel_envmap_probability(render_data, pixel_index);
-		emissive_selection_probability = 1.0f - envmap_selection_probability;
+	set_learning_to_cluster_light_selection(out_nee_mis_context, selection.envmap_selection_probability, selection.emissive_selection_probability, true);
 
-		sample_envmap		   = random_number_generator() < envmap_selection_probability;
-		sample_emissive_lights = !sample_envmap;
-	}
-
-	set_learning_to_cluster_light_selection(out_nee_mis_context, envmap_selection_probability, emissive_selection_probability, true);
-
-	pixel_observation_target.pixel_index = pixel_index;
-	pixel_observation_target.record		 = learning_to_cluster_uses_pixel_envmap_statistics(render_data, ray_payload.bounce);
-
-	// Counted here, before the visibility of the samples is known: an occluded or failed sample is an observation of 0
-	if (pixel_observation_target.record)
-		render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics[pixel_index].observation_count++;
+	pixel_observation_target = begin_learning_to_cluster_pixel_observation(render_data, ray_payload.bounce, pixel_index);
 
 	ColorRGB32F light_source_radiance(0.0f);
 
-	if (sample_envmap)
+	if (selection.sample_envmap)
 	{
-		IlluminationAwareKDTreeLearningToClusterCutTriangleSample envmap_sample{};
-		envmap_sample.guiding_node_index			   = guiding_node_index;
-		envmap_sample.cluster_node_index			   = IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
-		envmap_sample.cluster_probability			   = envmap_selection_probability;
-		envmap_sample.conditional_triangle_probability = 1.0f;
+		IlluminationAwareKDTreeLearningToClusterCutTriangleSample envmap_sample =
+			make_learning_to_cluster_envmap_cluster_sample(guiding_node_index, selection.envmap_selection_probability);
 
 		// The envmap sample observes the envmap slot of the lightcut learned at this shading point, like an envmap sample selected from that
 		// lightcut: the learning of the envmap slot does not depend on how the envmap was selected
@@ -757,11 +738,11 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 			random_number_generator, shadow_sink);
 	}
 
-	if (sample_emissive_lights)
+	if (selection.sample_emissive_lights)
 	{
 		IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample = sample_one_emissive_triangle_learning_to_cluster(
 			render_data, shading_context, lightcut_index, guiding_node_index, random_number_generator, /* exclude_envmap_slot */ true);
-		triangle_sample.cluster_probability *= emissive_selection_probability;
+		triangle_sample.cluster_probability *= selection.emissive_selection_probability;
 
 		if (!triangle_sample.valid())
 			append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);

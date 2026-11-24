@@ -6,10 +6,12 @@
 #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LEARNING_TO_CLUSTER_ENVMAP_SELECTION_H
 #define DEVICE_INCLUDES_LIGHT_SAMPLING_LEARNING_TO_CLUSTER_ENVMAP_SELECTION_H
 
+#include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeLearningToClusterCutTriangleSample.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeNodeDevice.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"
+#include "HostDeviceCommon/Xorshift.h"
 
 /**
  * How the NEE of learning to cluster chooses between the envmap and the emissive lights at a shading point, when the envmap is a cluster
@@ -28,13 +30,23 @@ enum LearningToClusterEnvmapNEEMode : unsigned int
 };
 
 /**
+ * What one light candidate of ReSTIR PT samples at a shading point
+ */
+enum LearningToClusterLightCandidateTechnique : unsigned int
+{
+	// One cluster of the lightcut, the envmap slot included
+	LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_LIGHTCUT,
+	// The envmap, outside of the lightcut
+	LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_ENVMAP,
+	// One emissive cluster of the lightcut without its envmap slot
+	LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_EMISSIVE,
+};
+
+/**
  * Whether the NEE at the primary hit of 'pixel_index' reads and updates the per-pixel envmap statistics
  */
 HIPRT_DEVICE bool learning_to_cluster_uses_pixel_envmap_statistics(const HIPRTRenderData& render_data, int bounce)
 {
-#if PathSamplingStrategyIsReSTIRPT
-	return false;
-#else
 	const IlluminationAwareKDTreeLearningToClusterDevice& learning_to_cluster = render_data.kd_tree_device.learning_to_cluster;
 
 	// Without emissive geometry, the envmap is the only light and is always sampled. At low resolution, the pixels of the kernel do not map
@@ -42,17 +54,16 @@ HIPRT_DEVICE bool learning_to_cluster_uses_pixel_envmap_statistics(const HIPRTRe
 	return bounce == 0 && learning_to_cluster.envmap_cluster_enabled && learning_to_cluster.user_settings.envmap_per_pixel_probability &&
 		   render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics != nullptr && render_data.buffers.emissive_triangles_count > 0 &&
 		   !render_data.render_settings.do_render_low_resolution();
-#endif
 }
 
+/**
+ * 'lightcut_index' is the result of IlluminationAwareKDTreeDevice::resolve_lightcut() at the shading point
+ */
 HIPRT_DEVICE LearningToClusterEnvmapNEEMode choose_learning_to_cluster_envmap_nee_mode(const HIPRTRenderData& render_data,
 																					   unsigned int lightcut_index,
 																					   int bounce,
 																					   unsigned int pixel_index)
 {
-#if PathSamplingStrategyIsReSTIRPT
-	return LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT;
-#else
 	const IlluminationAwareKDTreeLearningToClusterDevice& learning_to_cluster = render_data.kd_tree_device.learning_to_cluster;
 	if (!learning_to_cluster.envmap_cluster_enabled)
 		return LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT;
@@ -71,7 +82,6 @@ HIPRT_DEVICE LearningToClusterEnvmapNEEMode choose_learning_to_cluster_envmap_ne
 		return LEARNING_TO_CLUSTER_ENVMAP_NEE_SEPARATE;
 
 	return LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT;
-#endif
 }
 
 /**
@@ -198,5 +208,117 @@ struct LearningToClusterPixelObservationTarget
 	unsigned int pixel_index = 0;
 	bool record				 = false;
 };
+
+/**
+ * Starts the observation of the NEE samples of the shading point by the per-pixel statistics: counts the observation at the pixel when the
+ * shading point is the primary hit of 'pixel_index' and the statistics are used.
+ *
+ * Counted before the visibility of the samples is known: an occluded or failed sample is an observation of 0
+ */
+HIPRT_DEVICE LearningToClusterPixelObservationTarget begin_learning_to_cluster_pixel_observation(const HIPRTRenderData& render_data,
+																								 int bounce,
+																								 unsigned int pixel_index)
+{
+	LearningToClusterPixelObservationTarget pixel_observation_target;
+	pixel_observation_target.pixel_index = pixel_index;
+	pixel_observation_target.record		 = learning_to_cluster_uses_pixel_envmap_statistics(render_data, bounce);
+
+	if (pixel_observation_target.record)
+		render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics[pixel_index].observation_count++;
+
+	return pixel_observation_target;
+}
+
+/**
+ * Which of the envmap and the emissive lights the NEE of a shading point samples, in the modes where the envmap is not sampled as a slot of the
+ * lightcut, and with which probabilities
+ */
+struct LearningToClusterEnvmapNEESelection
+{
+	float envmap_selection_probability	 = 1.0f;
+	float emissive_selection_probability = 1.0f;
+	bool sample_envmap					 = true;
+	bool sample_emissive_lights			 = true;
+};
+
+/**
+ * For LEARNING_TO_CLUSTER_ENVMAP_NEE_SEPARATE, both are sampled with a probability of 1. For LEARNING_TO_CLUSTER_ENVMAP_NEE_PIXEL_PROBABILITY,
+ * one random number chooses one of them with the probability learned at 'pixel_index'
+ */
+HIPRT_DEVICE LearningToClusterEnvmapNEESelection select_learning_to_cluster_envmap_nee_techniques(const HIPRTRenderData& render_data,
+																								  LearningToClusterEnvmapNEEMode envmap_nee_mode,
+																								  unsigned int pixel_index,
+																								  Xorshift32Generator& random_number_generator)
+{
+	LearningToClusterEnvmapNEESelection selection;
+
+	if (envmap_nee_mode == LEARNING_TO_CLUSTER_ENVMAP_NEE_PIXEL_PROBABILITY)
+	{
+		selection.envmap_selection_probability	 = learning_to_cluster_pixel_envmap_probability(render_data, pixel_index);
+		selection.emissive_selection_probability = 1.0f - selection.envmap_selection_probability;
+
+		selection.sample_envmap			 = random_number_generator() < selection.envmap_selection_probability;
+		selection.sample_emissive_lights = !selection.sample_envmap;
+	}
+
+	return selection;
+}
+
+/**
+ * Number of light candidates that ReSTIR PT adds at a shading point: one for LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT, one per technique
+ * of 'selection' otherwise
+ */
+HIPRT_DEVICE unsigned int learning_to_cluster_light_candidate_count(LearningToClusterEnvmapNEEMode envmap_nee_mode,
+																	const LearningToClusterEnvmapNEESelection& selection)
+{
+	if (envmap_nee_mode == LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT)
+		return 1;
+
+	return (selection.sample_envmap ? 1u : 0u) + (selection.sample_emissive_lights ? 1u : 0u);
+}
+
+/**
+ * Technique of the light candidate 'candidate_index' of a shading point, the envmap candidate coming first, and in
+ * 'out_selection_probability' the probability that the light candidates of the shading point sample that technique
+ */
+HIPRT_DEVICE LearningToClusterLightCandidateTechnique learning_to_cluster_light_candidate_technique(LearningToClusterEnvmapNEEMode envmap_nee_mode,
+																									const LearningToClusterEnvmapNEESelection& selection,
+																									unsigned int candidate_index,
+																									float& out_selection_probability)
+{
+	if (envmap_nee_mode == LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT)
+	{
+		out_selection_probability = 1.0f;
+
+		return LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_LIGHTCUT;
+	}
+
+	bool envmap_candidate = selection.sample_envmap && candidate_index == 0;
+	if (envmap_candidate)
+	{
+		out_selection_probability = selection.envmap_selection_probability;
+
+		return LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_ENVMAP;
+	}
+
+	out_selection_probability = selection.emissive_selection_probability;
+
+	return LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_EMISSIVE;
+}
+
+/**
+ * Cluster sample of the envmap when the envmap is sampled outside of the lightcut, with the probability 'envmap_selection_probability'
+ */
+HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample make_learning_to_cluster_envmap_cluster_sample(unsigned int guiding_node_index,
+																													  float envmap_selection_probability)
+{
+	IlluminationAwareKDTreeLearningToClusterCutTriangleSample envmap_sample{};
+	envmap_sample.guiding_node_index			   = guiding_node_index;
+	envmap_sample.cluster_node_index			   = IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
+	envmap_sample.cluster_probability			   = envmap_selection_probability;
+	envmap_sample.conditional_triangle_probability = 1.0f;
+
+	return envmap_sample;
+}
 
 #endif // #ifndef DEVICE_INCLUDES_LIGHT_SAMPLING_LEARNING_TO_CLUSTER_ENVMAP_SELECTION_H

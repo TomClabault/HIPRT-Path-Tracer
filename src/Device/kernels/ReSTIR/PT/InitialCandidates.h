@@ -28,7 +28,8 @@
  * traces the shadow ray towards the envmap, adds the candidate to the reservoir and appends the learning-to-cluster and spatial training samples
  * of that light sample.
  *
- * 'learning_to_cluster_training_sample' is already filled with the cluster selection of 'cluster_sample'
+ * 'learning_to_cluster_training_sample' is already filled with the cluster selection of 'cluster_sample'. 'cluster_sample.cluster_probability'
+ * is the probability that the light candidates of the vertex sample the envmap, 1 when the envmap has its own light candidate
  */
 HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	HIPRTRenderData& render_data,
@@ -42,6 +43,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	Xorshift32Generator& random_number_generator,
 	const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& cluster_sample,
 	IlluminationAwareKDTreeLearningToClusterTrainingSample& learning_to_cluster_training_sample,
+	const LearningToClusterPixelObservationTarget& pixel_observation_target,
 	int x,
 	int y)
 {
@@ -104,6 +106,10 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 			ColorRGB32F learning_estimator							 = envmap_emission * bsdf_throughput / solid_angle_pdf * light_candidate_mis_weight;
 			learning_to_cluster_training_sample.q_reward			 = learning_estimator.luminance() * cluster_sample.cluster_probability;
 			learning_to_cluster_training_sample.variance_observation = learning_to_cluster_training_sample.q_reward;
+
+			if (pixel_observation_target.record)
+				add_learning_to_cluster_pixel_envmap_statistic_observation(render_data, pixel_observation_target.pixel_index, true,
+																		   learning_estimator.luminance());
 		}
 	}
 
@@ -111,6 +117,10 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(
 	render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
 }
 
+/**
+ * One light candidate of the vertex, of the technique 'technique'. 'selection_probability' is the probability that the light candidates of the
+ * vertex sample that technique: 1 for LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_LIGHTCUT, whose lightcut holds every light
+ */
 HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderData& render_data,
 																	float3_t view_direction,
 																	RayPayload& ray_payload,
@@ -122,6 +132,9 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 																	Xorshift32Generator& random_number_generator,
 																	unsigned int lightcut_index,
 																	unsigned int guiding_node_index,
+																	LearningToClusterLightCandidateTechnique technique,
+																	float selection_probability,
+																	const LearningToClusterPixelObservationTarget& pixel_observation_target,
 																	int x,
 																	int y)
 {
@@ -135,8 +148,18 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
 		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
 
-	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
-		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, lightcut_index, guiding_node_index, random_number_generator);
+	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample;
+	if (technique == LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_ENVMAP)
+		triangle_sample = make_learning_to_cluster_envmap_cluster_sample(guiding_node_index, selection_probability);
+	else
+	{
+		bool exclude_envmap_slot = technique == LEARNING_TO_CLUSTER_LIGHT_CANDIDATE_EMISSIVE;
+
+		triangle_sample = sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, lightcut_index, guiding_node_index,
+																		   random_number_generator, exclude_envmap_slot);
+		triangle_sample.cluster_probability *= selection_probability;
+	}
+
 	if (!triangle_sample.valid())
 	{
 		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);
@@ -161,7 +184,7 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 		ReSTIR_PT_add_learning_to_cluster_envmap_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 																 path_weighted_throughput_after_rc_vertex, restir_pt_initial_reservoir,
 																 restir_pt_initial_sample, closest_hit_info, random_number_generator, triangle_sample,
-																 learning_to_cluster_training_sample, x, y);
+																 learning_to_cluster_training_sample, pixel_observation_target, x, y);
 
 		return;
 	}
@@ -244,6 +267,10 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 					ColorRGB32F learning_estimator				 = light_sample.emission * bsdf_throughput / solid_angle_pdf * light_candidate_mis_weight;
 					learning_to_cluster_training_sample.q_reward = learning_estimator.luminance() * triangle_sample.cluster_probability;
 					learning_to_cluster_training_sample.variance_observation = learning_to_cluster_training_sample.q_reward;
+
+					if (pixel_observation_target.record)
+						add_learning_to_cluster_pixel_envmap_statistic_observation(render_data, pixel_observation_target.pixel_index, false,
+																				   learning_estimator.luminance());
 				}
 			}
 		}
@@ -254,10 +281,13 @@ HIPRT_DEVICE void ReSTIR_PT_add_learning_to_cluster_light_candidate(HIPRTRenderD
 }
 
 /**
- * Light candidate of the current vertex: one learning-to-cluster light candidate, which also samples the envmap when the envmap is a cluster of
- * the lightcuts.
+ * Light candidates of the current vertex, chosen by choose_learning_to_cluster_envmap_nee_mode():
+ *	- one learning-to-cluster light candidate, which also samples the envmap when the envmap is a slot of the lightcut,
+ *	- or an envmap light candidate and a light candidate from the lightcut without its envmap slot, both or only one of them, chosen with the
+ *	  probability learned at the pixel. Each candidate is weighted with the probability that its technique is sampled, so the candidates of both
+ *	  techniques can be added at the same vertex.
  *
- * The only BSDF candidate of the vertex is the BSDF sample that continues the main path: it is MIS weighted against this light candidate when
+ * The only BSDF candidate of the vertex is the BSDF sample that continues the main path: it is MIS weighted against these light candidates when
  * the next vertex is found, by ReSTIR_PT_do_deferred_NEE_MIS()
  */
 HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
@@ -298,14 +328,48 @@ HIPRT_DEVICE void ReSTIR_PT_stream_NEE(HIPRTRenderData& render_data,
 	// Also written when unresolved so that the deferred PDF of the next vertex never reads the lightcut of an older vertex
 	nee_deferred_MIS_context.set_last_lightcut_index(lightcut_index);
 
+	unsigned int pixel_index = x + y * render_data.render_settings.render_resolution.x;
+
+	LearningToClusterEnvmapNEEMode envmap_nee_mode = LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT;
+	if (lightcut_index != IlluminationAwareKDTreeNode::UNRESOLVED_LIGHTCUT_INDEX)
+		envmap_nee_mode = choose_learning_to_cluster_envmap_nee_mode(render_data, lightcut_index, ray_payload.bounce, pixel_index);
+
+	// Default selection of the envmap as a slot of the lightcut: the deferred PDF then reads the probability of the envmap slot from the lightcut
+	nee_deferred_MIS_context.set_last_light_selection(0.0f, 1.0f, false);
+
 	if (ray_payload.bounce == 0 && !render_data.render_settings.enable_direct_lighting)
 		return;
 
-	// When the envmap is a cluster of the lightcuts, the learning-to-cluster light candidate also samples it
-	if (has_light_to_sample)
+	if (!has_light_to_sample)
+		return;
+
+	LearningToClusterEnvmapNEESelection selection;
+	LearningToClusterPixelObservationTarget pixel_observation_target;
+
+	if (envmap_nee_mode != LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT)
+	{
+		selection = select_learning_to_cluster_envmap_nee_techniques(render_data, envmap_nee_mode, pixel_index, random_number_generator);
+		nee_deferred_MIS_context.set_last_light_selection(selection.envmap_selection_probability, selection.emissive_selection_probability, true);
+
+		pixel_observation_target = begin_learning_to_cluster_pixel_observation(render_data, ray_payload.bounce, pixel_index);
+	}
+
+	// One loop iteration per light candidate and a single call site: the code of the light candidates is then inlined only once into the
+	// kernel. Inlined once per technique, it would raise the register count and the scratch usage of the kernel
+	unsigned int light_candidate_count = learning_to_cluster_light_candidate_count(envmap_nee_mode, selection);
+
+	NO_UNROLL_LOOP
+	for (unsigned int candidate_index = 0; candidate_index < light_candidate_count; candidate_index++)
+	{
+		float selection_probability;
+		LearningToClusterLightCandidateTechnique technique =
+			learning_to_cluster_light_candidate_technique(envmap_nee_mode, selection, candidate_index, selection_probability);
+
 		ReSTIR_PT_add_learning_to_cluster_light_candidate(render_data, view_direction, ray_payload, path_unweighted_throughput_up_to_rc_vertex,
 														  path_weighted_throughput_after_rc_vertex, restir_pt_initial_reservoir, restir_pt_initial_sample,
-														  closest_hit_info, random_number_generator, lightcut_index, guiding_node_index, x, y);
+														  closest_hit_info, random_number_generator, lightcut_index, guiding_node_index, technique,
+														  selection_probability, pixel_observation_target, x, y);
+	}
 }
 #endif // #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
 
