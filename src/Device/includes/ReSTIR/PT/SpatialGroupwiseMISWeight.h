@@ -33,8 +33,9 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float spmis_target_function_at_domain_pixel(const
 {
 	float3_t pixel_shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
 
+	// Pixel j of the reuse domain: the neighbor pixel approximation, zero on the fallback
 	float target_function =
-		ReSTIR_PT_evaluate_target_function_at_pixel<false, true>(render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
+		ReSTIR_PT_evaluate_target_function_at_pixel<false, true, true>(render_data, sample, pixel_index, pixel_shading_point, random_number_generator);
 	if (target_function > 0.0f && !sample.is_envmap_path())
 	{
 		// If this is an envmap path the jacobian is just 1
@@ -69,7 +70,9 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float spmis_target_function_at_domain_pixel(const
  *
  * The partition of unity holds for any functions p_j with the support of the target functions. Every p_j(y) of these weights is the MIS target function
  * BSDF approximation of SpatialTargetFunctionBSDFApproximation.h, the own terms passed by the caller included
- * (ReSTIR_PT_target_function_bsdf_approximation_own_term())
+ * (ReSTIR_PT_target_function_bsdf_approximation_own_term()). The unbiasedness only needs the p_j of the pixels j of the domain to be zero where their
+ * target functions are (they may also be zero where the target functions are not) and p_c to be > 0 wherever the integrand of the center pixel is, see
+ * the top of SpatialTargetFunctionBSDFApproximation.h
  *
  * The visibility of the probes is traced in separate kernels (SpatialSPMISUnionDomainShadowSplit.h): these functions take the probe values with their
  * visibility already applied (zero for an occluded probe)

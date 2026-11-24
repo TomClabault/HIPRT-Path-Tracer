@@ -103,12 +103,13 @@ HIPRT_DEVICE HIPRT_FORCEINLINE void spmis_union_domain_shadow_split_weights_pixe
 				// Zero MIS weight: zero resampling weight, never selected
 				continue;
 
-			// Own term of the neighbor's sample at the neighbor in the measure of the center pixel, from its target function in its own measure (the Jacobian
-			// division does not change the support)
-			float mis_target_at_neighbor =
-				ReSTIR_PT_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
-																	  neighbor_reservoir.sample.target_function) /
-				shift_mapping_jacobian;
+			// Own term of the neighbor's sample at the neighbor in the measure of the center pixel (the Jacobian division does not change the support). The
+			// neighbor is a pixel j of the reuse domain: the same neighbor pixel approximation as the probes at that pixel, zero on the fallback. Its known
+			// target function cannot stand in for the fallback value: the probes at that pixel would then be another function of (sample, pixel)
+			float mis_target_at_neighbor = ReSTIR_PT_evaluate_target_function_at_pixel<false, true, true>(
+											   render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
+											   render_data.g_buffer.primary_hit_position[neighbor_pixel_index], random_number_generator) /
+										   shift_mapping_jacobian;
 
 			// The companion of the slot drawn by the prepare kernel and its value without visibility: its ray is traced by the resolve kernel
 			unsigned int companion_pixel_index = shadow_split_buffers.companions[chosen * pixel_count + center_pixel_index];

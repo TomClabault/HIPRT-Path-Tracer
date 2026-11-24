@@ -27,9 +27,21 @@
  * The lobes are stored quantized so that the cheap path below reads no material: one 8-byte record per pixel and the padding bytes of the sample (see
  * ReSTIR_PT_target_function_bsdf_approximation_encode_pixel_lobe() and ReSTIR_PT_target_function_bsdf_approximation_encode_sample_lobe())
  *
- * INVARIANT: for every sample and every pixel, the approximation is > 0 exactly when the target function is > 0, and the probes and the own terms use the same
+ * INVARIANT: for every sample and every pixel, on the cheap path and on the fallback of the center pixel, the approximation is > 0 exactly when the
+ * target function is > 0, and the probes and the own terms use the same
  * function of (sample, pixel). The group-wise MIS weights then stay a partition of unity and the spatial reuse stays unbiased, whatever the approximation
  * values are on that support.
+ *
+ * The unbiasedness only needs part of that invariant. For every path y of the center pixel with a non-zero integrand, the MIS weights of the pixels that
+ * can produce y must sum to 1, with each term a single function of (sample, pixel) in the own terms and in the probes:
+ *	- a pixel j of the reuse domain (probes, own term of a neighbor's sample at its pixel) must be zero where its target function is: a positive term where
+ *	  the pixel cannot produce y takes a share of the weights that no sample ever brings. A zero term where the target function is > 0 only gives a zero
+ *	  weight to the samples of that pixel, the other pixels then share the whole weight
+ *	- the center pixel term (a neighbor's sample and the canonical sample at the center pixel, also the resampling target function) must be > 0 wherever
+ *	  the integrand of the center pixel is, so that the denominators of the weights are > 0. A positive value where the integrand is zero is harmless:
+ *	  such a path contributes zero whatever its weight
+ * The approximation at the pixels of the domain (ReSTIR_PT_evaluate_target_function_at_pixel() with 'atNeighborPixel') is therefore zero on the fallback,
+ * without evaluating the BSDFs. Only the center pixel evaluates the fallback.
  *
  * The flags below (pixel flags in the padding byte of GBufferDevice::shading_normals, written by CameraRays; sample flags in
  * ReSTIRPTReservoirSample::target_function_bsdf_approximation_flags) select the "cheap path" for a pair (sample, pixel): both the pixel material and the
@@ -43,7 +55,8 @@
  *	- other BSDF models: no material is in the analytic class
  *
  * Every other pair takes the "fallback": the full target function evaluation, the value is then the full target function divided by the luminance of the
- * radiance of the sample (principled) or the cosine at the pixel on the support of the full target function (Lambertian).
+ * radiance of the sample (principled) or the cosine at the pixel on the support of the full target function (Lambertian). The fallback is zero at the
+ * pixels of the reuse domain other than the center pixel (see the invariant above).
  *
  * The analytic classes and lobes MIRROR THE ZERO CASES AND THE VALUES OF THE BSDF CODE BELOW. Any change to one of these functions or kernel options must
  * be checked against ReSTIR_PT_target_function_bsdf_approximation_material_class(), ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(),
@@ -879,10 +892,11 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_target_function_bsdf_approximatio
 }
 
 /**
- * Approximation of an own term of the MIS weights: the sample 'sample' at the G-buffer pixel 'pixel_index' (its own pixel, or the center pixel for a neighbor's
- * sample or for the canonical sample), whose full target function 'own_full_target_function' is known (no visibility test: the sample is visible from
- * that pixel). The same function of (sample, pixel) as the probes of ReSTIR_PT_evaluate_target_function_at_pixel(), with no BSDF evaluation: the fallback
- * value comes from the known full target function.
+ * Approximation of an own term of the MIS weights at the center pixel: the sample 'sample' at the G-buffer pixel 'pixel_index' (the canonical sample at
+ * the center pixel), whose full target function 'own_full_target_function' is known (no visibility test: the sample is visible from that pixel). The same
+ * function of (sample, pixel) as ReSTIR_PT_evaluate_target_function_at_pixel() without 'atNeighborPixel', with no BSDF evaluation: the fallback value
+ * comes from the known full target function. Not for a pixel of the reuse domain other than the center pixel: its fallback is zero there (see the top of
+ * this file), the own term of a neighbor's sample at its pixel is ReSTIR_PT_evaluate_target_function_at_pixel() with 'atNeighborPixel'.
  *
  * A known full target function can be > 0 where a re-evaluation at the current G-buffer is 0 (a stored delta-peak target of a perfectly smooth lobe whose
  * mirror direction moved). The support of the own term must be the one of 'own_full_target_function': a zero cheap value then takes the fallback value

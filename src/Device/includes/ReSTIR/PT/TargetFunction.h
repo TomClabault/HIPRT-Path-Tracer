@@ -155,16 +155,22 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_sample_visible_at_surface(const HIPRTRenderData
  * This is a template parameter so that only one of the two evaluations is compiled at a call site: the approximation (with its full target function
  * fallback before the visibility test) or the full target function after the visibility test
  *
+ * 'atNeighborPixel' (only with 'targetFunctionBSDFApproximation'): the pixel is a pixel j of the reuse domain in the MIS weights (a probe, the own term
+ * of a neighbor's sample at its pixel), not the center pixel. The fallback is then zero: no BSDF evaluation (see the top of
+ * SpatialTargetFunctionBSDFApproximation.h for why this keeps the spatial reuse unbiased)
+ *
  * Forced inline: out of line, the sample and the shading point passed by reference live in scratch memory in the caller and every field read here
  * is a scratch load
  */
-template <bool withVisiblity, bool targetFunctionBSDFApproximation = false>
+template <bool withVisiblity, bool targetFunctionBSDFApproximation = false, bool atNeighborPixel = false>
 HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTRenderData& render_data,
 																					  const ReSTIRPTReservoirSample& sample,
 																					  int surface_pixel_index,
 																					  const float3_t& surface_shading_point,
 																					  Xorshift32Generator& random_number_generator)
 {
+	static_assert(targetFunctionBSDFApproximation || !atNeighborPixel, "The neighbor pixel variant only exists for the target function BSDF approximation");
+
 	float distance_to_sample_point;
 	float3_t incident_light_direction;
 
@@ -215,21 +221,26 @@ HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_
 																								surface_shading_normal, incident_light_direction, cosine_term);
 		else if (decision == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK)
 		{
-			// The full target function before the visibility test, as at the end of this function
-			DeviceUnpackedPrincipledFullMaterial fallback_surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
-			RayVolumeState fallback_surface_ray_volume_state;
-			fallback_surface_ray_volume_state.reconstruct_first_hit(fallback_surface_material, render_data.buffers.material_indices, surface_primitive_index,
-																	random_number_generator);
+			// A neighbor pixel term may be zero where the target function is not (see the top of SpatialTargetFunctionBSDFApproximation.h): the fallback
+			// of a neighbor pixel is zero and the full BSDFs are not compiled in at its call sites
+			if constexpr (!atNeighborPixel)
+			{
+				// The full target function before the visibility test, as at the end of this function
+				DeviceUnpackedPrincipledFullMaterial fallback_surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
+				RayVolumeState fallback_surface_ray_volume_state;
+				fallback_surface_ray_volume_state.reconstruct_first_hit(fallback_surface_material, render_data.buffers.material_indices,
+																		surface_primitive_index, random_number_generator);
 
-			float3_t fallback_surface_view_direction   = render_data.g_buffer.get_view_direction(render_data.current_camera.position, surface_pixel_index);
-			float3_t fallback_surface_geometric_normal = render_data.g_buffer.geometric_normals[surface_pixel_index].unpack();
+				float3_t fallback_surface_view_direction   = render_data.g_buffer.get_view_direction(render_data.current_camera.position, surface_pixel_index);
+				float3_t fallback_surface_geometric_normal = render_data.g_buffer.geometric_normals[surface_pixel_index].unpack();
 
-			float full_target_function =
-				ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface_shading_point, fallback_surface_view_direction, surface_shading_normal,
-														fallback_surface_geometric_normal, surface_primitive_index, fallback_surface_ray_volume_state,
-														fallback_surface_material, incident_light_direction, cosine_term, random_number_generator);
+				float full_target_function =
+					ReSTIR_PT_evaluate_target_function_bsdf(render_data, sample, surface_shading_point, fallback_surface_view_direction, surface_shading_normal,
+															fallback_surface_geometric_normal, surface_primitive_index, fallback_surface_ray_volume_state,
+															fallback_surface_material, incident_light_direction, cosine_term, random_number_generator);
 
-			approximation_value = ReSTIR_PT_target_function_bsdf_approximation_fallback_value(sample, full_target_function, cosine_term);
+				approximation_value = ReSTIR_PT_target_function_bsdf_approximation_fallback_value(sample, full_target_function, cosine_term);
+			}
 		}
 
 		if (approximation_value <= 0.0f)
