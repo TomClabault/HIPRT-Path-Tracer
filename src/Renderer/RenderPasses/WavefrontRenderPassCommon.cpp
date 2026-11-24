@@ -76,6 +76,11 @@ unsigned int WavefrontRenderPassCommon::get_shadow_work_capacity(unsigned int pa
 			envmap_shadow_count++;
 	}
 
+	if (DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator))
+		// Learning to cluster can take an envmap NEE sample in addition to its emissive NEE sample at a shading point, whatever the envmap
+		// sampling strategy
+		envmap_shadow_count = std::max(envmap_shadow_count, 1u);
+
 	return path_capacity * (emissive_shadow_count + envmap_shadow_count);
 }
 

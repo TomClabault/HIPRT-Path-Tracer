@@ -2131,7 +2131,7 @@ void ImGuiSettingsWindow::draw_ReSTIR_PG_settings_panel()
 	ReSTIRPGSettings& restir_pg_settings							= render_settings.restir_pg_settings;
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<ReSTIRPGRenderPass> restir_pg_render_pass		= std::dynamic_pointer_cast<ReSTIRPGRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
+		  m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(ReSTIRPGRenderPass::RESTIR_PG_RENDER_PASS_NAME));
 
 	if (ImGui::CollapsingHeader("ReSTIR PG"))
 	{
@@ -3058,6 +3058,48 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 				m_renderer->recompile_kernels();
 				m_render_window->set_render_dirty(true);
 			}
+
+			ImGui::Dummy(ImVec2(0.0f, 20.0f));
+			ImGui::SeparatorText("Envmap sampling");
+
+			IlluminationAwareKDTreeLearningToClusterUserSettings& learning_to_cluster_user_settings =
+				render_data.kd_tree_device.learning_to_cluster.user_settings;
+
+			// ReSTIR PT samples the envmap as the slot of the lightcut
+			bool restir_pt_path_sampling =
+				path_sampling_strategy_is_restir_pt(global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY));
+			ImGui::BeginDisabled(restir_pt_path_sampling);
+
+			if (ImGui::Checkbox("Separate envmap sample without learned lightcut",
+								&learning_to_cluster_user_settings.envmap_separate_sampling_without_learned_lightcut))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+				"Where no lightcut is learned yet, the envmap gets its own NEE sample and the emissive lights a second one, from the lightcut without "
+				"its envmap slot.\n\n"
+				"Otherwise, the envmap competes with the emissive lights in the lightcut with a selection weight that ignores visibility: indoors, an "
+				"occluded envmap then takes most NEE samples.");
+
+			if (ImGui::Checkbox("Per-pixel envmap probability at primary hits", &learning_to_cluster_user_settings.envmap_per_pixel_probability))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+				"At the primary hit, chooses between the envmap and the emissive lights with a probability learned at the pixel from its previous NEE "
+				"samples, visibility included. The first sample of a pixel samples both.\n\n"
+				"Resolves envmap visibility that changes over a few pixels, such as sunlight through a thin gap, that the lightcuts of the KD-tree "
+				"cells are too coarse to resolve.");
+
+			ImGui::BeginDisabled(!learning_to_cluster_user_settings.envmap_per_pixel_probability);
+			ImGui::TreePush("Per-pixel envmap probability tree");
+
+			if (ImGui::SliderFloat("Probability floor", &learning_to_cluster_user_settings.envmap_per_pixel_probability_floor, 0.001f, 0.5f, "%.3f",
+								   ImGuiSliderFlags_AlwaysClamp))
+				m_render_window->set_render_dirty(true);
+			ImGuiRenderer::show_help_marker(
+				"Smallest probability of the envmap and of the emissive lights at a primary hit. A technique whose estimate is 0 by chance keeps "
+				"being sampled with at least that probability: a probability of 0 would miss the light that only this technique reaches.");
+
+			ImGui::TreePop();
+			ImGui::EndDisabled();
+			ImGui::EndDisabled();
 
 			ImGui::Dummy(ImVec2(0.0f, 20.0f));
 			ImGui::SeparatorText("Refinement");
@@ -4422,7 +4464,7 @@ void ImGuiSettingsWindow::draw_post_process_panel()
 
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	std::shared_ptr<GMoNRenderPass> gmon_render_pass				= std::dynamic_pointer_cast<GMoNRenderPass>(
-		m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
+		   m_renderer->get_render_graphs()[GPURendererThread::RENDER_GRAPH_FULL_NAME].get_render_pass(GMoNRenderPass::GMON_RENDER_PASS_NAME));
 	GMoNGPUData& gmon_data = gmon_render_pass->get_gmon_data();
 
 	if (!render_data.render_settings.accumulate)

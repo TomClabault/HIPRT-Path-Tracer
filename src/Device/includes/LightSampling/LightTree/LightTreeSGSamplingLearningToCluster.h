@@ -104,23 +104,48 @@ HIPRT_DEVICE float light_clustering_cluster_probability(const IlluminationAwareK
 }
 
 /**
+ * Probability of 'slot' when the learned lightcut is sampled without its envmap slot, slot 0: the probabilities of the other slots are
+ * renormalized. If the envmap slot holds all the probability, the other slots are sampled uniformly.
+ *
+ * 'slot' must be at least 1 and 'lightcut_size' at least 2
+ */
+HIPRT_DEVICE float light_clustering_cluster_probability_excluding_envmap(const IlluminationAwareKDTreeDevice& kd_tree,
+																		 unsigned int lightcut_index,
+																		 unsigned int slot,
+																		 unsigned int lightcut_size)
+{
+	unsigned int envmap_slot_end = kd_tree.learning_to_cluster.lightcut_cdfs[kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 1u)];
+	unsigned int remaining_range = 65535u - envmap_slot_end;
+	if (remaining_range == 0u)
+		return 1.0f / static_cast<float>(lightcut_size - 1u);
+
+	return light_clustering_cluster_probability(kd_tree, lightcut_index, slot, lightcut_size) * 65535.0f / static_cast<float>(remaining_range);
+}
+
+/**
  * 'lightcut_index' and 'guiding_node_index' are the results of IlluminationAwareKDTreeDevice::resolve_lightcut() at the shading point of 'context'
+ *
+ * 'exclude_envmap_slot': samples only the emissive clusters, the envmap being sampled on its own by the caller. The envmap is the slot 0 of
+ * the initial lightcut and of every learned lightcut. Only valid when the envmap is a cluster of the lightcuts
  */
 HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cluster_from_light_cut(const HIPRTRenderData& render_data,
 																									 const IlluminationAwareKDTreeSGShadingContext& context,
 																									 unsigned int lightcut_index,
 																									 unsigned int guiding_node_index,
-																									 Xorshift32Generator& random_number_generator)
+																									 Xorshift32Generator& random_number_generator,
+																									 bool exclude_envmap_slot = false)
 {
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample result{};
 	const IlluminationAwareKDTreeDevice& kd_tree = render_data.kd_tree_device;
 
 	result.guiding_node_index = guiding_node_index;
 
+	unsigned int first_sampled_slot = exclude_envmap_slot ? 1u : 0u;
+
 	if (lightcut_index == IlluminationAwareKDTreeNode::INVALID_LIGHTCUT_INDEX)
 	{
 		unsigned int initial_lightcut_size = kd_tree.learning_to_cluster.effective_initial_lightcut_size;
-		if (initial_lightcut_size == 0 || initial_lightcut_size > LearningToClusterMaximumLightCutSize)
+		if (initial_lightcut_size <= first_sampled_slot || initial_lightcut_size > LearningToClusterMaximumLightCutSize)
 			return result;
 
 		float total_weight		   = 0.0f;
@@ -133,7 +158,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		SGSpecularImportanceData specular_data;
 #endif
 
-		for (unsigned int slot = 0; slot < initial_lightcut_size; slot++)
+		for (unsigned int slot = first_sampled_slot; slot < initial_lightcut_size; slot++)
 		{
 			unsigned int node_index = kd_tree.learning_to_cluster.initial_lightcut_node_indices[slot];
 
@@ -149,11 +174,22 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 
 		if (total_weight <= 0.0f)
 		{
-			float initial_lightcut_size_as_float = kd_tree.learning_to_cluster.effective_initial_lightcut_size_as_float;
+			if (exclude_envmap_slot)
+			{
+				unsigned int sampled_slot_count = initial_lightcut_size - first_sampled_slot;
 
-			selected_slot	= random_number_generator.random_index(initial_lightcut_size, initial_lightcut_size_as_float);
-			selected_weight = 1.0f;
-			total_weight	= initial_lightcut_size_as_float;
+				selected_slot	= first_sampled_slot + random_number_generator.random_index(sampled_slot_count);
+				selected_weight = 1.0f;
+				total_weight	= static_cast<float>(sampled_slot_count);
+			}
+			else
+			{
+				float initial_lightcut_size_as_float = kd_tree.learning_to_cluster.effective_initial_lightcut_size_as_float;
+
+				selected_slot	= random_number_generator.random_index(initial_lightcut_size, initial_lightcut_size_as_float);
+				selected_weight = 1.0f;
+				total_weight	= initial_lightcut_size_as_float;
+			}
 		}
 
 		result.cluster_node_index  = kd_tree.learning_to_cluster.initial_lightcut_node_indices[selected_slot];
@@ -165,7 +201,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	const IlluminationAwareKDTreeLightClusteringData& lightcut_data = kd_tree.learning_to_cluster.lightcut_data[lightcut_index];
 
 	unsigned int lightcut_size = lightcut_data.lightcut_size;
-	if (lightcut_size == 0 || lightcut_size > LearningToClusterMaximumLightCutSize)
+	if (lightcut_size <= first_sampled_slot || lightcut_size > LearningToClusterMaximumLightCutSize)
 		return result;
 
 	unsigned int cdf_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, 0);
@@ -174,10 +210,27 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 	lightcut_cdf.cdf_u16 = kd_tree.learning_to_cluster.lightcut_cdfs + cdf_offset;
 	lightcut_cdf.size	 = lightcut_size;
 
-	unsigned int selected_slot	 = lightcut_cdf.sample(random_number_generator);
-	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, selected_slot);
+	unsigned int selected_slot;
+	float selected_probability;
 
-	float selected_probability = light_clustering_cluster_probability(kd_tree, lightcut_index, selected_slot, lightcut_size);
+	if (exclude_envmap_slot)
+	{
+		// The emissive slots hold no probability when the envmap slot holds it all: they are then sampled uniformly
+		bool envmap_slot_holds_all_probability = lightcut_cdf.cdf_u16[1] == 65535u;
+		if (envmap_slot_holds_all_probability)
+			selected_slot = 1u + random_number_generator.random_index(lightcut_size - 1u);
+		else
+			selected_slot = lightcut_cdf.sample_excluding_first(random_number_generator);
+
+		selected_probability = light_clustering_cluster_probability_excluding_envmap(kd_tree, lightcut_index, selected_slot, lightcut_size);
+	}
+	else
+	{
+		selected_slot		 = lightcut_cdf.sample(random_number_generator);
+		selected_probability = light_clustering_cluster_probability(kd_tree, lightcut_index, selected_slot, lightcut_size);
+	}
+
+	unsigned int selected_offset = kd_tree.learning_to_cluster.get_light_cluster_offset(lightcut_index, selected_slot);
 
 	result.lightcut_index			 = lightcut_index;
 	result.lightcut_slot			 = selected_slot;
@@ -238,17 +291,20 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 
 /**
  * Overload for a caller that already resolved the lightcut of the shading point of 'context': 'lightcut_index' and 'guiding_node_index' are the
- * results of IlluminationAwareKDTreeDevice::resolve_lightcut() there
+ * results of IlluminationAwareKDTreeDevice::resolve_lightcut() there.
+ *
+ * 'exclude_envmap_slot': see sample_cluster_from_light_cut()
  */
 HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample
 sample_one_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_data,
 												 const IlluminationAwareKDTreeSGShadingContext& context,
 												 unsigned int lightcut_index,
 												 unsigned int guiding_node_index,
-												 Xorshift32Generator& random_number_generator)
+												 Xorshift32Generator& random_number_generator,
+												 bool exclude_envmap_slot = false)
 {
 	IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample =
-		sample_cluster_from_light_cut(render_data, context, lightcut_index, guiding_node_index, random_number_generator);
+		sample_cluster_from_light_cut(render_data, context, lightcut_index, guiding_node_index, random_number_generator, exclude_envmap_slot);
 	if (sample.cluster_probability <= 0.0f)
 		return {};
 
@@ -280,12 +336,15 @@ sample_one_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_d
 
 /**
  * 'lightcut_index' is the result of IlluminationAwareKDTreeDevice::resolve_lightcut() at the shading point of 'context': the caller resolves it,
- * once for every PDF and sample of that shading point
+ * once for every PDF and sample of that shading point.
+ *
+ * 'exclude_envmap_slot': probability of the triangle when the lightcut was sampled without its envmap slot, see sample_cluster_from_light_cut()
  */
 HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRenderData& render_data,
 																const IlluminationAwareKDTreeSGShadingContext& context,
 																unsigned int lightcut_index,
-																int emissive_triangle_global_index)
+																int emissive_triangle_global_index,
+																bool exclude_envmap_slot = false)
 {
 	if (emissive_triangle_global_index < 0 || render_data.buffers.emissive_triangles_count == 0)
 		return 0.0f;
@@ -380,13 +439,18 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 
 	float cluster_probability;
 
+	// The envmap slot never matches the trail of a triangle, so 'selected_slot' is past the envmap slot when the envmap slot is excluded
+	unsigned int first_sampled_slot = exclude_envmap_slot ? 1u : 0u;
+	if (lightcut_size <= first_sampled_slot)
+		return 0.0f;
+
 	if (initial_lightcut)
 	{
 		// Before a learned cut exists, sampling uses normalized SG importance, with uniform fallback for an all-zero cut.
 		float total_weight	  = 0.0f;
 		float selected_weight = 0.0f;
 
-		for (unsigned int slot = 0; slot < lightcut_size; slot++)
+		for (unsigned int slot = first_sampled_slot; slot < lightcut_size; slot++)
 		{
 			float weight =
 				light_clustering_cluster_importance(kd_tree.learning_to_cluster, render_data.light_tree_sg, cluster_node_indices[slot], specular_data, context);
@@ -397,8 +461,10 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 				selected_weight = weight;
 		}
 
-		cluster_probability = total_weight > 0.0f ? selected_weight / total_weight : 1.0f / static_cast<float>(lightcut_size);
+		cluster_probability = total_weight > 0.0f ? selected_weight / total_weight : 1.0f / static_cast<float>(lightcut_size - first_sampled_slot);
 	}
+	else if (exclude_envmap_slot)
+		cluster_probability = light_clustering_cluster_probability_excluding_envmap(kd_tree, lightcut_index, selected_slot, lightcut_size);
 	else
 		cluster_probability = light_clustering_cluster_probability(kd_tree, lightcut_index, selected_slot, lightcut_size);
 

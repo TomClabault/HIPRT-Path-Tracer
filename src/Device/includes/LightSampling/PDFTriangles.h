@@ -94,7 +94,7 @@ HIPRT_DEVICE float pdf_of_point_on_triangle_area_measure(const HIPRTRenderData& 
 }
 
 /**
- * 'lightcut_index': see pdf_of_emissive_triangle_learning_to_cluster()
+ * 'lightcut_index', 'exclude_envmap_slot': see pdf_of_emissive_triangle_learning_to_cluster()
  */
 template <typename ProposalMaterialType>
 HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(const HIPRTRenderData& render_data,
@@ -104,12 +104,14 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
 																				const ProposalMaterialType& proposal_state,
 																				int emissive_triangle_global_index,
 																				const float3_t& point_on_light,
-																				const float3_t& light_normal)
+																				const float3_t& light_normal,
+																				bool exclude_envmap_slot = false)
 {
 	if (!can_do_light_sampling)
 		return 0.0f;
 
-	float triangle_probability = pdf_of_emissive_triangle_learning_to_cluster(render_data, context, lightcut_index, emissive_triangle_global_index);
+	float triangle_probability =
+		pdf_of_emissive_triangle_learning_to_cluster(render_data, context, lightcut_index, emissive_triangle_global_index, exclude_envmap_slot);
 	if (triangle_probability <= 0.0f)
 		return 0.0f;
 

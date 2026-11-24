@@ -115,7 +115,11 @@
  *		(hardcoded to spherical gaussian light tree in this implementation) and also adaptively refines the cut.
  *
  *		With an importance sampled envmap and emissive geometry, the envmap is one more cluster of every lightcut (always its slot 0, never refined):
- *		its sampling probability is learned like the probability of the emissive clusters and it is not sampled separately
+ *		its sampling probability is learned like the probability of the emissive clusters.
+ *
+ *		Outside of ReSTIR PT, two cases do not select the envmap from the lightcut (see IlluminationAwareKDTreeLearningToClusterUserSettings):
+ *		a shading point without a learned lightcut samples the envmap with its own NEE sample, and the primary hit chooses between the envmap
+ *		and the emissive lights with a probability learned at its pixel
  *
  *	- LSS_LEARNING_TO_CLUSTER_MIS
  *		Same as LSS_LEARNING_TO_CLUSTER but with BSDF MIS. A BSDF sample that misses the scene is MIS weighted against the envmap cluster

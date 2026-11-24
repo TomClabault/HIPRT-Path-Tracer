@@ -7,10 +7,12 @@
 #define KERNELS_WAVEFRONT_TRACE_SHADOW_RAYS_H
 
 #include "Device/includes/Intersect.h"
+#include "Device/includes/LightSampling/LearningToClusterEnvmapSelection.h"
 #include "Device/includes/Wavefront/WavefrontCommon.h"
 #include "Device/includes/Wavefront/WavefrontShadow.h"
 
-HIPRT_DEVICE void wavefront_update_shadow_training(HIPRTRenderData& render_data, unsigned int queue_slot, unsigned int flags, bool visible)
+HIPRT_DEVICE void wavefront_update_shadow_training(
+	HIPRTRenderData& render_data, unsigned int queue_slot, unsigned int path_index, unsigned int flags, bool visible)
 {
 	if ((flags & WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER) != 0)
 	{
@@ -30,6 +32,15 @@ HIPRT_DEVICE void wavefront_update_shadow_training(HIPRTRenderData& render_data,
 				training_sample.variance_observation = sidecar.cluster_reward_if_visible;
 			}
 		}
+	}
+
+	// The thread that traces the shadow rays of a path is the only one that writes the statistics of its pixel during this pass
+	if ((flags & WAVEFRONT_SHADOW_UPDATE_PIXEL_ENVMAP_STATISTICS) != 0 && visible)
+	{
+		const WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
+
+		bool is_envmap = (flags & WAVEFRONT_SHADOW_IS_ENVMAP) != 0;
+		add_learning_to_cluster_pixel_envmap_statistic_observation(render_data, path_index, is_envmap, sidecar.pixel_envmap_statistic_observation_if_visible);
 	}
 }
 
@@ -101,7 +112,7 @@ HIPRT_DEVICE void wavefront_trace_shadow_queue(HIPRTRenderData& render_data, uns
 			if (visible)
 				contribution += work.contribution_if_visible;
 
-			wavefront_update_shadow_training(render_data, queue_slot, work.flags, visible);
+			wavefront_update_shadow_training(render_data, queue_slot, work.path_index, work.flags, visible);
 		}
 
 		wavefront_data.path_remaining_shadow_work_counts[path_slot] = 0;

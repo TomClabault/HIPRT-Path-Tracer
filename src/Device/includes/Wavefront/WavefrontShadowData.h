@@ -27,6 +27,9 @@ enum WavefrontShadowFlags : unsigned int
 	// the shadow sink
 	WAVEFRONT_SHADOW_FINAL_COLOR				= 1u << 2,
 	WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER = 1u << 3,
+	// A NEE sample of learning to cluster at a primary hit: its observation is added to the per-pixel envmap statistics of the path if the
+	// shadow ray is not occluded
+	WAVEFRONT_SHADOW_UPDATE_PIXEL_ENVMAP_STATISTICS = 1u << 4,
 };
 
 enum WavefrontShadowPathFlags : unsigned int
@@ -62,6 +65,8 @@ struct WavefrontLearningToClusterShadowSidecar
 	unsigned int learning_to_cluster_sample_index = 0;
 	float spatial_radiance_weight_if_visible	  = 0.0f;
 	float cluster_reward_if_visible				  = 0.0f;
+	// Read with WAVEFRONT_SHADOW_UPDATE_PIXEL_ENVMAP_STATISTICS only
+	float pixel_envmap_statistic_observation_if_visible = 0.0f;
 };
 
 #endif // #ifndef DEVICE_INCLUDES_WAVEFRONT_WAVEFRONT_SHADOW_DATA_H

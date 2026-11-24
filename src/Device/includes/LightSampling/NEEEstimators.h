@@ -12,6 +12,7 @@
 #include "Device/includes/HitInfo.h"
 #include "Device/includes/IlluminationAwareKDTree/IlluminationAwareKDTreeDevice.h"
 #include "Device/includes/Intersect.h"
+#include "Device/includes/LightSampling/LearningToClusterEnvmapSelection.h"
 #include "Device/includes/LightSampling/NEEDeferredMISContext.h"
 #include "Device/includes/LightSampling/RIS/RIS.h"
 #include "Device/includes/LightSampling/TriangleEmissiveSampling.h"
@@ -337,7 +338,8 @@ HIPRT_DEVICE HIPRT_INLINE ColorRGB32F evaluate_learning_to_cluster_without_visib
  * Light sample of learning to cluster when the selected cluster of the lightcut is the envmap: samples a direction from the envmap distribution,
  * traces the shadow ray towards the envmap and appends the learning-to-cluster and spatial training samples of that light sample.
  *
- * 'learning_to_cluster_training_sample' is already filled with the cluster selection of 'cluster_sample'
+ * 'learning_to_cluster_training_sample' is already filled with the cluster selection of 'cluster_sample'. 'cluster_sample.cluster_probability'
+ * is the probability that the NEE of the shading point sampled the envmap, 1 when the envmap has its own NEE sample
  */
 template <bool use_MIS, NEEShadowMode shadow_mode, typename BsdfMaterialType>
 HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderData& render_data,
@@ -347,6 +349,7 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 																   const float3_t& view_direction,
 																   const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& cluster_sample,
 																   IlluminationAwareKDTreeLearningToClusterTrainingSample& learning_to_cluster_training_sample,
+																   const LearningToClusterPixelObservationTarget& pixel_observation_target,
 																   Xorshift32Generator& random_number_generator,
 																   WavefrontShadowSink* shadow_sink)
 {
@@ -394,6 +397,7 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 	// Cancel only cluster selection: Q learns the conditional contribution assigned to NEE by MIS.
 	float cluster_reward_if_visible			 = mis_estimator.luminance() * cluster_sample.cluster_probability;
 	float spatial_radiance_weight_if_visible = (envmap_radiance / solid_angle_pdf).max_component();
+	float pixel_observation_if_visible		 = mis_estimator.luminance();
 
 	hiprtRay shadow_ray;
 	shadow_ray.origin	 = closest_hit_info.inter_point;
@@ -401,20 +405,29 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 
 	if constexpr (shadow_mode == NEE_SHADOW_WAVEFRONT)
 	{
-		bool update_training_samples	  = render_data.kd_tree_device.shadow_rays_update_training_samples();
-		unsigned int training_update_flag = update_training_samples ? WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER : 0u;
+		bool update_training_samples			  = render_data.kd_tree_device.shadow_rays_update_training_samples();
+		unsigned int training_update_flag		  = update_training_samples ? WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER : 0u;
+		unsigned int pixel_statistics_update_flag = pixel_observation_target.record ? WAVEFRONT_SHADOW_UPDATE_PIXEL_ENVMAP_STATISTICS : 0u;
 
 		// The shadow sink multiplies the contribution by the path throughput
-		unsigned int queue_slot = shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction,
-													mis_estimator, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | training_update_flag);
-		if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT && update_training_samples)
+		unsigned int queue_slot =
+			shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, 1.0e35f, closest_hit_info.primitive_index, sampled_direction, mis_estimator,
+							  WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | WAVEFRONT_SHADOW_IS_ENVMAP | training_update_flag | pixel_statistics_update_flag);
+		if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
 		{
 			WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
-			sidecar.spatial_training_sample_index = render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
-			sidecar.learning_to_cluster_sample_index =
-				render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
-			sidecar.spatial_radiance_weight_if_visible = spatial_radiance_weight_if_visible;
-			sidecar.cluster_reward_if_visible		   = cluster_reward_if_visible;
+
+			if (update_training_samples)
+			{
+				sidecar.spatial_training_sample_index = render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
+				sidecar.learning_to_cluster_sample_index =
+					render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+				sidecar.spatial_radiance_weight_if_visible = spatial_radiance_weight_if_visible;
+				sidecar.cluster_reward_if_visible		   = cluster_reward_if_visible;
+			}
+
+			if (pixel_observation_target.record)
+				sidecar.pixel_envmap_statistic_observation_if_visible = pixel_observation_if_visible;
 		}
 
 		return ColorRGB32F(0.0f);
@@ -433,6 +446,10 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 			spatial_training_sample.spatial_radiance_weight			 = spatial_radiance_weight_if_visible;
 			learning_to_cluster_training_sample.q_reward			 = cluster_reward_if_visible;
 			learning_to_cluster_training_sample.variance_observation = cluster_reward_if_visible;
+
+			if (pixel_observation_target.record)
+				add_learning_to_cluster_pixel_envmap_statistic_observation(render_data, pixel_observation_target.pixel_index, true,
+																		   pixel_observation_if_visible);
 		}
 
 		render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
@@ -442,53 +459,27 @@ HIPRT_DEVICE ColorRGB32F sample_envmap_cluster_learning_to_cluster(HIPRTRenderDa
 	}
 }
 
-template <bool use_MIS, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE, typename BsdfMaterialType, typename ProposalMaterialType>
-HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
-																	  RayPayloadT<BsdfMaterialType>& ray_payload,
-																	  BsdfMaterialType& bsdf_material,
-																	  const HitInfo closest_hit_info,
-																	  const float3_t& view_direction,
-																	  const ProposalMaterialType& proposal_state,
-																	  Xorshift32Generator& random_number_generator,
-																	  int2_t pixel_coords,
-																	  WavefrontShadowSink* shadow_sink = nullptr)
+/**
+ * Light sample of learning to cluster when the selected cluster of the lightcut is an emissive cluster: samples a point on the triangle of
+ * 'triangle_sample', traces the shadow ray towards it and appends the learning-to-cluster and spatial training samples of that light sample.
+ *
+ * 'triangle_sample.cluster_probability' is the probability that the NEE of the shading point sampled that cluster, selection between the envmap
+ * and the emissive lights included. 'learning_to_cluster_training_sample' is already filled with that selection
+ */
+template <bool use_MIS, NEEShadowMode shadow_mode, typename BsdfMaterialType, typename ProposalMaterialType>
+HIPRT_DEVICE ColorRGB32F
+sample_emissive_cluster_learning_to_cluster(HIPRTRenderData& render_data,
+											RayPayloadT<BsdfMaterialType>& ray_payload,
+											BsdfMaterialType& bsdf_material,
+											const HitInfo& closest_hit_info,
+											const float3_t& view_direction,
+											const ProposalMaterialType& proposal_state,
+											const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& triangle_sample,
+											IlluminationAwareKDTreeLearningToClusterTrainingSample& learning_to_cluster_training_sample,
+											const LearningToClusterPixelObservationTarget& pixel_observation_target,
+											Xorshift32Generator& random_number_generator,
+											WavefrontShadowSink* shadow_sink)
 {
-	if (!bsdf_material.can_do_light_sampling())
-		return ColorRGB32F(0.0f);
-
-	IlluminationAwareKDTreeSGShadingContext shading_context = build_light_clustering_shading_context(
-		closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, static_cast<const LightTreeSGProposalState&>(proposal_state));
-
-	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
-	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
-		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
-
-	IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
-		sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, mesh_id, random_number_generator);
-	if (!triangle_sample.valid())
-	{
-		append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);
-
-		return ColorRGB32F(0.0f);
-	}
-
-	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
-	learning_to_cluster_training_sample.position					   = closest_hit_info.inter_point;
-	learning_to_cluster_training_sample.mesh_id						   = mesh_id;
-	learning_to_cluster_training_sample.shading_context				   = shading_context;
-	learning_to_cluster_training_sample.selected_cluster_node_index	   = triangle_sample.cluster_node_index;
-	learning_to_cluster_training_sample.emissive_triangle_global_index = triangle_sample.emissive_triangle_global_index;
-	learning_to_cluster_training_sample.cluster_probability			   = triangle_sample.cluster_probability;
-	learning_to_cluster_training_sample.sampled_lightcut_index		   = triangle_sample.lightcut_index;
-	learning_to_cluster_training_sample.selected_lightcut_slot		   = triangle_sample.lightcut_slot;
-	learning_to_cluster_training_sample.sampled_lightcut_size		   = triangle_sample.lightcut_size_at_sampling;
-	learning_to_cluster_training_sample.valid_for_lightcut			   = true;
-
-	if (triangle_sample.is_envmap())
-		return sample_envmap_cluster_learning_to_cluster<use_MIS, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
-																			   triangle_sample, learning_to_cluster_training_sample, random_number_generator,
-																			   shadow_sink);
-
 	LightSamplePointInformation light_sample =
 		sample_point_on_light_and_fill_light_sample_information(render_data, closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal,
 																proposal_state, triangle_sample.emissive_triangle_global_index, random_number_generator);
@@ -534,20 +525,29 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 					render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, light_sample, shadow_direction, solid_angle_pdf,
 					triangle_sample.cluster_probability, random_number_generator, spatial_radiance_weight, cluster_reward);
 
-				bool update_training_samples	  = render_data.kd_tree_device.shadow_rays_update_training_samples();
-				unsigned int training_update_flag = update_training_samples ? WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER : 0u;
+				bool update_training_samples			  = render_data.kd_tree_device.shadow_rays_update_training_samples();
+				unsigned int training_update_flag		  = update_training_samples ? WAVEFRONT_SHADOW_UPDATE_LEARNING_TO_CLUSTER : 0u;
+				unsigned int pixel_statistics_update_flag = pixel_observation_target.record ? WAVEFRONT_SHADOW_UPDATE_PIXEL_ENVMAP_STATISTICS : 0u;
 
 				unsigned int queue_slot =
 					shadow_sink->emit(shadow_ray.origin, shadow_ray.direction, distance_to_light, closest_hit_info.primitive_index, light_sample.point_on_light,
-									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | training_update_flag);
-				if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT && update_training_samples)
+									  contribution_if_visible, WAVEFRONT_SHADOW_USE_NEE_PLUS_PLUS | training_update_flag | pixel_statistics_update_flag);
+				if (queue_slot != WAVEFRONT_INVALID_SHADOW_QUEUE_SLOT)
 				{
 					WavefrontLearningToClusterShadowSidecar& sidecar = render_data.wavefront_data.learning_to_cluster_shadow_sidecars[queue_slot];
-					sidecar.spatial_training_sample_index = render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
-					sidecar.learning_to_cluster_sample_index =
-						render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
-					sidecar.spatial_radiance_weight_if_visible = spatial_radiance_weight;
-					sidecar.cluster_reward_if_visible		   = cluster_reward;
+
+					if (update_training_samples)
+					{
+						sidecar.spatial_training_sample_index =
+							render_data.kd_tree_device.core.append_direct_illumination_training_sample(spatial_training_sample);
+						sidecar.learning_to_cluster_sample_index =
+							render_data.kd_tree_device.learning_to_cluster.append_learning_to_cluster_training_sample(learning_to_cluster_training_sample);
+						sidecar.spatial_radiance_weight_if_visible = spatial_radiance_weight;
+						sidecar.cluster_reward_if_visible		   = cluster_reward;
+					}
+
+					if (pixel_observation_target.record)
+						sidecar.pixel_envmap_statistic_observation_if_visible = contribution_if_visible.luminance();
 				}
 
 				return ColorRGB32F(0.0f);
@@ -596,6 +596,10 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 						learning_to_cluster_training_sample.q_reward			 = cluster_reward;
 						learning_to_cluster_training_sample.variance_observation = cluster_reward;
 
+						if (pixel_observation_target.record)
+							add_learning_to_cluster_pixel_envmap_statistic_observation(render_data, pixel_observation_target.pixel_index, false,
+																					   mis_estimator.luminance());
+
 						// Just a CPU-only sanity check
 						sanity_check</* CPUOnly */ true>(render_data, light_source_radiance, 0, 0);
 					}
@@ -610,6 +614,171 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRende
 	return light_source_radiance;
 }
 
+HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterTrainingSample
+make_learning_to_cluster_training_sample(const float3_t& position,
+										 unsigned int mesh_id,
+										 const IlluminationAwareKDTreeSGShadingContext& shading_context,
+										 const IlluminationAwareKDTreeLearningToClusterCutTriangleSample& cluster_sample)
+{
+	IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample{};
+	learning_to_cluster_training_sample.position					   = position;
+	learning_to_cluster_training_sample.mesh_id						   = mesh_id;
+	learning_to_cluster_training_sample.shading_context				   = shading_context;
+	learning_to_cluster_training_sample.selected_cluster_node_index	   = cluster_sample.cluster_node_index;
+	learning_to_cluster_training_sample.emissive_triangle_global_index = cluster_sample.emissive_triangle_global_index;
+	learning_to_cluster_training_sample.cluster_probability			   = cluster_sample.cluster_probability;
+	learning_to_cluster_training_sample.sampled_lightcut_index		   = cluster_sample.lightcut_index;
+	learning_to_cluster_training_sample.selected_lightcut_slot		   = cluster_sample.lightcut_slot;
+	learning_to_cluster_training_sample.sampled_lightcut_size		   = cluster_sample.lightcut_size_at_sampling;
+	learning_to_cluster_training_sample.valid_for_lightcut			   = true;
+
+	return learning_to_cluster_training_sample;
+}
+
+/**
+ * Stores how the NEE of the shading point chose between the envmap and the emissive lights, for the MIS weight of the BSDF sample of that
+ * shading point. Only the estimator with MIS reads it
+ */
+HIPRT_DEVICE void set_learning_to_cluster_light_selection(NEEDeferredMISContext& out_nee_mis_context,
+														  float envmap_selection_probability,
+														  float emissive_selection_probability,
+														  bool exclude_envmap_slot)
+{
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+	out_nee_mis_context.set_last_light_selection(envmap_selection_probability, emissive_selection_probability, exclude_envmap_slot);
+#endif
+}
+
+template <bool use_MIS, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE, typename BsdfMaterialType, typename ProposalMaterialType>
+HIPRT_DEVICE ColorRGB32F sample_one_light_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
+																	  RayPayloadT<BsdfMaterialType>& ray_payload,
+																	  BsdfMaterialType& bsdf_material,
+																	  const HitInfo closest_hit_info,
+																	  const float3_t& view_direction,
+																	  const ProposalMaterialType& proposal_state,
+																	  Xorshift32Generator& random_number_generator,
+																	  int2_t pixel_coords,
+																	  NEEDeferredMISContext& out_nee_mis_context,
+																	  WavefrontShadowSink* shadow_sink = nullptr)
+{
+	// A shading point that samples no light leaves the BSDF sample as the only sampler of the envmap
+	set_learning_to_cluster_light_selection(out_nee_mis_context, 0.0f, 1.0f, false);
+
+	if (!bsdf_material.can_do_light_sampling())
+		return ColorRGB32F(0.0f);
+
+	IlluminationAwareKDTreeSGShadingContext shading_context = build_light_clustering_shading_context(
+		closest_hit_info.inter_point, view_direction, closest_hit_info.shading_normal, static_cast<const LightTreeSGProposalState&>(proposal_state));
+
+	unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
+	if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && closest_hit_info.primitive_index >= 0)
+		mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[closest_hit_info.primitive_index];
+
+	unsigned int guiding_node_index = IlluminationAwareKDTreeNode::INVALID_NODE_INDEX;
+	unsigned int lightcut_index		= render_data.kd_tree_device.resolve_lightcut(shading_context, mesh_id, &guiding_node_index);
+
+	unsigned int pixel_index					   = pixel_coords.x + pixel_coords.y * render_data.render_settings.render_resolution.x;
+	LearningToClusterEnvmapNEEMode envmap_nee_mode = choose_learning_to_cluster_envmap_nee_mode(render_data, lightcut_index, ray_payload.bounce, pixel_index);
+
+	// Only the NEE samples of the primary hit observe the per-pixel statistics
+	LearningToClusterPixelObservationTarget pixel_observation_target;
+
+	if (envmap_nee_mode == LEARNING_TO_CLUSTER_ENVMAP_NEE_LIGHTCUT_SLOT)
+	{
+#if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS
+		set_learning_to_cluster_light_selection(out_nee_mis_context, pdf_of_envmap_cluster_learning_to_cluster(render_data, shading_context, lightcut_index),
+												1.0f, false);
+#endif
+
+		IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample =
+			sample_one_emissive_triangle_learning_to_cluster(render_data, shading_context, lightcut_index, guiding_node_index, random_number_generator);
+		if (!triangle_sample.valid())
+		{
+			append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);
+
+			return ColorRGB32F(0.0f);
+		}
+
+		IlluminationAwareKDTreeLearningToClusterTrainingSample learning_to_cluster_training_sample =
+			make_learning_to_cluster_training_sample(closest_hit_info.inter_point, mesh_id, shading_context, triangle_sample);
+
+		if (triangle_sample.is_envmap())
+			return sample_envmap_cluster_learning_to_cluster<use_MIS, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
+																				   triangle_sample, learning_to_cluster_training_sample,
+																				   pixel_observation_target, random_number_generator, shadow_sink);
+
+		return sample_emissive_cluster_learning_to_cluster<use_MIS, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
+																				 proposal_state, triangle_sample, learning_to_cluster_training_sample,
+																				 pixel_observation_target, random_number_generator, shadow_sink);
+	}
+
+	// The envmap is sampled on its own and the emissive lights from the lightcut without its envmap slot: both with their own NEE sample,
+	// or only one of them, chosen with the probability learned at the pixel
+	float envmap_selection_probability	 = 1.0f;
+	float emissive_selection_probability = 1.0f;
+	bool sample_envmap					 = true;
+	bool sample_emissive_lights			 = true;
+
+	if (envmap_nee_mode == LEARNING_TO_CLUSTER_ENVMAP_NEE_PIXEL_PROBABILITY)
+	{
+		envmap_selection_probability   = learning_to_cluster_pixel_envmap_probability(render_data, pixel_index);
+		emissive_selection_probability = 1.0f - envmap_selection_probability;
+
+		sample_envmap		   = random_number_generator() < envmap_selection_probability;
+		sample_emissive_lights = !sample_envmap;
+	}
+
+	set_learning_to_cluster_light_selection(out_nee_mis_context, envmap_selection_probability, emissive_selection_probability, true);
+
+	pixel_observation_target.pixel_index = pixel_index;
+	pixel_observation_target.record		 = learning_to_cluster_uses_pixel_envmap_statistics(render_data, ray_payload.bounce);
+
+	// Counted here, before the visibility of the samples is known: an occluded or failed sample is an observation of 0
+	if (pixel_observation_target.record)
+		render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics[pixel_index].observation_count++;
+
+	ColorRGB32F light_source_radiance(0.0f);
+
+	if (sample_envmap)
+	{
+		IlluminationAwareKDTreeLearningToClusterCutTriangleSample envmap_sample{};
+		envmap_sample.guiding_node_index			   = guiding_node_index;
+		envmap_sample.cluster_node_index			   = IlluminationAwareKDTreeNode::ENVMAP_CLUSTER_NODE_INDEX;
+		envmap_sample.cluster_probability			   = envmap_selection_probability;
+		envmap_sample.conditional_triangle_probability = 1.0f;
+
+		// The envmap sample observes the envmap slot of the lightcut learned at this shading point, like an envmap sample selected from that
+		// lightcut: the learning of the envmap slot does not depend on how the envmap was selected
+		IlluminationAwareKDTreeLearningToClusterTrainingSample envmap_training_sample =
+			make_learning_to_cluster_training_sample(closest_hit_info.inter_point, mesh_id, shading_context, envmap_sample);
+
+		light_source_radiance += sample_envmap_cluster_learning_to_cluster<use_MIS, shadow_mode>(
+			render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, envmap_sample, envmap_training_sample, pixel_observation_target,
+			random_number_generator, shadow_sink);
+	}
+
+	if (sample_emissive_lights)
+	{
+		IlluminationAwareKDTreeLearningToClusterCutTriangleSample triangle_sample = sample_one_emissive_triangle_learning_to_cluster(
+			render_data, shading_context, lightcut_index, guiding_node_index, random_number_generator, /* exclude_envmap_slot */ true);
+		triangle_sample.cluster_probability *= emissive_selection_probability;
+
+		if (!triangle_sample.valid())
+			append_failed_light_clustering_training_sample(render_data, closest_hit_info.inter_point, shading_context, mesh_id, triangle_sample);
+		else
+		{
+			IlluminationAwareKDTreeLearningToClusterTrainingSample emissive_training_sample =
+				make_learning_to_cluster_training_sample(closest_hit_info.inter_point, mesh_id, shading_context, triangle_sample);
+
+			light_source_radiance += sample_emissive_cluster_learning_to_cluster<use_MIS, shadow_mode>(
+				render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, triangle_sample, emissive_training_sample,
+				pixel_observation_target, random_number_generator, shadow_sink);
+		}
+	}
+
+	return light_source_radiance;
+}
+
 template <typename BsdfMaterialType, typename ProposalMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
 HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIPRTRenderData& render_data,
 																			 RayPayloadT<BsdfMaterialType>& ray_payload,
@@ -619,10 +788,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_no_MIS_SG_tree_learning_to_cluster(HIP
 																			 const ProposalMaterialType& proposal_state,
 																			 Xorshift32Generator& random_number_generator,
 																			 int2_t pixel_coords,
+																			 NEEDeferredMISContext& out_nee_mis_context,
 																			 WavefrontShadowSink* shadow_sink = nullptr)
 {
 	return sample_one_light_SG_tree_learning_to_cluster<false, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
-																			proposal_state, random_number_generator, pixel_coords, shadow_sink);
+																			proposal_state, random_number_generator, pixel_coords, out_nee_mis_context,
+																			shadow_sink);
 }
 
 template <typename BsdfMaterialType, typename ProposalMaterialType, NEEShadowMode shadow_mode = NEE_SHADOW_INLINE>
@@ -634,10 +805,12 @@ HIPRT_DEVICE ColorRGB32F sample_one_light_MIS_SG_tree_learning_to_cluster(HIPRTR
 																		  const ProposalMaterialType& proposal_state,
 																		  Xorshift32Generator& random_number_generator,
 																		  int2_t pixel_coords,
+																		  NEEDeferredMISContext& out_nee_mis_context,
 																		  WavefrontShadowSink* shadow_sink = nullptr)
 {
 	return sample_one_light_SG_tree_learning_to_cluster<true, shadow_mode>(render_data, ray_payload, bsdf_material, closest_hit_info, view_direction,
-																		   proposal_state, random_number_generator, pixel_coords, shadow_sink);
+																		   proposal_state, random_number_generator, pixel_coords, out_nee_mis_context,
+																		   shadow_sink);
 }
 
 template <NEEShadowMode shadow_mode = NEE_SHADOW_INLINE, typename BsdfMaterialType, typename ProposalMaterialType>
@@ -672,10 +845,12 @@ HIPRT_DEVICE ColorRGB32F sample_multiple_emissive_geometry(HIPRTRenderData& rend
 	out_nee_mis_context.fill_ris_reservoir(reservoir);
 #elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER	 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_no_MIS_SG_tree_learning_to_cluster<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
-		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, pixel_coords, shadow_sink);
+		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, pixel_coords, out_nee_mis_context,
+		shadow_sink);
 #elif DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 	direct_light_contribution = sample_one_light_MIS_SG_tree_learning_to_cluster<BsdfMaterialType, ProposalMaterialType, shadow_mode>(
-		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, pixel_coords, shadow_sink);
+		render_data, ray_payload, bsdf_material, closest_hit_info, view_direction, proposal_state, random_number_generator, pixel_coords, out_nee_mis_context,
+		shadow_sink);
 #endif														 // #if DirectLightNEEEstimator == LSS_ONE_LIGHT
 
 	return direct_light_contribution;
@@ -937,21 +1112,10 @@ HIPRT_DEVICE ColorRGB32F deferred_NEE_MIS_envmap_miss_learning_to_cluster(HIPRTR
 
 	float light_sampler_solid_angle_pdf = 0.0f;
 
+	// The NEE of the previous vertex stored the probability with which it sampled the envmap: 1 when the envmap had its own NEE sample, the
+	// probability learned at the pixel or the probability of the envmap slot of the lightcut otherwise
 	if (nee_deferred_MIS_context.last_can_do_light_sampling)
-	{
-		const NEEDeferredLightProposalState& proposal_state = nee_deferred_MIS_context.get_last_light_proposal_state();
-		IlluminationAwareKDTreeSGShadingContext shading_context =
-			build_light_clustering_shading_context(nee_deferred_MIS_context.last_shading_point, nee_deferred_MIS_context.last_view_direction,
-												   nee_deferred_MIS_context.last_shading_normal, static_cast<const LightTreeSGProposalState&>(proposal_state));
-
-		unsigned int mesh_id = IlluminationAwareKDTreeLearningToClusterLightcutSet::INVALID_MESH_ID;
-		if (render_data.buffers.global_triangle_index_to_mesh_index != nullptr && nee_deferred_MIS_context.last_primitive_index >= 0)
-			mesh_id = render_data.buffers.global_triangle_index_to_mesh_index[nee_deferred_MIS_context.last_primitive_index];
-
-		// Learning updates run after the megakernel, so this resolves the same cut and CDF used at the previous vertex.
-		unsigned int lightcut_index	  = render_data.kd_tree_device.resolve_lightcut(shading_context, mesh_id);
-		light_sampler_solid_angle_pdf = pdf_of_envmap_cluster_learning_to_cluster(render_data, shading_context, lightcut_index) * envmap_pdf_solid_angle;
-	}
+		light_sampler_solid_angle_pdf = nee_deferred_MIS_context.last_envmap_selection_probability * envmap_pdf_solid_angle;
 
 	// A previous vertex that cannot do light sampling sampled no envmap direction: the BSDF ray is then the only sampler of the envmap and its
 	// weight is 1
@@ -1042,7 +1206,9 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 		unsigned int lightcut_index	  = render_data.kd_tree_device.resolve_lightcut(shading_context, mesh_id);
 		light_sampler_solid_angle_pdf = pdf_of_emissive_triangle_hit_solid_angle_learning_to_cluster(
 			render_data, shading_context, lightcut_index, nee_deferred_MIS_context.last_can_do_light_sampling, proposal_state, light_hit_info.primitive_index,
-			light_hit_info.inter_point, light_hit_info.original_geometric_normal());
+			light_hit_info.inter_point, light_hit_info.original_geometric_normal(), nee_deferred_MIS_context.last_exclude_envmap_slot);
+		// The emissive lights may have been one of two choices of the NEE of the previous vertex, the other one being the envmap
+		light_sampler_solid_angle_pdf *= nee_deferred_MIS_context.last_emissive_selection_probability;
 	}
 
 	float bsdf_sample_mis_weight = balance_heuristic(nee_deferred_MIS_context.last_bsdf_sample_pdf, 1, light_sampler_solid_angle_pdf, 1);

@@ -145,6 +145,7 @@ void CPURenderer::setup_buffers()
 
 	// Resizing buffers + initial value
 	m_pixel_active_buffer.resize(width * height, 0);
+	m_learning_to_cluster_pixel_envmap_statistics.resize(width * height, LearningToClusterPixelEnvmapStatistics());
 	m_input_random_seeds.resize(width * height, 0);
 	m_updated_random_seeds.resize(width * height, 0);
 	m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
@@ -362,6 +363,7 @@ void CPURenderer::update_render_data()
 	m_render_data.buffers.accumulated_ray_colors						   = m_framebuffer.get_data_as_ColorRGB32F();
 	m_render_data.buffers.last_frame_ray_colors							   = m_last_frame_ray_colors.data();
 	m_render_data.aux_buffers.pixel_active								   = m_pixel_active_buffer.data();
+	m_render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics  = m_learning_to_cluster_pixel_envmap_statistics.data();
 	m_render_data.aux_buffers.denoiser_albedo							   = m_denoiser_albedo.data();
 	m_render_data.aux_buffers.denoiser_normals							   = m_denoiser_normals.data();
 	m_render_data.aux_buffers.pixel_sample_count						   = m_pixel_sample_count.data();

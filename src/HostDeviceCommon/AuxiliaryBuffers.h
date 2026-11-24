@@ -9,6 +9,7 @@
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
 #include "HostDeviceCommon/Color.h"
 #include "HostDeviceCommon/HierarchicalAdaptiveSampling.h"
+#include "HostDeviceCommon/LearningToClusterPixelEnvmapStatistics.h"
 
 struct AuxiliaryBuffers
 {
@@ -69,6 +70,10 @@ struct AuxiliaryBuffers
 	ReSTIRPTReservoir* restir_pt_reservoir_buffer_1 = nullptr;
 	ReSTIRPTReservoir* restir_pt_reservoir_buffer_2 = nullptr;
 	ReSTIRPTReservoir* restir_pt_reservoir_buffer_3 = nullptr;
+
+	// Per pixel statistics of the NEE samples of learning to cluster at the primary hit, used to choose between the envmap and the emissive
+	// lights there. Reset with the render
+	LearningToClusterPixelEnvmapStatistics* learning_to_cluster_pixel_envmap_statistics = nullptr;
 };
 
 #endif // #ifndef HOST_DEVICE_COMMON_AUXILIARY_BUFFERS_H

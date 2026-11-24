@@ -195,6 +195,37 @@ struct CDFDeviceU16
 		return left > 0 ? left - 1 : 0;
 	}
 
+	/**
+	 * Samples an index greater than or equal to 1, with a probability of (cdf_u16[index + 1] - cdf_u16[index]) / (65535 - cdf_u16[1]), the end of
+	 * the last index being 65535.
+	 *
+	 * The caller must check that 65535 - cdf_u16[1] is not 0 and that size is at least 2
+	 */
+	HIPRT_DEVICE unsigned int sample_excluding_first(Xorshift32Generator& rng) const
+	{
+		unsigned int first_end	   = cdf_u16[1];
+		unsigned int excluded_size = 65535u - first_end;
+
+		// Integer values in [first_end + 1, 65535]: each index owns exactly cdf_u16[index + 1] - cdf_u16[index] of them
+		unsigned int random_offset = hippt::min(static_cast<unsigned int>(rng() * static_cast<float>(excluded_size)), excluded_size - 1u);
+		unsigned int random_value  = first_end + 1u + random_offset;
+
+		// Binary search for the first boundary at or above the random value, among the boundaries 2 to size
+		unsigned int left  = 2;
+		unsigned int right = size;
+		while (left < right)
+		{
+			unsigned int mid = (left + right) / 2;
+			if (cdf_u16[mid] < random_value)
+				left = mid + 1;
+			else
+				right = mid;
+		}
+
+		// 'left' is the first boundary at or above the random value, 'size' standing for 65535
+		return left - 1;
+	}
+
 	const unsigned short int* cdf_u16 = nullptr;
 
 	unsigned int size = 0;

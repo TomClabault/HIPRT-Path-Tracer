@@ -73,6 +73,9 @@ HIPRT_DEVICE void reset_render(const HIPRTRenderData& render_data, uint32_t pixe
 		render_data.aux_buffers.pixel_converged_sample_count[pixel_index] = -1;
 	}
 
+	if (render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics != nullptr)
+		render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics[pixel_index] = LearningToClusterPixelEnvmapStatistics();
+
 	if (render_data.buffers.debug_ray_colors != nullptr)
 		render_data.buffers.debug_ray_colors[pixel_index] = ColorRGB32F();
 

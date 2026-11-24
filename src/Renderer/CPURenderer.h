@@ -101,6 +101,8 @@ private:
 	std::vector<unsigned int> m_input_random_seeds;
 
 	std::vector<unsigned char> m_pixel_active_buffer;
+	// Per pixel statistics of learning to cluster to choose between the envmap and the emissive lights at the primary hit
+	std::vector<LearningToClusterPixelEnvmapStatistics> m_learning_to_cluster_pixel_envmap_statistics;
 	std::vector<ColorRGB32F> m_denoiser_albedo;
 	std::vector<float3_t> m_denoiser_normals;
 

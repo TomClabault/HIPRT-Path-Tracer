@@ -449,6 +449,8 @@ private:
 	// can have accumulated a different number of sample
 	OrochiBuffer<int> m_pixels_sample_count_buffer;
 	OrochiBuffer<unsigned char> m_pixel_active;
+	// Per pixel statistics of learning to cluster to choose between the envmap and the emissive lights at the primary hit
+	OrochiBuffer<LearningToClusterPixelEnvmapStatistics> m_learning_to_cluster_pixel_envmap_statistics;
 
 	// Very first seeds (1 per each pixel) that the path tracer will use to generate the frame (this is usually the first seed that the camera ray kernel uses
 	// for example)

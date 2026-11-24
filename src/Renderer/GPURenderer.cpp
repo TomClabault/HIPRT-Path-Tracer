@@ -494,6 +494,7 @@ void GPURenderer::resize(int new_width, int new_height)
 		m_pixel_active.resize(new_width * new_height);
 
 		m_last_frame_ray_colors.resize(new_width * new_height);
+		m_learning_to_cluster_pixel_envmap_statistics.resize(new_width * new_height);
 
 		m_input_seeds.resize(new_width * new_height);
 		m_updated_random_seeds.resize(new_width * new_height);
@@ -970,9 +971,10 @@ void GPURenderer::update_render_data()
 			m_render_data.aux_buffers.pixel_converged_sample_count = nullptr;
 		}
 
-		m_render_data.aux_buffers.pixel_active				   = m_pixel_active.get_device_pointer();
-		m_render_data.aux_buffers.still_one_ray_active		   = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
-		m_render_data.aux_buffers.pixel_count_converged_so_far = m_status_buffers.pixels_converged_count_buffer.get_atomic_device_pointer();
+		m_render_data.aux_buffers.pixel_active								  = m_pixel_active.get_device_pointer();
+		m_render_data.aux_buffers.still_one_ray_active						  = m_status_buffers.still_one_ray_active_buffer.get_device_pointer();
+		m_render_data.aux_buffers.pixel_count_converged_so_far				  = m_status_buffers.pixels_converged_count_buffer.get_atomic_device_pointer();
+		m_render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics = m_learning_to_cluster_pixel_envmap_statistics.get_device_pointer();
 
 		m_render_data_buffers_invalidated = false;
 	}
