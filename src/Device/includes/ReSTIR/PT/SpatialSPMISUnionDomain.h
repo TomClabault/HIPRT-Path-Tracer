@@ -391,8 +391,8 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomainCenterBSDF spmis_union_domain_center_bsdf_s
 
 	if (center_bsdf.analytic_lobe)
 	{
-		center_bsdf.lobe = ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(render_data, center_surface.material, material_class, smooth_lobe,
-																						   true, center_bsdf.view_cosine);
+		center_bsdf.lobe = ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(center_surface.material, material_class, smooth_lobe, true,
+																						   center_bsdf.view_cosine);
 
 		return center_bsdf;
 	}

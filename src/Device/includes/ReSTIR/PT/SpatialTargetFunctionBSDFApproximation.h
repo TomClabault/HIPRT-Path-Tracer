@@ -81,9 +81,12 @@
  *	- fresnel_attenuated_diffuse: diffuse light that crosses the specular layer twice, attenuated by its Fresnel transmissions (1 - F_d) on the way in and
  *	  on the way out
  *
- * Pixel side (V fixed, folded): specular_scale = s lum(tint) / E, unattenuated_diffuse = lum(base) (1 - s) / (pi E),
- * fresnel_attenuated_diffuse = lum(base darkening) s (1 - F_d(NoV)) / (pi E) with E the glossy base energy compensation at the NoV of the pixel.
- * Reconnection side (L fixed): the same without E and without the (1 - F_d(NoV)) factor.
+ * Pixel side (V fixed, folded): specular_scale = s lum(tint), unattenuated_diffuse = lum(base) (1 - s) / pi,
+ * fresnel_attenuated_diffuse = lum(base darkening) s (1 - F_d(NoV)) / pi. Reconnection side (L fixed): the same without the (1 - F_d(NoV)) factor.
+ *
+ * The glossy base energy compensation of the BSDF (a division by E(NoV), get_principled_energy_compensation_glossy_base()) is not in the lobes: it
+ * scales the BSDF of a pixel by one smooth factor, which leaves the MIS weights almost unchanged (no measurable variance difference with or without
+ * it), and it is a 3D texture lookup per lobe
  * Metal: specular_scale = 1, unattenuated_diffuse = fresnel_attenuated_diffuse = 0.
  *
  * A perfectly smooth lobe has specular_scale = 0 (its value is 0 off the delta peak), a pair whose directions may hit the delta peak goes to the fallback
@@ -282,15 +285,10 @@ HIPRT_DEVICE int ReSTIR_PT_target_function_bsdf_approximation_material_class(con
 
 /**
  * Unquantized lobe of 'material' (class 'material_class'). 'pixel_side': V is the view direction of the pixel with cosine 'view_cosine', the (1 - F_d(NoV))
- * factor and the 1 / E glossy base energy compensation are folded in. Only used with the principled BSDF
+ * factor is folded in. Only used with the principled BSDF
  */
-HIPRT_DEVICE ReSTIRPTTargetFunctionBSDFApproximationLobe
-ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(const HIPRTRenderData& render_data,
-																const DeviceUnpackedPrincipledFullMaterial& material,
-																int material_class,
-																bool smooth_lobe,
-																bool pixel_side,
-																float view_cosine)
+HIPRT_DEVICE ReSTIRPTTargetFunctionBSDFApproximationLobe ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(
+	const DeviceUnpackedPrincipledFullMaterial& material, int material_class, bool smooth_lobe, bool pixel_side, float view_cosine)
 {
 	ReSTIRPTTargetFunctionBSDFApproximationLobe lobe;
 
@@ -312,28 +310,23 @@ ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(const HIPRTRende
 	float specular		   = material.specular;
 	lobe.fresnel_parameter = material.ior;
 
-	float energy_compensation_divisor = 1.0f;
-	if (pixel_side)
-		// The incident medium ior only enters through the coat (none here)
-		energy_compensation_divisor = get_principled_energy_compensation_glossy_base(render_data, material, 1.0f, view_cosine);
-
 	ColorRGB32F tint = hippt::lerp(ColorRGB32F(1.0f), material.specular_tint * material.specular_color, specular);
 
 	if (!smooth_lobe)
-		lobe.specular_scale = specular * tint.luminance() / energy_compensation_divisor;
+		lobe.specular_scale = specular * tint.luminance();
 
 	ColorRGB32F darkening			= principled_specular_compute_darkening(material, material.ior, 0.0f);
-	lobe.unattenuated_diffuse		= material.base_color.luminance() * (1.0f - specular) * hippt::M_INV_PI / energy_compensation_divisor;
-	lobe.fresnel_attenuated_diffuse = (material.base_color * darkening).luminance() * specular * hippt::M_INV_PI / energy_compensation_divisor;
+	lobe.unattenuated_diffuse		= material.base_color.luminance() * (1.0f - specular) * hippt::M_INV_PI;
+	lobe.fresnel_attenuated_diffuse = (material.base_color * darkening).luminance() * specular * hippt::M_INV_PI;
 
 	if (pixel_side)
 		lobe.fresnel_attenuated_diffuse *= 1.0f - full_fresnel_dielectric(view_cosine, material.ior);
 
 	if (material_class == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND)
 	{
-		// principled_bsdf_eval() is m metal(V, L) + (1 - m) glossy_base(V, L) / E with m the metallic weight: the glossy base lobe above scaled by
-		// 1 - m, plus the metal lobe scaled by m. Both specular lobes share the roughness and the GGX D and G2 terms, so the specular part is
-		// D G2 / (4 NoV NoL) times
+		// principled_bsdf_eval() is m metal(V, L) + (1 - m) glossy_base(V, L) / E with m the metallic weight (E not modeled, see the top of this file):
+		// the glossy base lobe above scaled by 1 - m, plus the metal lobe scaled by m. Both specular lobes share the roughness and the GGX D and G2
+		// terms, so the specular part is D G2 / (4 NoV NoL) times
 		//
 		//		dielectric_specular_scale F_d(LoH) + m F_m(LoH)
 		//
@@ -646,7 +639,7 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_target_function_bsdf_approximation_pixel_fl
 		return 0;
 
 	ReSTIRPTTargetFunctionBSDFApproximationLobe lobe =
-		ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(render_data, material, material_class, smooth_lobe, true, view_cosine);
+		ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(material, material_class, smooth_lobe, true, view_cosine);
 	render_data.g_buffer.target_function_bsdf_approximation_lobe_records[pixel_index] = ReSTIR_PT_target_function_bsdf_approximation_encode_pixel_lobe(lobe);
 #endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
@@ -675,7 +668,7 @@ HIPRT_DEVICE void ReSTIR_PT_target_function_bsdf_approximation_fill_rc_vertex(co
 
 #if BSDFKernelModel == BSDF_PRINCIPLED
 	ReSTIRPTTargetFunctionBSDFApproximationLobe lobe =
-		ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(render_data, rc_vertex_material, material_class, smooth_lobe, false, 0.0f);
+		ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(rc_vertex_material, material_class, smooth_lobe, false, 0.0f);
 
 	sample.target_function_bsdf_approximation_flags = ReSTIR_PT_target_function_bsdf_approximation_encode_sample_lobe(sample, lobe, smooth_lobe);
 #else
