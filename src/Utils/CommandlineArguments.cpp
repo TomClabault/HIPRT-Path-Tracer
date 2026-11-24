@@ -23,6 +23,8 @@ CommandlineArguments CommandlineArguments::process_command_line_args(int argc, c
 			arguments.bounces = std::atoi(string_argv.substr(10).c_str());
 		else if (string_argv.starts_with("--output="))
 			arguments.output_filepath = string_argv.substr(9);
+		else if (string_argv.starts_with("--sample-checkpoints="))
+			arguments.sample_checkpoints = parse_sample_checkpoints(string_argv.substr(21));
 		else if (string_argv.starts_with("--w="))
 			arguments.render_width = std::atoi(string_argv.substr(4).c_str());
 		else if (string_argv.starts_with("--width="))
@@ -41,4 +43,25 @@ CommandlineArguments CommandlineArguments::process_command_line_args(int argc, c
 	}
 
 	return arguments;
+}
+
+std::vector<int> CommandlineArguments::parse_sample_checkpoints(const std::string& comma_separated_sample_counts)
+{
+	std::vector<int> sample_counts;
+
+	std::size_t token_start = 0;
+	while (token_start < comma_separated_sample_counts.size())
+	{
+		std::size_t token_end = comma_separated_sample_counts.find(',', token_start);
+		if (token_end == std::string::npos)
+			token_end = comma_separated_sample_counts.size();
+
+		int sample_count = std::atoi(comma_separated_sample_counts.substr(token_start, token_end - token_start).c_str());
+		if (sample_count > 0)
+			sample_counts.push_back(sample_count);
+
+		token_start = token_end + 1;
+	}
+
+	return sample_counts;
 }

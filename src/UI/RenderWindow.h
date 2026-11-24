@@ -133,7 +133,15 @@ public:
 	 */
 	float get_UI_delta_time();
 
-	void run(const std::string& output_filepath = "", int render_samples = 0);
+	/**
+	 * 'sample_checkpoints': with 'output_filepath', sample counts below 'render_samples' at which the render is also written, see
+	 * get_sample_checkpoint_output_filepath()
+	 */
+	void run(const std::string& output_filepath = "", int render_samples = 0, const std::vector<int>& sample_checkpoints = {});
+	/**
+	 * '<output stem>_<sample_count>spp<extension>'
+	 */
+	static std::string get_sample_checkpoint_output_filepath(const std::string& output_filepath, int sample_count);
 	void render();
 	/**
 	 * Denoises the color framebuffer if necessary (according to ImGui

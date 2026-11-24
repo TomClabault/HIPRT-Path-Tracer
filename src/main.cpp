@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 	parsed_scene = Scene();
 	envmap_image.free();
 
-	render_window.run(cmd_arguments.output_filepath, cmd_arguments.render_samples);
+	render_window.run(cmd_arguments.output_filepath, cmd_arguments.render_samples, cmd_arguments.sample_checkpoints);
 #else  // #if GPU_RENDER
 
 	g_imgui_logger.add_line(ImGuiLoggerSeverity::IMGUI_LOGGER_INFO, "[%dx%d]: %d samples ; %d bounces\n\n", width, height, cmd_arguments.render_samples,

@@ -12,6 +12,7 @@
 #include "UI/RenderWindow.h"
 #include "Utils/Utils.h"
 
+#include <algorithm>
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -1153,15 +1154,43 @@ std::shared_ptr<ImGuiRenderer> RenderWindow::get_imgui_renderer()
 	return m_imgui_renderer;
 }
 
-void RenderWindow::run(const std::string& output_filepath, int render_samples)
+std::string RenderWindow::get_sample_checkpoint_output_filepath(const std::string& output_filepath, int sample_count)
+{
+	std::size_t extension_start = output_filepath.find_last_of('.');
+	std::size_t last_separator	= output_filepath.find_last_of("/\\");
+
+	// A dot in a directory name is not the start of an extension
+	bool has_extension = extension_start != std::string::npos && (last_separator == std::string::npos || extension_start > last_separator);
+	if (!has_extension)
+		extension_start = output_filepath.size();
+
+	return output_filepath.substr(0, extension_start) + "_" + std::to_string(sample_count) + "spp" + output_filepath.substr(extension_start);
+}
+
+void RenderWindow::run(const std::string& output_filepath, int render_samples, const std::vector<int>& sample_checkpoints)
 {
 	HIPRTRenderSettings& render_settings = m_renderer->get_render_settings();
+
+	// Sample counts at which the batch render is written, in increasing order, the last one being 'render_samples'
+	std::vector<int> capture_sample_counts;
+	for (int sample_checkpoint : sample_checkpoints)
+	{
+		if (sample_checkpoint < render_samples)
+			capture_sample_counts.push_back(sample_checkpoint);
+	}
+
+	std::sort(capture_sample_counts.begin(), capture_sample_counts.end());
+	capture_sample_counts.erase(std::unique(capture_sample_counts.begin(), capture_sample_counts.end()), capture_sample_counts.end());
+	capture_sample_counts.push_back(render_samples);
+
+	std::size_t next_capture_index = 0;
 
 	bool batch_output = !output_filepath.empty();
 	if (batch_output)
 	{
-		// Batch captures must contain exactly the requested number of noisy samples.
-		m_application_settings->max_sample_count	  = render_samples;
+		// Batch captures must contain exactly the requested number of noisy samples. The render stops at each capture and resumes when the
+		// maximum sample count is raised to the next one
+		m_application_settings->max_sample_count	  = capture_sample_counts[next_capture_index];
 		m_application_settings->auto_sample_per_frame = false;
 		m_application_settings->enable_denoising	  = false;
 		render_settings.samples_per_frame			  = 1;
@@ -1235,8 +1264,19 @@ void RenderWindow::run(const std::string& output_filepath, int render_samples)
 
 		if (batch_output && is_rendering_done() && !render_reset_pending)
 		{
-			m_screenshoter->write_to_png(output_filepath);
-			glfwSetWindowShouldClose(m_glfw_window, GLFW_TRUE);
+			bool last_capture = next_capture_index + 1 == capture_sample_counts.size();
+			if (last_capture)
+			{
+				m_screenshoter->write_to_png(output_filepath);
+				glfwSetWindowShouldClose(m_glfw_window, GLFW_TRUE);
+			}
+			else
+			{
+				m_screenshoter->write_to_png(get_sample_checkpoint_output_filepath(output_filepath, capture_sample_counts[next_capture_index]));
+
+				next_capture_index++;
+				m_application_settings->max_sample_count = capture_sample_counts[next_capture_index];
+			}
 		}
 
 		// Measuring the CPU overhead before 'glfwSwapBuffers' because we do not want
