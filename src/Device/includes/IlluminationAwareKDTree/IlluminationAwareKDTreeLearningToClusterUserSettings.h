@@ -29,9 +29,9 @@ struct IlluminationAwareKDTreeLearningToClusterUserSettings
 	// drawn from the lightcut without its envmap slot. The selection weight of the envmap in an unlearned lightcut is a prior that ignores
 	// visibility: indoors, it would give most NEE samples to an occluded envmap
 	bool envmap_separate_sampling_without_learned_lightcut = true;
-	// At the primary hit of a pixel, chooses between the envmap and the emissive lights with a probability learned at that pixel from its
-	// previous NEE samples, visibility included. A 3D spatial structure is too coarse for envmap visibility that changes over a few
-	// centimeters, such as sunlight through a thin gap
+	// At the primary hit of a pixel, chooses between the envmap and the emissive lights with a probability learned from the previous NEE
+	// samples of that pixel and of its 3x3 neighbors on the same surface, visibility included. A 3D spatial structure is too coarse for envmap
+	// visibility that changes over a few centimeters, such as sunlight through a thin gap
 	bool envmap_per_pixel_probability = true;
 	// Smallest probability of either technique at a primary hit: a technique whose estimate is 0 by chance must keep being sampled, or the
 	// light it can reach would be missed

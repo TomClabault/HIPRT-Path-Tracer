@@ -75,16 +75,88 @@ HIPRT_DEVICE LearningToClusterEnvmapNEEMode choose_learning_to_cluster_envmap_ne
 }
 
 /**
+ * Whether the primary hit of 'neighbor_pixel_index' lies on the same surface as the primary hit at 'center_position' with the geometric
+ * normal 'center_normal': the envmap visibility of a neighbor on another surface, across a silhouette, tells nothing about the center
+ */
+HIPRT_DEVICE bool learning_to_cluster_pixel_neighbor_on_same_surface(const HIPRTRenderData& render_data,
+																	 const float3_t& center_position,
+																	 const float3_t& center_normal,
+																	 float plane_distance_tolerance,
+																	 unsigned int neighbor_pixel_index)
+{
+	// About 25 degrees between the normals
+	constexpr float minimum_normal_cosine = 0.9f;
+
+	if (render_data.g_buffer.first_hit_prim_index[neighbor_pixel_index] == -1)
+		// The camera ray of the neighbor missed the scene
+		return false;
+
+	float3_t neighbor_normal = hippt::normalize(render_data.g_buffer.geometric_normals[neighbor_pixel_index].unpack());
+	if (hippt::dot(center_normal, neighbor_normal) < minimum_normal_cosine)
+		return false;
+
+	float3_t neighbor_position = render_data.g_buffer.primary_hit_position[neighbor_pixel_index];
+
+	float plane_distance = hippt::abs(hippt::dot(center_normal, neighbor_position - center_position));
+	return plane_distance <= plane_distance_tolerance;
+}
+
+/**
  * Probability of sampling the envmap rather than the emissive lights at the primary hit of 'pixel_index', from the statistics of the previous
- * samples of that pixel
+ * samples of that pixel and of its 3x3 neighborhood.
+ *
+ * Pooling the neighbors gives about 9 times more observations to the estimate, which one sample per pixel would otherwise leave close to
+ * random at the first samples. The neighbors whose primary hit is on another surface are left out. The visibility of the envmap is then
+ * blurred by about one pixel across shadow boundaries, which only costs efficiency: the probability stays above the floor.
+ *
+ * In the megakernel, a neighbor can be adding the observations of the current sample while they are read here. The probability then depends
+ * on the current sample of that neighbor, which is independent of the sample of this pixel: the estimator stays unbiased, only the exact
+ * result can change from one run to the next
  */
 HIPRT_DEVICE float learning_to_cluster_pixel_envmap_probability(const HIPRTRenderData& render_data, unsigned int pixel_index)
 {
-	const IlluminationAwareKDTreeLearningToClusterUserSettings& user_settings = render_data.kd_tree_device.learning_to_cluster.user_settings;
-	const LearningToClusterPixelEnvmapStatistics& statistics = render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics[pixel_index];
+	// Largest distance of a neighbor to the tangent plane of the center, relative to the distance of the center to the camera
+	constexpr float relative_plane_distance_tolerance = 0.02f;
 
-	float envmap_weight	  = hippt::max(statistics.envmap_sum, 0.0f);
-	float emissive_weight = hippt::max(statistics.emissive_sum, 0.0f);
+	const IlluminationAwareKDTreeLearningToClusterUserSettings& user_settings = render_data.kd_tree_device.learning_to_cluster.user_settings;
+	int2_t resolution														  = render_data.render_settings.render_resolution;
+
+	int center_x = static_cast<int>(pixel_index % resolution.x);
+	int center_y = static_cast<int>(pixel_index / resolution.x);
+
+	float3_t center_position = render_data.g_buffer.primary_hit_position[pixel_index];
+	float3_t center_normal	 = hippt::normalize(render_data.g_buffer.geometric_normals[pixel_index].unpack());
+
+	float plane_distance_tolerance = relative_plane_distance_tolerance * hippt::length(center_position - render_data.current_camera.position);
+
+	// The sums of all the pixels are pooled: every NEE sample of the neighborhood counts once
+	float envmap_weight	  = 0.0f;
+	float emissive_weight = 0.0f;
+
+	for (int offset_y = -1; offset_y <= 1; offset_y++)
+	{
+		for (int offset_x = -1; offset_x <= 1; offset_x++)
+		{
+			int neighbor_x = center_x + offset_x;
+			int neighbor_y = center_y + offset_y;
+
+			if (neighbor_x < 0 || neighbor_x >= resolution.x || neighbor_y < 0 || neighbor_y >= resolution.y)
+				continue;
+
+			unsigned int neighbor_pixel_index = static_cast<unsigned int>(neighbor_x + neighbor_y * resolution.x);
+
+			bool is_center = offset_x == 0 && offset_y == 0;
+			if (!is_center && !learning_to_cluster_pixel_neighbor_on_same_surface(render_data, center_position, center_normal, plane_distance_tolerance,
+																				  neighbor_pixel_index))
+				continue;
+
+			const LearningToClusterPixelEnvmapStatistics& statistics =
+				render_data.aux_buffers.learning_to_cluster_pixel_envmap_statistics[neighbor_pixel_index];
+
+			envmap_weight += hippt::max(statistics.envmap_sum, 0.0f);
+			emissive_weight += hippt::max(statistics.emissive_sum, 0.0f);
+		}
+	}
 
 	float total_weight		 = envmap_weight + emissive_weight;
 	float envmap_probability = total_weight > 0.0f ? envmap_weight / total_weight : 0.5f;

@@ -3082,8 +3082,8 @@ void ImGuiSettingsWindow::draw_learning_to_cluster_many_lights_panel()
 			if (ImGui::Checkbox("Per-pixel envmap probability at primary hits", &learning_to_cluster_user_settings.envmap_per_pixel_probability))
 				m_render_window->set_render_dirty(true);
 			ImGuiRenderer::show_help_marker(
-				"At the primary hit, chooses between the envmap and the emissive lights with a probability learned at the pixel from its previous NEE "
-				"samples, visibility included. The first sample of a pixel samples both.\n\n"
+				"At the primary hit, chooses between the envmap and the emissive lights with a probability learned from the previous NEE samples of "
+				"the pixel and of its 3x3 neighbors on the same surface, visibility included. The first sample of a pixel samples both.\n\n"
 				"Resolves envmap visibility that changes over a few pixels, such as sunlight through a thin gap, that the lightcuts of the KD-tree "
 				"cells are too coarse to resolve.");
 
