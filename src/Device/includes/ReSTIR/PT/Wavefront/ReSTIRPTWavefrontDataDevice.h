@@ -11,7 +11,7 @@
 
 /**
  * Per-path state of the wavefront ReSTIR PT initial candidates that the generic wavefront data (WavefrontDataDevice) does not hold: the
- * variables that the initial candidates megakernel carries from one bounce to the next in registers.
+ * variables of the path that the kernels of one bounce pass to the kernels of the next bounce.
  *
  * All the buffers are indexed by the pixel index of the path
  */

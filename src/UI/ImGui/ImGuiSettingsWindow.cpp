@@ -1711,29 +1711,29 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 		{
 			ImGui::TreePush("Path sampling tree");
 
-			const char* items[]	   = { "- BSDF sampling", "- BSDF Wavefront", "- ReSTIR PT", "- ReSTIR PT (wavefront)", "- ReSTIR PG" };
+			const char* items[]	   = { "- BSDF sampling", "- BSDF Wavefront", "- ReSTIR PT", "- ReSTIR PG" };
 			const char* tooltips[] = {
 				"Classical BSDF path tracing: sample the BSDF at each bounce for the next direction.",
 				"Uses classical BSDF path tracing while processing paths one bounce at a time through compacted wavefront queues.",
-				"Uses ReSTIR PT to resample a path to shade for the pixel. ReSTIR PT resamples paths and not full path trees, guaranteeing unbiasedness.",
-				"Uses ReSTIR PT while processing paths one bounce at a time through compacted wavefront queues.",
+				"Uses ReSTIR PT to resample a path to shade for the pixel. ReSTIR PT resamples paths and not full path trees, guaranteeing unbiasedness. "
+				"The initial candidates paths are processed one bounce at a time through compacted wavefront queues.",
 				"Uses ReSTIR Path Guiding piggy-backing on another ReSTIR path sampler to improve path sampling distributions over time with guiding.",
 			};
 
-			// The order of the items in the combo is not the order of the PATH_SAMPLING_* values: ReSTIR PT (wavefront) is listed next to ReSTIR PT
-			// and ReSTIR PG is a fake entry (it is not a PATH_SAMPLING_* value that is ever kept as the path sampling strategy)
+			// The order of the items in the combo is not the order of the PATH_SAMPLING_* values: ReSTIR PT is listed before ReSTIR PG and ReSTIR PG
+			// is a fake entry (it is not a PATH_SAMPLING_* value that is ever kept as the path sampling strategy)
 			int path_sampling_strategy = global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY);
 
-			int path_sampling_strategy_item = path_sampling_strategy == PATH_SAMPLING_RESTIR_PT_WAVEFRONT ? 3 : path_sampling_strategy;
+			int path_sampling_strategy_item = path_sampling_strategy == PATH_SAMPLING_RESTIR_PT_WAVEFRONT ? 2 : path_sampling_strategy;
 			if (ImGuiRenderer::ComboWithTooltips("Sampling strategy", &path_sampling_strategy_item, items, IM_ARRAYSIZE(items), tooltips))
 			{
 				switch (path_sampling_strategy_item)
 				{
-				case 3:
+				case 2:
 					path_sampling_strategy = PATH_SAMPLING_RESTIR_PT_WAVEFRONT;
 					break;
 
-				case 4:
+				case 3:
 					path_sampling_strategy = PATH_SAMPLING_RESTIR_PG;
 					break;
 
@@ -1746,7 +1746,7 @@ void ImGuiSettingsWindow::draw_sampling_panel()
 				if (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY) == PATH_SAMPLING_RESTIR_PG)
 				{
 					// This is ReSTIR PG. Its enabled through ReSTIR PT so let's enable ReSTIR PT
-					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_PT);
+					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY, PATH_SAMPLING_RESTIR_PT_WAVEFRONT);
 
 					// Automatically enabling ReSTIR PG still for convenience
 					global_kernel_options->set_macro_value(GPUKernelCompilerOptions::RESTIR_PG_ENABLE, KERNEL_OPTION_TRUE);

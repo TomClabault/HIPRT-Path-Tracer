@@ -16,7 +16,6 @@
 #include "RenderPasses/NEEPlusPlusRenderPass.h"
 #include "RenderPasses/ReSTIRPGRenderPass.h"
 #include "RenderPasses/ReSTIRPTRenderPass.h"
-#include "RenderPasses/ReSTIRPTWavefrontRenderPass.h"
 #include "RenderPasses/SSBNPermutationRenderPass.h"
 #include "RenderPasses/WavefrontRenderPass.h"
 

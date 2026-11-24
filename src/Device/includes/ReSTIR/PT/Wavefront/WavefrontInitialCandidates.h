@@ -21,7 +21,7 @@
 #include "HostDeviceCommon/Xorshift.h"
 
 /**
- * Wavefront version of the ReSTIR PT initial candidates kernel (kernels/ReSTIR/PT/InitialCandidates.h).
+ * Wavefront generation of the ReSTIR PT initial candidates.
  *
  * Each path tree of a pixel is generated one bounce at a time:
  *	- the shading kernels process the vertex of one bounce: deferred BSDF candidate of the previous vertex, light candidate of the vertex (its
@@ -31,8 +31,8 @@
  *	- the completion kernel adds the last deferred BSDF candidate of the path and, after the last path tree of the pixel, normalizes the
  *	  reservoir.
  *
- * Every kernel restores the random number generator of the path from the wavefront data and stores it back: the paths consume their random
- * numbers in the same order as in the initial candidates megakernel.
+ * Every kernel restores the random number generator of the path from the wavefront data and stores it back: a path consumes its random numbers in
+ * the same order as if all its bounces ran in a single thread.
  *
  * The vertices are shaded with the material of their material family, given by KERNEL_MATERIAL_SPECIALIZATION
  */
@@ -310,7 +310,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_add_learning_to_cluster_light_candidate(HI
 }
 
 /**
- * Light candidates of the current vertex, see ReSTIR_PT_stream_NEE() in the initial candidates megakernel.
+ * Light candidates of the current vertex.
  *
  * 'bounce' is the bounce of the vertex: a compile-time 0 for the primary hit, see ReSTIR_PT_wavefront_shade_path()
  */
@@ -380,7 +380,8 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_stream_NEE(HIPRTRenderData& render_data,
 		pixel_observation_target = begin_learning_to_cluster_pixel_observation(render_data, bounce, pixel_index);
 	}
 
-	// One loop iteration per light candidate and a single call site, see ReSTIR_PT_stream_NEE()
+	// One loop iteration per light candidate and a single call site: the code of the light candidates is then inlined only once into the
+	// kernel. Inlined once per technique, it would raise the register count and the scratch usage of the kernel
 	unsigned int light_candidate_count = learning_to_cluster_light_candidate_count(envmap_nee_mode, selection);
 
 	NO_UNROLL_LOOP
@@ -783,8 +784,8 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 
 	RayPayloadT<ReSTIRPTWavefrontKernelMaterial> ray_payload(NoInitTag{});
 	hiprtRay ray;
-	// At the primary hit, the texture coordinates of the hit are not read from the G-buffer and stay at their default value, as in the initial
-	// candidates megakernel: the deferred MIS of bounce 1 reads the material of the primary hit from the G-buffer, it does not need them
+	// At the primary hit, the texture coordinates of the hit are not read from the G-buffer and stay at their default value: the deferred MIS of
+	// bounce 1 reads the material of the primary hit from the G-buffer, it does not need them
 	HitInfo closest_hit_info;
 
 	ResolvedMaterialUserControlsCache resolved_user_controls;
@@ -797,7 +798,8 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 
 	ReSTIRPTInitialCandidatesReservoir restir_pt_initial_reservoir(render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_buffer,
 																   pixel_index);
-	// The sample of the path lives in memory, not in registers, see the initial candidates megakernel
+	// The sample of the path lives in memory, not in registers: the reconnection vertex fields written at bounces 0 and 1 would otherwise stay live
+	// across every later light candidate and traced ray. Memory is only read back when a candidate is selected (copy into the output reservoir)
 	ReSTIRPTReservoirSample& restir_pt_initial_sample =
 		render_data.render_settings.restir_pt_settings.initial_candidates.initial_candidates_working_samples_buffer[pixel_index];
 
@@ -847,9 +849,8 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 
 		if (closest_hit_info.primitive_index == -1)
 		{
-			// The camera ray missed the scene: the path tree has no vertex and no candidate. The initial candidates megakernel still runs its last
-			// deferred MIS for such a path, with a deferred MIS context that no vertex has filled: that candidate is not reproduced here, the
-			// reservoir of the pixel stays empty. The pixels without a primary hit are not shaded by the passes that read the reservoirs
+			// The camera ray missed the scene: the path tree has no vertex and no candidate, the reservoir of the pixel stays empty. The pixels without
+			// a primary hit are not shaded by the passes that read the reservoirs
 			ReSTIR_PT_wavefront_end_path_tree(render_data, pixel_index, path_tree_index, restir_pt_initial_reservoir, random_number_generator);
 
 			return;
@@ -893,8 +894,8 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 		surface_transport_metadata = load_surface_transport_metadata(render_data, material_index, classification_inputs);
 
 		wavefront_load_current_bsdf_material<false>(render_data, pixel_index, closest_hit_info, resolved_user_controls, ray_payload.material);
-		// The initial candidates megakernel samples the wavelength of a dispersive hit when it traces the ray, before the deferred MIS below:
-		// sampled here, before the deferred MIS too, so that the path consumes its random numbers in the same order
+		// The wavelength of a dispersive hit is sampled before the deferred MIS below, in the same order as in ReSTIR_PT_wavefront_complete_path():
+		// the random numbers that the path consumes do not depend on which kernel handles its hit
 		wavefront_initialize_secondary_hit_material(ray_payload, surface_transport_metadata, random_number_generator);
 
 		// The trace kernel only queues the hits for shading, misses go to the completion kernel
@@ -934,7 +935,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 																		  incident_light_info, bsdf_pdf, nee_deferred_MIS_context, primary_gbuffer_path_index);
 
 	// Bad BSDF sample (under the surface), killed by russian roulette, ...: the ray is still traced by a terminal trace for the last deferred
-	// MIS of the path, as the initial candidates megakernel traces it again for its last deferred MIS
+	// MIS of the path
 	bool terminal_path = pending_throughput == ReSTIR_PT_invalid_throughput;
 	if (!terminal_path)
 	{
@@ -992,7 +993,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 /**
  * Last deferred MIS of a path whose ray missed the scene or whose path ended at the previous vertex (terminal ray), then end of its path tree.
  *
- * The hit of a terminal ray was found by the trace kernel: the initial candidates megakernel traces that same ray again in its last deferred MIS
+ * The hit of a terminal ray was found by the trace kernel
  */
 HIPRT_DEVICE void ReSTIR_PT_wavefront_complete_path(HIPRTRenderData& render_data, unsigned int path_tree_index, unsigned int pixel_index)
 {
@@ -1029,8 +1030,8 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_complete_path(HIPRTRenderData& render_data
 			load_material_classification_inputs(render_data, material_index, closest_hit_info.texcoords, resolved_user_controls);
 		SurfaceTransportMetadata surface_transport_metadata = load_surface_transport_metadata(render_data, material_index, classification_inputs);
 
-		// The initial candidates megakernel samples the wavelength of a dispersive hit when it traces the ray again: sampled here too so that the
-		// next path tree of the pixel continues from the same random numbers
+		// The wavelength of a dispersive hit is sampled here too, as at the shaded hits, so that the next path tree of the pixel continues from the
+		// same random numbers
 		wavefront_initialize_secondary_hit_material(ray_payload, surface_transport_metadata, random_number_generator);
 
 		EffectiveMaterialEmission current_hit_emission;
