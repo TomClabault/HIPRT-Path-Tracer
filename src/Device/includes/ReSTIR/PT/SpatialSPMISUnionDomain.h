@@ -382,7 +382,7 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomainCenterBSDF spmis_union_domain_center_bsdf_s
 	center_bsdf.view_cosine = hippt::dot(center_surface.view_direction, center_surface.shading_normal);
 
 	bool smooth_lobe;
-	int material_class = ReSTIR_PT_target_function_bsdf_approximation_material_class(center_surface.material, smooth_lobe);
+	int material_class = ReSTIR_PT_target_function_bsdf_approximation_material_class(center_surface.material, false, smooth_lobe);
 
 	// From inside an object, the principled BSDF only evaluates the glass lobe, which has no analytic class
 	center_bsdf.analytic_lobe = material_class != RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE &&

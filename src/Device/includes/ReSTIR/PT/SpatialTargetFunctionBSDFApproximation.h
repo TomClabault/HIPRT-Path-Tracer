@@ -80,6 +80,9 @@
  *	  F82 = F90 = (1, 1, 1), F90 falloff exponent 5 and every base color channel >= 1e-6 (the metal Fresnel is then Schlick with F0 = base color)
  *	- metallic blend: metallic in (0, 1), the conditions of the dielectric class, no second roughness, no retro reflection and, when not perfectly smooth,
  *	  the default metal Fresnel of the metal class. Its lobe has the metal form, see ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material()
+ *	- smooth transmissive dielectric (reconnection vertices only): perfectly smooth, metallic 0, specular transmission t in (0, 1], no diffuse transmission,
+ *	  coat, sheen, thin film, dispersion or thin walled interface, ior >= 1, specular in [0, 1], Lambertian diffuse lobe and, for t < 1, base color > 0 on
+ *	  the three channels. See ReSTIR_PT_target_function_bsdf_approximation_smooth_transmissive_class() for its lobe and its zero cases
  *
  * Lobe value at a pair of directions (V, L) around the shading normal n, NoV and NoL above RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD:
  *
@@ -122,15 +125,20 @@
 #endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 // Analytic classes of the materials, see the top of this file
-#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE			  0
-#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC	  1
-#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL		  2
-#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND 3
+#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE				   0
+#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC		   1
+#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL			   2
+#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND	   3
+#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_SMOOTH_TRANSMISSIVE 4
+
+// Alpha byte of the reconnection-side lobe of a sample (ReSTIRPTReservoirSample::target_function_bsdf_approximation_lobe_alpha) whose reconnection vertex
+// is in the smooth transmissive class. A perfectly smooth lobe has no specular term and never reads its alpha, and its alpha code is 0 otherwise
+#define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_TRANSMISSIVE_ALPHA_CODE 0xFFu
 
 // Decisions of ReSTIR_PT_target_function_bsdf_approximation_decision() for a pair (sample, pixel)
 #define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK	0
 #define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH 1
-// Cheap path with a zero approximation: the pixel is below the shading normal of the reconnection vertex
+// Cheap path with a zero approximation: the pixel is below the shading normal of an opaque reconnection vertex
 #define RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_ZERO 2
 
 // The cheap path is left for the fallback when the light direction is within this cosine of the mirror direction of a perfectly smooth lobe that can
@@ -223,10 +231,55 @@ HIPRT_DEVICE HIPRT_FORCEINLINE bool ReSTIR_PT_target_function_bsdf_approximation
 }
 
 /**
- * Analytic class of 'material' (RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE when it is not in one) and whether its lobe is perfectly smooth
- * ('out_smooth_lobe', only meaningful for a class). Mirrors the zero cases of the BSDF model compiled in, see the top of this file
+ * Whether the perfectly smooth 'material' with a specular transmission is in the smooth transmissive class (reconnection vertices only).
+ *
+ * The volume state of the BSDF evaluation at the reconnection vertex is outside of the object: the pixel is outside of every object (pixel flags), the
+ * sample did not refract at the visible point (sample flags) and the reconnection vertex is seen from above its shading normal, so its material is pushed
+ * on an empty interior stack. compute_principled_lobe_weights() then gives the weights glass = t, specular = (1 - t) s and diffuse = (1 - t), and the
+ * glossy base is linear in its two weights (internal_eval_glossy_base(), the throughput lerp of the specular layer reads the material specular): the BSDF
+ * is t x glass lobe + (1 - t) x the glossy base of the dielectric class.
+ *
+ * With the light direction above the shading normal (sample flags):
+ *	- view direction above the shading normal: the glass lobe reflects and is perfectly smooth, 0 off its peak, and its peak (glass reflection incident
+ *	  light info) takes the fallback. The approximation is the dielectric lobe scaled by 1 - t, strictly positive for t < 1, zero for t = 1
+ *	- view direction below the shading normal: the glass lobe refracts, its peak can be anywhere the relative ior puts it. The pair takes the fallback
+ *	  (ReSTIR_PT_target_function_bsdf_approximation_sample_transmissive()) instead of the zero of an opaque reconnection vertex
  */
-HIPRT_DEVICE int ReSTIR_PT_target_function_bsdf_approximation_material_class(const DeviceUnpackedPrincipledFullMaterial& material, bool& out_smooth_lobe)
+HIPRT_DEVICE HIPRT_FORCEINLINE bool ReSTIR_PT_target_function_bsdf_approximation_smooth_transmissive_class(const DeviceUnpackedPrincipledFullMaterial& material)
+{
+#if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+	return false;
+#endif // #if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+
+	if (material.specular_transmission <= 0.0f || material.specular_transmission > 1.0f || material.diffuse_transmission != 0.0f)
+		return false;
+
+	if (material.coat != 0.0f || material.sheen != 0.0f || material.thin_film != 0.0f || material.dispersion_scale != 0.0f || material.thin_walled)
+		return false;
+
+	if (material.ior < 1.0f || material.specular < 0.0f || material.specular > 1.0f)
+		return false;
+
+	if (PrincipledBSDFDoMicrofacetRegularization == KERNEL_OPTION_TRUE)
+		// The regularization roughens the smooth glass lobe of principled_glass_eval()
+		return false;
+
+	if (material.specular_transmission == 1.0f)
+		// No glossy base
+		return true;
+
+	return material.base_color.r > 0.0f && material.base_color.g > 0.0f && material.base_color.b > 0.0f;
+}
+
+/**
+ * Analytic class of 'material' (RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE when it is not in one) and whether its lobe is perfectly smooth
+ * ('out_smooth_lobe', only meaningful for a class). Mirrors the zero cases of the BSDF model compiled in, see the top of this file.
+ *
+ * 'reconnection_vertex': the material is the one of a reconnection vertex, the smooth transmissive class is then allowed
+ */
+HIPRT_DEVICE int ReSTIR_PT_target_function_bsdf_approximation_material_class(const DeviceUnpackedPrincipledFullMaterial& material,
+																			 bool reconnection_vertex,
+																			 bool& out_smooth_lobe)
 {
 	out_smooth_lobe = false;
 
@@ -243,6 +296,16 @@ HIPRT_DEVICE int ReSTIR_PT_target_function_bsdf_approximation_material_class(con
 
 	if (material.metallic == 0.0f)
 	{
+		if (reconnection_vertex && smooth_lobe && material.specular_transmission != 0.0f)
+		{
+			if (!ReSTIR_PT_target_function_bsdf_approximation_smooth_transmissive_class(material))
+				return RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
+
+			out_smooth_lobe = true;
+
+			return RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_SMOOTH_TRANSMISSIVE;
+		}
+
 		if (!ReSTIR_PT_target_function_bsdf_approximation_strictly_positive_glossy_base(material))
 			return RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
@@ -334,6 +397,16 @@ HIPRT_DEVICE ReSTIRPTTargetFunctionBSDFApproximationLobe ReSTIR_PT_target_functi
 
 	if (pixel_side)
 		lobe.fresnel_attenuated_diffuse *= 1.0f - full_fresnel_dielectric(view_cosine, material.ior);
+
+	if (material_class == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_SMOOTH_TRANSMISSIVE)
+	{
+		// t x the perfectly smooth glass lobe (0 off its peak) + (1 - t) x the glossy base above, see
+		// ReSTIR_PT_target_function_bsdf_approximation_smooth_transmissive_class(). The smooth lobe has no specular term
+		float glossy_base_weight = 1.0f - material.specular_transmission;
+
+		lobe.unattenuated_diffuse *= glossy_base_weight;
+		lobe.fresnel_attenuated_diffuse *= glossy_base_weight;
+	}
 
 	if (material_class == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND)
 	{
@@ -566,11 +639,15 @@ ReSTIR_PT_target_function_bsdf_approximation_decode_pixel_lobe(const ReSTIRPTTar
 /**
  * Stores the reconnection-side lobe in the lobe bytes of the sample (layout in Reservoir.h) and returns its flag byte (class bit set, smooth bit
  * 'smooth_lobe', bits 2..7 the 6-bit Fresnel code). Reconnection-side coefficients: specular_scale sqrt-coded on [0, 4] (8 bits, a positive value keeps a
- * non-zero code), unattenuated_diffuse sqrt-coded on [0, 1] (7 bits, rounded up), fresnel_attenuated_diffuse sqrt-coded on [0, 1] (8 bits, rounded up)
+ * non-zero code), unattenuated_diffuse sqrt-coded on [0, 1] (7 bits, rounded up), fresnel_attenuated_diffuse sqrt-coded on [0, 1] (8 bits, rounded up).
+ *
+ * 'smooth_transmissive': the lobe is the one of the smooth transmissive class, marked by its alpha byte
+ * (RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_TRANSMISSIVE_ALPHA_CODE)
  */
 HIPRT_DEVICE unsigned char ReSTIR_PT_target_function_bsdf_approximation_encode_sample_lobe(ReSTIRPTReservoirSample& sample,
 																						   const ReSTIRPTTargetFunctionBSDFApproximationLobe& lobe,
-																						   bool smooth_lobe)
+																						   bool smooth_lobe,
+																						   bool smooth_transmissive)
 {
 	unsigned int specular_code = ReSTIR_PT_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.specular_scale * 0.25f)), 8, false);
 	if (lobe.specular_scale > 0.0f)
@@ -581,7 +658,11 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_target_function_bsdf_approximation_encode_s
 	unsigned int fresnel_attenuated_diffuse_code =
 		ReSTIR_PT_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.fresnel_attenuated_diffuse)), 8, true);
 
-	sample.target_function_bsdf_approximation_lobe_alpha	= static_cast<unsigned char>(ReSTIR_PT_target_function_bsdf_approximation_encode_alpha(lobe.alpha));
+	unsigned int alpha_code = ReSTIR_PT_target_function_bsdf_approximation_encode_alpha(lobe.alpha);
+	if (smooth_transmissive)
+		alpha_code = RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_TRANSMISSIVE_ALPHA_CODE;
+
+	sample.target_function_bsdf_approximation_lobe_alpha	= static_cast<unsigned char>(alpha_code);
 	sample.target_function_bsdf_approximation_lobe_specular = static_cast<unsigned char>(specular_code);
 	sample.rc_vertex_shading_normal.set_padding(static_cast<unsigned char>(fresnel_attenuated_diffuse_code));
 	sample.rc_vertex_geometric_normal.set_padding(static_cast<unsigned char>(unattenuated_diffuse_code | (lobe.metal ? 0x80u : 0u)));
@@ -636,7 +717,7 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_target_function_bsdf_approximation_pixel_fl
 
 	bool smooth_lobe;
 
-	int material_class = ReSTIR_PT_target_function_bsdf_approximation_material_class(material, smooth_lobe);
+	int material_class = ReSTIR_PT_target_function_bsdf_approximation_material_class(material, false, smooth_lobe);
 	if (material_class == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE ||
 		view_cosine <= RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD)
 		return 0;
@@ -671,7 +752,7 @@ HIPRT_DEVICE void ReSTIR_PT_target_function_bsdf_approximation_fill_rc_vertex(co
 {
 	bool smooth_lobe;
 
-	int material_class = ReSTIR_PT_target_function_bsdf_approximation_material_class(rc_vertex_material, smooth_lobe);
+	int material_class = ReSTIR_PT_target_function_bsdf_approximation_material_class(rc_vertex_material, true, smooth_lobe);
 	if (material_class == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE)
 	{
 		sample.target_function_bsdf_approximation_flags = 0;
@@ -683,7 +764,8 @@ HIPRT_DEVICE void ReSTIR_PT_target_function_bsdf_approximation_fill_rc_vertex(co
 	ReSTIRPTTargetFunctionBSDFApproximationLobe lobe =
 		ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(rc_vertex_material, material_class, smooth_lobe, false, 0.0f);
 
-	sample.target_function_bsdf_approximation_flags = ReSTIR_PT_target_function_bsdf_approximation_encode_sample_lobe(sample, lobe, smooth_lobe);
+	sample.target_function_bsdf_approximation_flags = ReSTIR_PT_target_function_bsdf_approximation_encode_sample_lobe(
+		sample, lobe, smooth_lobe, material_class == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_SMOOTH_TRANSMISSIVE);
 #else
 	sample.target_function_bsdf_approximation_flags = static_cast<unsigned char>(RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG);
 #endif // #if BSDFKernelModel == BSDF_PRINCIPLED
@@ -767,6 +849,16 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_target_function_bsdf_approximatio
 }
 
 /**
+ * Whether the reconnection vertex of the sample (not a DI sample, class bit set) is in the smooth transmissive class: its BSDF can refract toward a pixel
+ * below its shading normal (see ReSTIR_PT_target_function_bsdf_approximation_smooth_transmissive_class())
+ */
+HIPRT_DEVICE HIPRT_FORCEINLINE bool ReSTIR_PT_target_function_bsdf_approximation_sample_smooth_transmissive(const ReSTIRPTReservoirSample& sample)
+{
+	return sample.target_function_bsdf_approximation_lobe_alpha == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_TRANSMISSIVE_ALPHA_CODE &&
+		   (sample.target_function_bsdf_approximation_flags & RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG) != 0;
+}
+
+/**
  * True when a perfectly smooth lobe of the pair can return its delta value: the pixel's lobe (pixel smooth bit, incident light info at the visible point,
  * view direction of the pixel, direction to the reconnection vertex) or the reconnection vertex lobe (sample smooth bit, incident light info at the sample
  * point, direction to the pixel, stored outgoing direction)
@@ -824,11 +916,12 @@ HIPRT_DEVICE HIPRT_FORCEINLINE int ReSTIR_PT_target_function_bsdf_approximation_
 	if (!sample.di_sample)
 	{
 		// Side test of the reconnection vertex BSDF: the same view direction as in ReSTIR_PT_evaluate_target_function_bsdf(). Between 0 and the cosine
-		// threshold, the fallback decides
+		// threshold, the fallback decides. Below the shading normal, every lobe of an opaque reconnection vertex is zero but a smooth transmissive one can
+		// refract: the fallback decides
 		float3_t rc_vertex_view_direction = hippt::normalize(shading_point - sample.rc_vertex);
 
 		float rc_vertex_view_cosine = hippt::dot(rc_vertex_view_direction, sample.rc_vertex_shading_normal.unpack());
-		if (rc_vertex_view_cosine <= 0.0f)
+		if (rc_vertex_view_cosine <= 0.0f && !ReSTIR_PT_target_function_bsdf_approximation_sample_smooth_transmissive(sample))
 			return RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_ZERO;
 
 		if (rc_vertex_view_cosine <= RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD)
