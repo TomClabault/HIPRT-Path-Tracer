@@ -188,7 +188,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 	float diffuse_illumination = amplitude * SG_clamped_cosine_product_integral_over_pi(cosine, light_lobe.sharpness);
 
 	float specular_illumination = 0.0f;
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	if (specular)
 	{
 		float light_lobe_variance = 1.0f / light_lobe.sharpness;
@@ -225,7 +225,7 @@ HIPRT_DEVICE float light_tree_sg_node_importance(const LightTreeSGNodeDevice& no
 
 		specular_illumination = amplitude * visibility * pdf * SG_integral(light_lobe.sharpness);
 	}
-#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#endif // #if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 
 	float importance = emissive * (diffuse_illumination + specular * specular_illumination);
 
@@ -589,7 +589,7 @@ HIPRT_DEVICE LightSampleArray<LightTreeSGSplittingMaxLightSamples> sample_one_em
 	float alpha_x			 = proposal_state.alpha_x;
 	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -971,7 +971,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float alpha_x			 = proposal_state.alpha_x;
 	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -1322,7 +1322,7 @@ HIPRT_DEVICE LightSampleArray<1> sample_one_emissive_triangle_light_tree_sg(cons
 	float alpha_x			 = proposal_state.alpha_x;
 	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;
@@ -1410,7 +1410,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_light_tree_sg(const HIPRTRenderData&
 	float alpha_x			 = proposal_state.alpha_x;
 	float alpha_y			 = proposal_state.alpha_y;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	SGSpecularImportanceData spec_data(view_direction, shading_normal, alpha_x, alpha_y);
 #else
 	SGSpecularImportanceData spec_data;

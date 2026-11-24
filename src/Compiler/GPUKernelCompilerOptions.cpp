@@ -25,7 +25,7 @@ const std::string GPUKernelCompilerOptions::USE_SHARED_STACK_BVH_TRAVERSAL = "Us
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE = "SharedStackBVHTraversalSize";
 const std::string GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE = "KernelWorkgroupThreadCount";
 
-const std::string GPUKernelCompilerOptions::BSDF_MODEL = "BSDF_MODEL";
+const std::string GPUKernelCompilerOptions::BSDF_KERNEL_MODEL = "BSDFKernelModel";
 const std::string GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION = "KERNEL_MATERIAL_SPECIALIZATION";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE = "PrincipledBSDFDiffuseLobe";
 const std::string GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION = "PrincipledBSDFAnisotropicGGXSampleFunction";
@@ -116,7 +116,7 @@ const std::unordered_set<std::string> GPUKernelCompilerOptions::ALL_MACROS_NAMES
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE,
 	GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE,
 
-	GPUKernelCompilerOptions::BSDF_MODEL,
+	GPUKernelCompilerOptions::BSDF_KERNEL_MODEL,
 	GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE,
 	GPUKernelCompilerOptions::PRINCIPLED_BSDF_ANISOTROPIC_GGX_SAMPLE_FUNCTION,
@@ -211,7 +211,7 @@ GPUKernelCompilerOptions::GPUKernelCompilerOptions()
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_SIZE] = std::make_shared<int>(SharedStackBVHTraversalSize);
 	m_options_macro_map[GPUKernelCompilerOptions::SHARED_STACK_BVH_TRAVERSAL_BLOCK_SIZE] = std::make_shared<int>(KernelWorkgroupThreadCount);
 
-	m_options_macro_map[GPUKernelCompilerOptions::BSDF_MODEL] = std::make_shared<int>(BSDFGlobalModel);
+	m_options_macro_map[GPUKernelCompilerOptions::BSDF_KERNEL_MODEL] = std::make_shared<int>(BSDFKernelModel);
 	m_options_macro_map[GPUKernelCompilerOptions::KERNEL_MATERIAL_SPECIALIZATION_OPTION] =
 		std::make_shared<int>(KernelMaterialSpecializationAll);
 	m_options_macro_map[GPUKernelCompilerOptions::PRINCIPLED_BSDF_DIFFUSE_LOBE] = std::make_shared<int>(PrincipledBSDFDiffuseLobe);

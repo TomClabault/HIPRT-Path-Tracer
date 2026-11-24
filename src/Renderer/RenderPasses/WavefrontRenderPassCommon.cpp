@@ -26,7 +26,7 @@ WavefrontRenderPassCommon::WavefrontRenderPassCommon()
 unsigned int WavefrontRenderPassCommon::get_material_family_count(const GPUKernelCompilerOptions& compiler_options)
 {
 	WavefrontRoutingConfiguration configuration =
-		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
+		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL),
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
 
 	return configuration.material_family_count;
@@ -35,7 +35,7 @@ unsigned int WavefrontRenderPassCommon::get_material_family_count(const GPUKerne
 bool WavefrontRenderPassCommon::uses_deferred_material_family_routing(const GPUKernelCompilerOptions& compiler_options)
 {
 	WavefrontRoutingConfiguration configuration =
-		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL),
+		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL),
 											compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR));
 
 	return configuration.route_deferred_completion_by_material_family;
@@ -129,7 +129,7 @@ bool WavefrontRenderPassCommon::resize_staging_buffers(unsigned int path_capacit
 	bool allocate_resolved_material_control_cache = compiler_options.get_macro_value(GPUKernelCompilerOptions::USE_MATERIAL_TEXTURES) == KERNEL_OPTION_TRUE;
 	// Only the principled BSDF classifies the secondary hits into material families: the classification is cached for the shading pass
 	bool allocate_current_material_classifications =
-		allocate_resolved_material_control_cache && compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL) == BSDF_PRINCIPLED;
+		allocate_resolved_material_control_cache && compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL) == BSDF_PRINCIPLED;
 	int nee_estimator								  = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	bool allocate_learning_to_cluster_shadow_sidecars = shadow_work_capacity > 0 && DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(nee_estimator);
 

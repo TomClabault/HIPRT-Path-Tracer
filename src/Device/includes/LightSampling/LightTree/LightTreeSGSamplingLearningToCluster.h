@@ -127,7 +127,7 @@ HIPRT_DEVICE IlluminationAwareKDTreeLearningToClusterCutTriangleSample sample_cl
 		float selected_weight	   = 0.0f;
 		unsigned int selected_slot = initial_lightcut_size - 1;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 		SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 		SGSpecularImportanceData specular_data;
@@ -201,7 +201,7 @@ HIPRT_DEVICE bool sample_light_inside_cluster(const HIPRTRenderData& render_data
 	unsigned int current_triangle_count				  = nodes[sample.cluster_node_index].triangle_count;
 	unsigned int current_left_child_or_first_triangle = nodes[sample.cluster_node_index].left_child_index_or_first_triangle_index;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 	SGSpecularImportanceData specular_data;
@@ -372,7 +372,7 @@ HIPRT_DEVICE float pdf_of_emissive_triangle_learning_to_cluster(const HIPRTRende
 	unsigned int current_node_index = cluster_node_indices[selected_slot];
 	unsigned int current_depth		= selected_depth;
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 	SGSpecularImportanceData specular_data;
@@ -465,7 +465,7 @@ HIPRT_DEVICE float pdf_of_envmap_cluster_learning_to_cluster(const HIPRTRenderDa
 	if (!initial_lightcut)
 		return light_clustering_cluster_probability(kd_tree, lightcut_index, 0u, lightcut_size);
 
-#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDF_MODEL != BSDF_LAMBERTIAN && BSDF_MODEL != BSDF_OREN_NAYAR
+#if LightTreeSGDoSpecularImportance == KERNEL_OPTION_TRUE && BSDFKernelModel != BSDF_LAMBERTIAN && BSDFKernelModel != BSDF_OREN_NAYAR
 	SGSpecularImportanceData specular_data(context.view_direction, context.shading_normal, context.alpha_x, context.alpha_y);
 #else
 	SGSpecularImportanceData specular_data;

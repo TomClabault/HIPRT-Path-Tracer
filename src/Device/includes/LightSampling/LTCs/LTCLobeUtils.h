@@ -126,7 +126,7 @@ HIPRT_DEVICE LTCLobeSampleProbabilities ltc_lobe_probas(const HIPRTRenderData& r
  */
 HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabilities, Xorshift32Generator& rng)
 {
-#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 	return LTCLobe::DIFFUSE_LOBE;
 #endif
 
@@ -148,12 +148,12 @@ HIPRT_DEVICE LTCLobe ltc_lobe_sample(LTCLobeSampleProbabilities lobe_probabiliti
 
 HIPRT_DEVICE float ltc_lobe_eval_pdf(LTCLobeSampleProbabilities lobe_probabilities, LTCLobe lobe)
 {
-#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 	if (lobe == LTCLobe::DIFFUSE_LOBE)
 		return 1.0f;
 	else
 		return 0.0f;
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 	switch (lobe)
 	{
 	case COAT_LOBE:

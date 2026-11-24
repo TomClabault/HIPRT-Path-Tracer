@@ -34,7 +34,7 @@ HIPRT_DEVICE void path_guiding_compute_sampled_lobe(HIPRTRenderData& render_data
 													BSDFIncidentLightInfo& out_sampled_light_info,
 													Xorshift32Generator& rng)
 {
-#if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	// Stochastically simulating which lobe the BSDF would have sampled
 
 	float coat_sampling_proba, sheen_sampling_proba, metal_1_sampling_proba;
@@ -73,9 +73,9 @@ HIPRT_DEVICE void path_guiding_compute_sampled_lobe(HIPRTRenderData& render_data
 		else
 			out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_GLASS_REFLECT_LOBE;
 	}
-#elif BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#elif BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR // #if BSDFKernelModel == BSDF_PRINCIPLED
 	out_sampled_light_info = BSDFIncidentLightInfo::LIGHT_DIRECTION_SAMPLED_FROM_DIFFUSE_LOBE;
-#endif																 // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#endif																		   // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 	ray_payload.accumulate_roughness(out_sampled_light_info);
 }

@@ -128,12 +128,12 @@ HIPRT_DEVICE HIPRT_INLINE bool wavefront_load_and_shade_hit(HIPRTRenderData& ren
 
 	NEEDeferredLightProposalState proposal_state{};
 	if constexpr (initialize_primary_path)
-		proposal_state = load_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDF_MODEL)>(
+		proposal_state = load_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDFKernelModel)>(
 			render_data.g_buffer.materials[pixel_index]);
 	else
 	{
 		int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
-		proposal_state	   = load_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDF_MODEL)>(
+		proposal_state	   = load_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDFKernelModel)>(
 			render_data, material_index, closest_hit_info.texcoords, typed_ray_payload.material.base_color.luminance(), resolved_user_controls);
 	}
 
@@ -149,7 +149,7 @@ template <bool initialize_primary_path>
 HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned int bounce_count, unsigned int pixel_index)
 {
 	using KernelMaterial =
-		typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDF_MODEL), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
+		typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDFKernelModel), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
 
 	RayPayloadCommon ray_payload = wavefront_make_ray_payload<initialize_primary_path>();
 	hiprtRay ray;
@@ -191,7 +191,7 @@ HIPRT_DEVICE void wavefront_shade_path(HIPRTRenderData& render_data, unsigned in
 			}
 
 #if DirectLightNEEEstimator == LSS_RIS_BSDF_AND_LIGHT
-			using PreviousBSDFMaterial = typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDF_MODEL), KernelMaterialSpecializationAll>::Type;
+			using PreviousBSDFMaterial = typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDFKernelModel), KernelMaterialSpecializationAll>::Type;
 
 			ResolvedMaterialUserControlsCache previous_resolved_user_controls;
 			previous_resolved_user_controls.validity_mask = 0;

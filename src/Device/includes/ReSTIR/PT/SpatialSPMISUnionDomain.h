@@ -378,7 +378,7 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomainCenterBSDF spmis_union_domain_center_bsdf_s
 {
 	ReSTIRPTSPMISUnionDomainCenterBSDF center_bsdf;
 
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	center_bsdf.view_cosine = hippt::dot(center_surface.view_direction, center_surface.shading_normal);
 
 	bool smooth_lobe;
@@ -396,7 +396,7 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomainCenterBSDF spmis_union_domain_center_bsdf_s
 
 		return center_bsdf;
 	}
-#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+#endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 	// Exact for a Lambertian BSDF, albedo / pi, the cosine is applied per neighbor
 	float bsdf_pdf;

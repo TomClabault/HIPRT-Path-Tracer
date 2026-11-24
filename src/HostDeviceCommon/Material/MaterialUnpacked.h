@@ -136,7 +136,7 @@ struct DeviceUnpackedPrincipledFullMaterial
 	 */
 	HIPRT_HOST_DEVICE float minimum_roughness() const
 	{
-#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 		return 1.0f;
 #endif
 
@@ -351,13 +351,13 @@ struct DeviceUnpackedPrincipledFullMaterial
 
 	HIPRT_HOST_DEVICE unsigned char get_dielectric_priority() const
 	{
-#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 		// These BSDFs do not support tranmission so every material
 		// should have the same priority
 		return 0;
 #else
 		return dielectric_priority;
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 	}
 
 private:

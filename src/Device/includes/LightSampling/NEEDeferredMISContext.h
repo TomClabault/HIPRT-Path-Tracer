@@ -12,19 +12,12 @@
 #include "HostDeviceCommon/KernelOptions/DirectLightSamplingOptions.h"
 
 static constexpr unsigned int NEE_DEFERRED_INVALID_PATH_INDEX = 0xFFFFFFFFu;
-#if defined(BSDF_MODEL)
-typedef LightProposalStateFor<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDF_MODEL)> NEEDeferredLightProposalState;
-#else
-typedef LightProposalStateFor<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, BSDFModel::Principled> NEEDeferredLightProposalState;
-#endif
+typedef LightProposalStateFor<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDFKernelModel)>
+	NEEDeferredLightProposalState;
 
 HIPRT_HOST_DEVICE inline NEEDeferredLightProposalState make_nee_deferred_light_proposal_state(const LightProposalInputs& proposal_inputs)
 {
-#if defined(BSDF_MODEL)
-	return make_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDF_MODEL)>(proposal_inputs);
-#else
-	return make_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, BSDFModel::Principled>(proposal_inputs);
-#endif
+	return make_light_proposal_state<DirectLightSamplingStrategy, TrianglePointSamplingStrategy, static_cast<BSDFModel>(BSDFKernelModel)>(proposal_inputs);
 }
 
 HIPRT_DEVICE static DeviceUnpackedPrincipledFullMaterial load_deferred_material_reference(const HIPRTRenderData& render_data,

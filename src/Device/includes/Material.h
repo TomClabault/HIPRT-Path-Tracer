@@ -67,11 +67,11 @@ HIPRT_DEVICE static float get_hit_base_color_alpha(const HIPRTRenderData& render
 
 HIPRT_DEVICE static unsigned char get_intersection_dielectric_priority(const HIPRTRenderData& render_data, int material_index)
 {
-#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 	return 0;
 #else
 	return render_data.buffers.materials_buffer[material_index].get_dielectric_priority();
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 }
 
 struct SurfaceTransportMetadata
@@ -87,11 +87,11 @@ HIPRT_DEVICE static SurfaceTransportMetadata load_surface_transport_metadata(con
 	SurfaceTransportMetadata metadata;
 	metadata.dispersion_scale	   = classification_inputs.dispersion_scale;
 	metadata.specular_transmission = classification_inputs.lobe_user_weights.specular_transmission;
-#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 	metadata.dielectric_priority = 0;
 #else
 	metadata.dielectric_priority = packed_material.get_dielectric_priority();
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 	return metadata;
 }
 

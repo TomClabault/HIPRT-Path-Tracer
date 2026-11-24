@@ -267,7 +267,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 	std::shared_ptr<GPUKernelCompilerOptions> global_kernel_options = m_renderer->get_global_compiler_options();
 	int bsdf_model_index											= 2;
 
-	switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL))
+	switch (global_kernel_options->get_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL))
 	{
 	case BSDF_LAMBERTIAN:
 		bsdf_model_index = 0;
@@ -300,7 +300,7 @@ void ImGuiObjectsWindow::draw_global_objects_panel()
 			break;
 		}
 
-		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::BSDF_MODEL, bsdf_model_value);
+		global_kernel_options->set_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL, bsdf_model_value);
 		m_renderer->recompile_kernels();
 
 		m_render_window->set_render_dirty(true);

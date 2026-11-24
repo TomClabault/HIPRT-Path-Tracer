@@ -46,7 +46,7 @@
 using ReSTIRPTWavefrontKernelMaterial = DeviceUnpackedPrincipledFullMaterial;
 #else
 using ReSTIRPTWavefrontKernelMaterial =
-	EffectiveMaterialFor<static_cast<BSDFModel>(BSDF_MODEL), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
+	EffectiveMaterialFor<static_cast<BSDFModel>(BSDFKernelModel), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
 #endif // #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
 
 #if DirectLightNEEEstimator == LSS_LEARNING_TO_CLUSTER_MIS

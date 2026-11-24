@@ -145,7 +145,7 @@ HIPRT_DEVICE bool wavefront_load_current_material_classification(const HIPRTRend
  */
 HIPRT_DEVICE void wavefront_classify_secondary_hit(HIPRTRenderData& render_data, unsigned int path_index, const HitInfo& closest_hit_info, bool inside_material)
 {
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
 
 	ResolvedMaterialUserControlsCache resolved_user_controls;

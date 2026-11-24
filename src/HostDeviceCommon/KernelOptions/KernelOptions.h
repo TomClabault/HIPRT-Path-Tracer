@@ -127,8 +127,11 @@ enum KernelMaterialSpecialization : unsigned int
 
 /**
  * BSDF model for all the materials of the scene
+ *
+ * A kernel can be compiled with another model than the one of the rest of the render: the NEE++ grid prepopulation kernel always uses
+ * the Lambertian BRDF
  */
-#define BSDFGlobalModel BSDF_PRINCIPLED
+#define BSDFKernelModel BSDF_PRINCIPLED
 
 /**
  * If false, material textures will not be read and so the global material overrider

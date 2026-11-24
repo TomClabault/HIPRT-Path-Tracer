@@ -87,7 +87,7 @@ struct MaterialUtils
 		return true;
 #endif // #if DirectLightSamplingDeltaDistributionOptimization == KERNEL_OPTION_FALSE
 
-#if BSDF_MODEL == BSDF_LAMBERTIAN || BSDF_MODEL == BSDF_OREN_NAYAR
+#if BSDFKernelModel == BSDF_LAMBERTIAN || BSDFKernelModel == BSDF_OREN_NAYAR
 		// We can always do light sampling on these BSDFs
 		return true;
 #endif

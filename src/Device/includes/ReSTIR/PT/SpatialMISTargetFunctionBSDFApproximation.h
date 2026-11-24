@@ -51,7 +51,7 @@
  *	- torrance_sparrow_GGX_eval_reflect_single(), torrace_sparrow_GGX_multiple_scattering_invariance_eval_reflect()
  *	- DeviceUnpackedPrincipledFullMaterial::is_specular_delta_reflection_sampled()
  *	- compute_principled_lobe_weights()
- *	- kernel options: BSDF_MODEL, PrincipledBSDFDiffuseLobe, PrincipledBSDFDeltaDistributionEvaluationOptimization, PrincipledBSDFDoEnergyCompensation,
+ *	- kernel options: BSDFKernelModel, PrincipledBSDFDiffuseLobe, PrincipledBSDFDeltaDistributionEvaluationOptimization, PrincipledBSDFDoEnergyCompensation,
  *	  PrincipledBSDFDoSpecularEnergyCompensation, PrincipledBSDFDoMetallicEnergyCompensation, PrincipledBSDFEnergyCompensationMode
  *
  * Analytic classes of the principled BSDF:
@@ -84,11 +84,11 @@
 // The cosines of the cheap path (NoV and NoL at both BSDFs) must be above this threshold, smaller positive cosines go to the fallback. 0 for the Lambertian
 // BRDF (exact zero test), 1.0e-3 for the principled BSDF (keeps the Fresnel transmission of the specular layer away from its float rounding to 0 at grazing
 // angles)
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 #define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD 1.0e-3f
 #else
 #define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD 0.0f
-#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+#endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 // Analytic classes of the materials, see the top of this file
 #define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE		  0
@@ -145,9 +145,9 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(const
 #if PathSamplingStrategyIsReSTIRPT
 	bool enabled = render_data.render_settings.restir_pt_settings.do_spmis_union_domain_reuse(ReSTIR_PT_MISWeightsType);
 
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	enabled = enabled && render_data.g_buffer.mis_target_function_bsdf_approximation_lobe_records != nullptr;
-#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+#endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 	return enabled;
 #else
@@ -163,13 +163,13 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class
 {
 	out_smooth_lobe = false;
 
-#if BSDF_MODEL == BSDF_LAMBERTIAN
+#if BSDFKernelModel == BSDF_LAMBERTIAN
 	// lambertian_brdf_eval(): 0 if NoV <= 0 or NoL <= 0, base_color / pi otherwise
 	bool positive_base_color = material.base_color.r > 0.0f && material.base_color.g > 0.0f && material.base_color.b > 0.0f;
 
 	return positive_base_color ? RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC
 							   : RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
-#elif BSDF_MODEL == BSDF_PRINCIPLED
+#elif BSDFKernelModel == BSDF_PRINCIPLED
 	bool smooth_lobe = MaterialUtils::is_perfectly_smooth(material.roughness);
 	if (smooth_lobe && PrincipledBSDFDeltaDistributionEvaluationOptimization != KERNEL_OPTION_TRUE)
 		// The perfectly smooth lobes are then evaluated as GGX lobes with a tiny alpha, not handled
@@ -238,7 +238,7 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class
 	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL;
 #else
 	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN
 }
 
 /**
@@ -255,7 +255,7 @@ ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(const HIPRTR
 {
 	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe;
 
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	lobe.alpha = hippt::clamp(0.0f, 1.0f, material.roughness * material.roughness);
 
 	if (material_class == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL)
@@ -289,7 +289,7 @@ ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(const HIPRTR
 
 	if (pixel_side)
 		lobe.diffuse_fresnel *= 1.0f - full_fresnel_dielectric(view_cosine, material.ior);
-#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+#endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 	return lobe;
 }
@@ -322,7 +322,7 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value(c
 {
 	float value = lobe.diffuse_constant;
 
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	if (lobe.specular_scale > 0.0f)
 	{
 		float3_t half_vector	= hippt::normalize(view_direction + light_direction);
@@ -365,7 +365,7 @@ HIPRT_DEVICE float ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value(c
 
 		value += lobe.diffuse_fresnel * transmission;
 	}
-#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+#endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 	return light_cosine * value;
 }
@@ -561,7 +561,7 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_target_function_bsdf_approximation_pixe
 		view_cosine <= RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD)
 		return 0;
 
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	// The principled BSDF evaluates only the glass lobe from inside an object: the volume state that the target function reconstructs for this pixel must
 	// be outside. No random number is used for an opaque material (no dispersion wavelength)
 	Xorshift32Generator unused_random_number_generator(1);
@@ -575,7 +575,7 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_MIS_target_function_bsdf_approximation_pixe
 		ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(render_data, material, material_class, smooth_lobe, true, view_cosine);
 	render_data.g_buffer.mis_target_function_bsdf_approximation_lobe_records[pixel_index] =
 		ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_pixel_lobe(lobe);
-#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+#endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 	return static_cast<unsigned char>(RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG |
 									  (smooth_lobe ? RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG : 0u));
@@ -600,14 +600,14 @@ HIPRT_DEVICE void ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_verte
 		return;
 	}
 
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe =
 		ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(render_data, rc_vertex_material, material_class, smooth_lobe, false, 0.0f);
 
 	sample.mis_target_function_bsdf_approximation_flags = ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_sample_lobe(sample, lobe, smooth_lobe);
 #else
 	sample.mis_target_function_bsdf_approximation_flags = static_cast<unsigned char>(RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG);
-#endif // #if BSDF_MODEL == BSDF_PRINCIPLED
+#endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 }
 
 /**
@@ -757,12 +757,12 @@ HIPRT_DEVICE HIPRT_FORCEINLINE int ReSTIR_PT_MIS_target_function_bsdf_approximat
 			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK;
 	}
 
-#if BSDF_MODEL != BSDF_LAMBERTIAN
+#if BSDFKernelModel != BSDF_LAMBERTIAN
 	// A perfectly smooth lobe that can return its delta value for this pair goes to the fallback
 	if (ReSTIR_PT_MIS_target_function_bsdf_approximation_pair_delta_peak_possible(render_data, sample, pixel_flags, shading_point, shading_normal,
 																				  incident_light_direction))
 		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK;
-#endif // #if BSDF_MODEL != BSDF_LAMBERTIAN
+#endif // #if BSDFKernelModel != BSDF_LAMBERTIAN
 
 	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH;
 }
@@ -781,14 +781,14 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approxim
 																									   const float3_t& incident_light_direction,
 																									   float cosine_term)
 {
-#if BSDF_MODEL == BSDF_LAMBERTIAN
+#if BSDFKernelModel == BSDF_LAMBERTIAN
 	return cosine_term;
 #else
 	float pixel_side_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_pixel_side_value(render_data, pixel_index, shading_point, shading_normal,
 																							   incident_light_direction, cosine_term);
 
 	return pixel_side_value * ReSTIR_PT_MIS_target_function_bsdf_approximation_rc_side_value(render_data, sample, shading_point);
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN
 }
 
 /**
@@ -805,12 +805,12 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approxim
 	if (full_target_function <= 0.0f)
 		return 0.0f;
 
-#if BSDF_MODEL == BSDF_LAMBERTIAN
+#if BSDFKernelModel == BSDF_LAMBERTIAN
 	return hippt::abs(cosine_term);
 #else
 	return hippt::max(full_target_function / hippt::max(sample.rc_vertex_incident_radiance.luminance(), 1.0e-30f),
 					  RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_VALUE_FLOOR);
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN
 }
 
 /**
@@ -832,7 +832,7 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approxim
 	if (own_full_target_function <= 0.0f)
 		return 0.0f;
 
-#if BSDF_MODEL == BSDF_LAMBERTIAN
+#if BSDFKernelModel == BSDF_LAMBERTIAN
 	// Probes: the cosine at the pixel on the cheap path or on the support of the full target function. On the support of 'own_full_target_function', that
 	// is the cosine whatever the decision, floored so that it never rounds to 0
 	float3_t shading_point = render_data.g_buffer.primary_hit_position[pixel_index];
@@ -888,7 +888,7 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_MIS_target_function_bsdf_approxim
 		own_term_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_fallback_value(sample, own_full_target_function, cosine_term);
 
 	return own_term_value;
-#endif // #if BSDF_MODEL == BSDF_LAMBERTIAN
+#endif // #if BSDFKernelModel == BSDF_LAMBERTIAN
 }
 
 /**

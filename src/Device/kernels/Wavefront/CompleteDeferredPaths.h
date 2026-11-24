@@ -94,7 +94,7 @@ GLOBAL_KERNEL_SIGNATURE(void) inline WavefrontCompleteDeferredPaths(HIPRTRenderD
 #endif // #ifdef __KERNELCC__
 {
 	using KernelMaterial =
-		typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDF_MODEL), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
+		typename EffectiveMaterialFor<static_cast<BSDFModel>(BSDFKernelModel), static_cast<KernelMaterialSpecialization>(KERNEL_MATERIAL_SPECIALIZATION)>::Type;
 
 #ifdef __KERNELCC__
 	HIPRTRenderData& render_data = *reinterpret_cast<HIPRTRenderData*>(WAVEFRONT_COMPLETE_DEFERRED_RENDER_DATA);

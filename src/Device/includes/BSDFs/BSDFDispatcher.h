@@ -29,7 +29,7 @@ HIPRT_DEVICE HIPRT_FORCEINLINE static ColorRGB32F bsdf_dispatcher_eval(const HIP
 																	   float& pdf,
 																	   Xorshift32Generator& random_number_generator)
 {
-#if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	/*switch (brdf_type)
 	{
 	...
@@ -47,12 +47,12 @@ HIPRT_DEVICE HIPRT_FORCEINLINE static ColorRGB32F bsdf_dispatcher_eval(const HIP
 		return principled_specialized_specular_diffuse_eval(render_data, bsdf_context, pdf, random_number_generator);
 	else
 		return principled_bsdf_eval(render_data, bsdf_context, pdf, random_number_generator);
-#elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#elif BSDFKernelModel == BSDF_LAMBERTIAN // #if BSDFKernelModel == BSDF_PRINCIPLED
 	return lambertian_brdf_eval(bsdf_context.material, hippt::dot(bsdf_context.view_direction, bsdf_context.shading_normal),
 								hippt::dot(bsdf_context.to_light_direction, bsdf_context.shading_normal), pdf);
-#elif BSDF_MODEL == BSDF_OREN_NAYAR // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#elif BSDFKernelModel == BSDF_OREN_NAYAR // #if BSDFKernelModel == BSDF_PRINCIPLED
 	return oren_nayar_brdf_eval(bsdf_context.material, bsdf_context.view_direction, bsdf_context.shading_normal, bsdf_context.to_light_direction, pdf);
-#endif								// #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#endif									 // #if BSDFKernelModel == BSDF_PRINCIPLED
 }
 
 /**
@@ -70,7 +70,7 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& re
 													   float& pdf,
 													   Xorshift32Generator& random_number_generator)
 {
-#if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	/*switch (brdf_type)
 	{
 	...
@@ -85,15 +85,15 @@ HIPRT_DEVICE static ColorRGB32F bsdf_dispatcher_sample(const HIPRTRenderData& re
 		return principled_specialized_family_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
 	else
 		return principled_bsdf_sample<sampleDirectionOnly>(render_data, bsdf_context, sampled_direction, pdf, random_number_generator);
-#elif BSDF_MODEL == BSDF_LAMBERTIAN // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#elif BSDFKernelModel == BSDF_LAMBERTIAN // #if BSDFKernelModel == BSDF_PRINCIPLED
 	return lambertian_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.view_direction, bsdf_context.geometric_normal,
 													   bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
 													   bsdf_context.incident_light_info);
-#elif BSDF_MODEL == BSDF_OREN_NAYAR // #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#elif BSDFKernelModel == BSDF_OREN_NAYAR // #if BSDFKernelModel == BSDF_PRINCIPLED
 	return oren_nayar_brdf_sample<sampleDirectionOnly>(bsdf_context.material, bsdf_context.view_direction, bsdf_context.geometric_normal,
 													   bsdf_context.shading_normal, sampled_direction, pdf, random_number_generator,
 													   bsdf_context.incident_light_info);
-#endif								// #if !defined(BSDF_MODEL) || BSDF_MODEL == BSDF_PRINCIPLED
+#endif									 // #if BSDFKernelModel == BSDF_PRINCIPLED
 }
 
 #endif // #ifndef DEVICE_DISPATCHER_H

@@ -64,7 +64,7 @@ HIPRT_DEVICE void wavefront_enqueue_material_family(HIPRTRenderData& render_data
  */
 HIPRT_DEVICE unsigned int wavefront_classify_primary_material_family(const DevicePackedEffectiveMaterial& packed_material)
 {
-#if BSDF_MODEL == BSDF_PRINCIPLED
+#if BSDFKernelModel == BSDF_PRINCIPLED
 	ResolvedMaterialUserControlsCache resolved_user_controls;
 	PrincipledMaterialClassificationInputs classification_inputs = load_material_classification_inputs(packed_material, resolved_user_controls);
 

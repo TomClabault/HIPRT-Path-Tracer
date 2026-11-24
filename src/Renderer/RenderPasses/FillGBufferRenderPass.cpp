@@ -131,7 +131,7 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 bool FillGBufferRenderPass::mis_target_function_bsdf_approximation_lobe_records_needed() const
 {
 	bool restir_pt_path_sampling = path_sampling_strategy_is_restir_pt(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY));
-	bool principled_bsdf		 = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL) == BSDF_PRINCIPLED;
+	bool principled_bsdf		 = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL) == BSDF_PRINCIPLED;
 
 	const ReSTIRPTSettings& restir_pt_settings = m_renderer->get_render_data().render_settings.restir_pt_settings;
 	bool union_domain_reuse =

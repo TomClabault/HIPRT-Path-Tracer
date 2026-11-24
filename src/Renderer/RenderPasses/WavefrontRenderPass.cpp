@@ -281,7 +281,7 @@ bool WavefrontRenderPass::launch_async(HIPRTRenderData& render_data, GPUKernelCo
 
 	int nee_estimator = compiler_options.get_macro_value(GPUKernelCompilerOptions::DIRECT_LIGHT_NEE_ESTIMATOR);
 	WavefrontRoutingConfiguration routing_configuration =
-		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_MODEL), nee_estimator);
+		get_wavefront_routing_configuration(compiler_options.get_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL), nee_estimator);
 	unsigned int material_family_count	   = routing_configuration.material_family_count;
 	bool has_deferred_bsdf_sampling		   = routing_configuration.requires_terminal_trace_completion;
 	bool route_deferred_by_material_family = routing_configuration.route_deferred_completion_by_material_family;
