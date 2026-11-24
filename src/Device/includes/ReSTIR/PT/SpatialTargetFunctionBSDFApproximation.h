@@ -70,16 +70,23 @@
  *
  * Lobe value at a pair of directions (V, L) around the shading normal n, NoV and NoL above RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD:
  *
- *		value = NoL * [Cs * F(LoH) D(H) G2 / (4 NoV NoL) + Cd0 + Cd1 * (1 - F_d(NoL)) * (reconnection side: (1 - F_d(NoV)), pixel side: 1)]
+ *		value = NoL * [specular_scale * F(LoH) D(H) G2 / (4 NoV NoL)
+ *					   + unattenuated_diffuse
+ *					   + fresnel_attenuated_diffuse * (1 - F_d(NoL)) * (reconnection side: (1 - F_d(NoV)), pixel side: 1)]
  *
  * with the isotropic GGX D and Smith G2 of the code (alpha = roughness^2), F = full_fresnel_dielectric(., ior) (dielectric) or the Schlick luminance
- * lumF0 + (1 - lumF0) (1 - LoH)^5 (metal).
+ * lumF0 + (1 - lumF0) (1 - LoH)^5 (metal). The three coefficients are the fields of ReSTIRPTTargetFunctionBSDFApproximationLobe:
+ *	- specular_scale: weight of the GGX specular lobe
+ *	- unattenuated_diffuse: diffuse light that does not cross the specular layer (the (1 - s) part of the lerp of the layers throughput)
+ *	- fresnel_attenuated_diffuse: diffuse light that crosses the specular layer twice, attenuated by its Fresnel transmissions (1 - F_d) on the way in and
+ *	  on the way out
  *
- * Pixel side (V fixed, folded): Cs = s lum(tint) / E, Cd0 = lum(base) (1 - s) / (pi E), Cd1 = lum(base darkening) s (1 - F_d(NoV)) / (pi E) with E the
- * glossy base energy compensation at the NoV of the pixel. Reconnection side (L fixed): the same without E and without the (1 - F_d(NoV)) factor.
- * Metal: Cs = 1, Cd0 = Cd1 = 0.
+ * Pixel side (V fixed, folded): specular_scale = s lum(tint) / E, unattenuated_diffuse = lum(base) (1 - s) / (pi E),
+ * fresnel_attenuated_diffuse = lum(base darkening) s (1 - F_d(NoV)) / (pi E) with E the glossy base energy compensation at the NoV of the pixel.
+ * Reconnection side (L fixed): the same without E and without the (1 - F_d(NoV)) factor.
+ * Metal: specular_scale = 1, unattenuated_diffuse = fresnel_attenuated_diffuse = 0.
  *
- * A perfectly smooth lobe has Cs = 0 (its value is 0 off the delta peak), a pair whose directions may hit the delta peak goes to the fallback
+ * A perfectly smooth lobe has specular_scale = 0 (its value is 0 off the delta peak), a pair whose directions may hit the delta peak goes to the fallback
  * (ReSTIR_PT_target_function_bsdf_approximation_delta_peak_possible())
  */
 
@@ -132,12 +139,12 @@
  */
 struct ReSTIRPTTargetFunctionBSDFApproximationLobe
 {
-	float specular_scale	= 0.0f;
-	float diffuse_constant	= 0.0f;
-	float diffuse_fresnel	= 0.0f;
-	float alpha				= 1.0f;
-	float fresnel_parameter = 1.0f;
-	bool metal				= false;
+	float specular_scale			 = 0.0f;
+	float unattenuated_diffuse		 = 0.0f;
+	float fresnel_attenuated_diffuse = 0.0f;
+	float alpha						 = 1.0f;
+	float fresnel_parameter			 = 1.0f;
+	bool metal						 = false;
 };
 
 /**
@@ -315,12 +322,12 @@ ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(const HIPRTRende
 	if (!smooth_lobe)
 		lobe.specular_scale = specular * tint.luminance() / energy_compensation_divisor;
 
-	ColorRGB32F darkening = principled_specular_compute_darkening(material, material.ior, 0.0f);
-	lobe.diffuse_constant = material.base_color.luminance() * (1.0f - specular) * hippt::M_INV_PI / energy_compensation_divisor;
-	lobe.diffuse_fresnel  = (material.base_color * darkening).luminance() * specular * hippt::M_INV_PI / energy_compensation_divisor;
+	ColorRGB32F darkening			= principled_specular_compute_darkening(material, material.ior, 0.0f);
+	lobe.unattenuated_diffuse		= material.base_color.luminance() * (1.0f - specular) * hippt::M_INV_PI / energy_compensation_divisor;
+	lobe.fresnel_attenuated_diffuse = (material.base_color * darkening).luminance() * specular * hippt::M_INV_PI / energy_compensation_divisor;
 
 	if (pixel_side)
-		lobe.diffuse_fresnel *= 1.0f - full_fresnel_dielectric(view_cosine, material.ior);
+		lobe.fresnel_attenuated_diffuse *= 1.0f - full_fresnel_dielectric(view_cosine, material.ior);
 
 	if (material_class == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND)
 	{
@@ -328,10 +335,11 @@ ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(const HIPRTRende
 		// 1 - m, plus the metal lobe scaled by m. Both specular lobes share the roughness and the GGX D and G2 terms, so the specular part is
 		// D G2 / (4 NoV NoL) times
 		//
-		//		Cs_d F_d(LoH) + Cs_m F_m(LoH),	Cs_d = (1 - m) Cs of the glossy base, Cs_m = m, F_m Schlick with F0_m = lum(base)
+		//		dielectric_specular_scale F_d(LoH) + m F_m(LoH)
 		//
-		// With F_d replaced by the Schlick Fresnel of F0_d = ((ior - 1) / (ior + 1))^2, that sum is exactly (Cs_d + Cs_m) times the Schlick Fresnel of
-		// F0 = (Cs_d F0_d + Cs_m F0_m) / (Cs_d + Cs_m): the metal form of the lobe
+		// with dielectric_specular_scale = (1 - m) specular_scale of the glossy base and F_m the Schlick Fresnel with F0_m = lum(base). With F_d replaced
+		// by the Schlick Fresnel of F0_d = ((ior - 1) / (ior + 1))^2, that sum is exactly (dielectric_specular_scale + m) times the Schlick Fresnel of
+		// F0 = (dielectric_specular_scale F0_d + m F0_m) / (dielectric_specular_scale + m): the metal form of the lobe
 		float metallic		= material.metallic;
 		float dielectric_F0 = hippt::square((material.ior - 1.0f) / (material.ior + 1.0f));
 		float metal_F0		= material.base_color.luminance();
@@ -348,17 +356,18 @@ ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(const HIPRTRende
 			lobe.fresnel_parameter = (dielectric_specular_scale * dielectric_F0 + metallic * metal_F0) / specular_scale;
 		}
 
-		// The metal form has no Fresnel transmission term: the (1 - F_d) factors of Cd1 not folded above are replaced by their cosine-weighted
-		// hemispherical average with the Schlick Fresnel, 1 - F0_d - (1 - F0_d) / 21: (1 - F_d(NoL)) on both sides, (1 - F_d(NoV)) on the reconnection
-		// side. Cd0 > 0 (positive base color, 1 - m > 0, transmissions > 0) keeps the approximation > 0 everywhere above the cosine threshold, as the BSDF
+		// The metal form has no Fresnel transmission term: unattenuated_diffuse holds the whole diffuse term. The (1 - F_d) factors of
+		// fresnel_attenuated_diffuse not folded above are replaced by their cosine-weighted hemispherical average with the Schlick Fresnel,
+		// 1 - F0_d - (1 - F0_d) / 21: (1 - F_d(NoL)) on both sides, (1 - F_d(NoV)) on the reconnection side. unattenuated_diffuse > 0 (positive base
+		// color, 1 - m > 0, transmissions > 0) keeps the approximation > 0 everywhere above the cosine threshold, as the BSDF
 		float average_transmission = 1.0f - dielectric_F0 - (1.0f - dielectric_F0) / 21.0f;
 
 		float folded_transmission = average_transmission;
 		if (!pixel_side)
 			folded_transmission *= average_transmission;
 
-		lobe.diffuse_constant = (1.0f - metallic) * (lobe.diffuse_constant + lobe.diffuse_fresnel * folded_transmission);
-		lobe.diffuse_fresnel  = 0.0f;
+		lobe.unattenuated_diffuse		= (1.0f - metallic) * (lobe.unattenuated_diffuse + lobe.fresnel_attenuated_diffuse * folded_transmission);
+		lobe.fresnel_attenuated_diffuse = 0.0f;
 	}
 #endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
@@ -389,7 +398,7 @@ HIPRT_DEVICE float ReSTIR_PT_target_function_bsdf_approximation_lobe_value(const
 																		   float light_cosine,
 																		   bool reconnection_side)
 {
-	float value = lobe.diffuse_constant;
+	float value = lobe.unattenuated_diffuse;
 
 #if BSDFKernelModel == BSDF_PRINCIPLED
 	if (lobe.specular_scale > 0.0f)
@@ -426,13 +435,13 @@ HIPRT_DEVICE float ReSTIR_PT_target_function_bsdf_approximation_lobe_value(const
 		value += lobe.specular_scale * fresnel * distribution * masking_shadowing / (4.0f * clamped_view_cosine * clamped_light_cosine);
 	}
 
-	if (lobe.diffuse_fresnel > 0.0f)
+	if (lobe.fresnel_attenuated_diffuse > 0.0f)
 	{
 		float transmission = 1.0f - full_fresnel_dielectric(light_cosine, lobe.fresnel_parameter);
 		if (reconnection_side)
 			transmission *= 1.0f - full_fresnel_dielectric(view_cosine, lobe.fresnel_parameter);
 
-		value += lobe.diffuse_fresnel * transmission;
+		value += lobe.fresnel_attenuated_diffuse * transmission;
 	}
 #endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
@@ -513,8 +522,8 @@ HIPRT_DEVICE float ReSTIR_PT_target_function_bsdf_approximation_decode_fresnel(u
 }
 
 /**
- * Pixel record of a lobe (layout in GBufferDevice.h). A positive Cs keeps a non-zero code, Cd0 and Cd1 are rounded up: the support of the decoded lobe is
- * the one of the unquantized lobe
+ * Pixel record of a lobe (layout in GBufferDevice.h). A positive specular_scale keeps a non-zero code, unattenuated_diffuse and
+ * fresnel_attenuated_diffuse are rounded up: the support of the decoded lobe is the one of the unquantized lobe
  */
 HIPRT_DEVICE ReSTIRPTTargetFunctionBSDFApproximationPixelLobeRecord
 ReSTIR_PT_target_function_bsdf_approximation_encode_pixel_lobe(const ReSTIRPTTargetFunctionBSDFApproximationLobe& lobe)
@@ -523,12 +532,12 @@ ReSTIR_PT_target_function_bsdf_approximation_encode_pixel_lobe(const ReSTIRPTTar
 	if (lobe.specular_scale > 0.0f)
 		specular_code = hippt::max(specular_code, 1u);
 
-	unsigned int diffuse_constant_code = ReSTIR_PT_target_function_bsdf_approximation_quantize(lobe.diffuse_constant, 16, true);
-	unsigned int diffuse_fresnel_code  = ReSTIR_PT_target_function_bsdf_approximation_quantize(lobe.diffuse_fresnel, 16, true);
+	unsigned int unattenuated_diffuse_code		 = ReSTIR_PT_target_function_bsdf_approximation_quantize(lobe.unattenuated_diffuse, 16, true);
+	unsigned int fresnel_attenuated_diffuse_code = ReSTIR_PT_target_function_bsdf_approximation_quantize(lobe.fresnel_attenuated_diffuse, 16, true);
 
 	ReSTIRPTTargetFunctionBSDFApproximationPixelLobeRecord record;
-	record.coefficients = specular_code | (diffuse_constant_code << 16);
-	record.parameters	= diffuse_fresnel_code | (ReSTIR_PT_target_function_bsdf_approximation_encode_alpha(lobe.alpha) << 16) |
+	record.coefficients = specular_code | (unattenuated_diffuse_code << 16);
+	record.parameters	= fresnel_attenuated_diffuse_code | (ReSTIR_PT_target_function_bsdf_approximation_encode_alpha(lobe.alpha) << 16) |
 						(ReSTIR_PT_target_function_bsdf_approximation_encode_fresnel(lobe, 7) << 24) | (lobe.metal ? (1u << 31) : 0u);
 
 	return record;
@@ -538,20 +547,20 @@ HIPRT_DEVICE ReSTIRPTTargetFunctionBSDFApproximationLobe
 ReSTIR_PT_target_function_bsdf_approximation_decode_pixel_lobe(const ReSTIRPTTargetFunctionBSDFApproximationPixelLobeRecord& record)
 {
 	ReSTIRPTTargetFunctionBSDFApproximationLobe lobe;
-	lobe.metal			   = (record.parameters >> 31) != 0;
-	lobe.specular_scale	   = ReSTIR_PT_target_function_bsdf_approximation_dequantize(record.coefficients & 0xFFFFu, 16) * 4.0f;
-	lobe.diffuse_constant  = ReSTIR_PT_target_function_bsdf_approximation_dequantize(record.coefficients >> 16, 16);
-	lobe.diffuse_fresnel   = ReSTIR_PT_target_function_bsdf_approximation_dequantize(record.parameters & 0xFFFFu, 16);
-	lobe.alpha			   = ReSTIR_PT_target_function_bsdf_approximation_decode_alpha((record.parameters >> 16) & 0xFFu);
-	lobe.fresnel_parameter = ReSTIR_PT_target_function_bsdf_approximation_decode_fresnel((record.parameters >> 24) & 0x7Fu, 7, lobe.metal);
+	lobe.metal						= (record.parameters >> 31) != 0;
+	lobe.specular_scale				= ReSTIR_PT_target_function_bsdf_approximation_dequantize(record.coefficients & 0xFFFFu, 16) * 4.0f;
+	lobe.unattenuated_diffuse		= ReSTIR_PT_target_function_bsdf_approximation_dequantize(record.coefficients >> 16, 16);
+	lobe.fresnel_attenuated_diffuse = ReSTIR_PT_target_function_bsdf_approximation_dequantize(record.parameters & 0xFFFFu, 16);
+	lobe.alpha						= ReSTIR_PT_target_function_bsdf_approximation_decode_alpha((record.parameters >> 16) & 0xFFu);
+	lobe.fresnel_parameter			= ReSTIR_PT_target_function_bsdf_approximation_decode_fresnel((record.parameters >> 24) & 0x7Fu, 7, lobe.metal);
 
 	return lobe;
 }
 
 /**
  * Stores the reconnection-side lobe in the lobe bytes of the sample (layout in Reservoir.h) and returns its flag byte (class bit set, smooth bit
- * 'smooth_lobe', bits 2..7 the 6-bit Fresnel code). Cs' sqrt-coded on [0, 4] (8 bits, a positive value keeps a non-zero code), Cd0' sqrt-coded on [0, 1]
- * (7 bits, rounded up), Cd1' sqrt-coded on [0, 1] (8 bits, rounded up)
+ * 'smooth_lobe', bits 2..7 the 6-bit Fresnel code). Reconnection-side coefficients: specular_scale sqrt-coded on [0, 4] (8 bits, a positive value keeps a
+ * non-zero code), unattenuated_diffuse sqrt-coded on [0, 1] (7 bits, rounded up), fresnel_attenuated_diffuse sqrt-coded on [0, 1] (8 bits, rounded up)
  */
 HIPRT_DEVICE unsigned char ReSTIR_PT_target_function_bsdf_approximation_encode_sample_lobe(ReSTIRPTReservoirSample& sample,
 																						   const ReSTIRPTTargetFunctionBSDFApproximationLobe& lobe,
@@ -561,13 +570,15 @@ HIPRT_DEVICE unsigned char ReSTIR_PT_target_function_bsdf_approximation_encode_s
 	if (lobe.specular_scale > 0.0f)
 		specular_code = hippt::max(specular_code, 1u);
 
-	unsigned int diffuse_constant_code = ReSTIR_PT_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.diffuse_constant)), 7, true);
-	unsigned int diffuse_fresnel_code  = ReSTIR_PT_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.diffuse_fresnel)), 8, true);
+	unsigned int unattenuated_diffuse_code =
+		ReSTIR_PT_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.unattenuated_diffuse)), 7, true);
+	unsigned int fresnel_attenuated_diffuse_code =
+		ReSTIR_PT_target_function_bsdf_approximation_quantize(sqrtf(hippt::clamp(0.0f, 1.0f, lobe.fresnel_attenuated_diffuse)), 8, true);
 
 	sample.target_function_bsdf_approximation_lobe_alpha	= static_cast<unsigned char>(ReSTIR_PT_target_function_bsdf_approximation_encode_alpha(lobe.alpha));
 	sample.target_function_bsdf_approximation_lobe_specular = static_cast<unsigned char>(specular_code);
-	sample.rc_vertex_shading_normal.set_padding(static_cast<unsigned char>(diffuse_fresnel_code));
-	sample.rc_vertex_geometric_normal.set_padding(static_cast<unsigned char>(diffuse_constant_code | (lobe.metal ? 0x80u : 0u)));
+	sample.rc_vertex_shading_normal.set_padding(static_cast<unsigned char>(fresnel_attenuated_diffuse_code));
+	sample.rc_vertex_geometric_normal.set_padding(static_cast<unsigned char>(unattenuated_diffuse_code | (lobe.metal ? 0x80u : 0u)));
 
 	unsigned int flags = RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_FLAG |
 						 (smooth_lobe ? RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_SMOOTH_LOBE_FLAG : 0u) |
@@ -580,18 +591,18 @@ HIPRT_DEVICE ReSTIRPTTargetFunctionBSDFApproximationLobe ReSTIR_PT_target_functi
 {
 	unsigned int geometric_normal_byte = sample.rc_vertex_geometric_normal.get_padding();
 
-	float specular_normalized		  = ReSTIR_PT_target_function_bsdf_approximation_dequantize(sample.target_function_bsdf_approximation_lobe_specular, 8);
-	float diffuse_constant_normalized = ReSTIR_PT_target_function_bsdf_approximation_dequantize(geometric_normal_byte & 0x7Fu, 7);
-	float diffuse_fresnel_normalized  = ReSTIR_PT_target_function_bsdf_approximation_dequantize(sample.rc_vertex_shading_normal.get_padding(), 8);
+	float specular_normalized			  = ReSTIR_PT_target_function_bsdf_approximation_dequantize(sample.target_function_bsdf_approximation_lobe_specular, 8);
+	float unattenuated_diffuse_normalized = ReSTIR_PT_target_function_bsdf_approximation_dequantize(geometric_normal_byte & 0x7Fu, 7);
+	float fresnel_attenuated_diffuse_normalized = ReSTIR_PT_target_function_bsdf_approximation_dequantize(sample.rc_vertex_shading_normal.get_padding(), 8);
 
 	ReSTIRPTTargetFunctionBSDFApproximationLobe lobe;
-	lobe.metal			   = (geometric_normal_byte & 0x80u) != 0;
-	lobe.specular_scale	   = 4.0f * specular_normalized * specular_normalized;
-	lobe.diffuse_constant  = diffuse_constant_normalized * diffuse_constant_normalized;
-	lobe.diffuse_fresnel   = diffuse_fresnel_normalized * diffuse_fresnel_normalized;
-	lobe.alpha			   = ReSTIR_PT_target_function_bsdf_approximation_decode_alpha(sample.target_function_bsdf_approximation_lobe_alpha);
-	lobe.fresnel_parameter = ReSTIR_PT_target_function_bsdf_approximation_decode_fresnel(
-		static_cast<unsigned int>(sample.target_function_bsdf_approximation_flags) >> 2, 6, lobe.metal);
+	lobe.metal						= (geometric_normal_byte & 0x80u) != 0;
+	lobe.specular_scale				= 4.0f * specular_normalized * specular_normalized;
+	lobe.unattenuated_diffuse		= unattenuated_diffuse_normalized * unattenuated_diffuse_normalized;
+	lobe.fresnel_attenuated_diffuse = fresnel_attenuated_diffuse_normalized * fresnel_attenuated_diffuse_normalized;
+	lobe.alpha						= ReSTIR_PT_target_function_bsdf_approximation_decode_alpha(sample.target_function_bsdf_approximation_lobe_alpha);
+	lobe.fresnel_parameter			= ReSTIR_PT_target_function_bsdf_approximation_decode_fresnel(
+		 static_cast<unsigned int>(sample.target_function_bsdf_approximation_flags) >> 2, 6, lobe.metal);
 
 	return lobe;
 }

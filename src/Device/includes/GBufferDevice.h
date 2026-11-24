@@ -12,8 +12,9 @@
 
 /**
  * Lobe record of a pixel for the target function BSDF approximation of the union domain reuse of ReSTIR PT (see
- * SpatialTargetFunctionBSDFApproximation.h), two words loaded together. 'coefficients': bits 0..15 Cs (unorm of Cs / 4), bits 16..31 Cd0 (unorm, rounded
- * up). 'parameters': bits 0..15 Cd1 (unorm, rounded up), bits 16..23 alpha (log code), bits 24..30 Fresnel code, bit 31 metal
+ * SpatialTargetFunctionBSDFApproximation.h), two words loaded together. 'coefficients': bits 0..15 specular_scale (unorm of specular_scale / 4),
+ * bits 16..31 unattenuated_diffuse (unorm, rounded up). 'parameters': bits 0..15 fresnel_attenuated_diffuse (unorm, rounded up), bits 16..23 alpha (log
+ * code), bits 24..30 Fresnel code, bit 31 metal
  */
 struct alignas(8) ReSTIRPTTargetFunctionBSDFApproximationPixelLobeRecord
 {

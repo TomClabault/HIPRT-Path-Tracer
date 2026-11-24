@@ -56,8 +56,9 @@ struct ReSTIRPTReservoirSample
 	// is perfectly smooth, bits 2..7 = the 6-bit Fresnel code of that lobe. The byte is non-zero exactly when bit 0 is set
 	unsigned char target_function_bsdf_approximation_flags = 0;
 	// Analytic lobe of the reconnection vertex for the principled BSDF (ReSTIR_PT_target_function_bsdf_approximation_encode_sample_lobe()): alpha code and
-	// Cs' code. Cd1' is in the padding byte of 'rc_vertex_shading_normal' and Cd0' (bits 0..6) + the metal bit (bit 7) in the padding byte of
-	// 'rc_vertex_geometric_normal'. These three bytes fill the struct padding after 'di_sample': no size change (static_assert below)
+	// specular_scale code. The fresnel_attenuated_diffuse code is in the padding byte of 'rc_vertex_shading_normal' and the unattenuated_diffuse code
+	// (bits 0..6) + the metal bit (bit 7) in the padding byte of 'rc_vertex_geometric_normal'. These three bytes fill the struct padding after 'di_sample':
+	// no size change (static_assert below)
 	unsigned char target_function_bsdf_approximation_lobe_alpha	   = 0;
 	unsigned char target_function_bsdf_approximation_lobe_specular = 0;
 
