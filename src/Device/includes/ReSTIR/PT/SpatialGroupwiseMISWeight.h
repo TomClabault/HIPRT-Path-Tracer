@@ -17,7 +17,7 @@
  * the center -> j shift), with the pixel j assumed visible: no shadow ray. 'sample' is the canonical sample or the sample of a neighbor (the reconnection
  * data is the same whichever pixel the sample comes from)
  *
- * The MIS target function BSDF approximation (SpatialMISTargetFunctionBSDFApproximation.h) replaces the target function, the Jacobian is unchanged
+ * The target function BSDF approximation (SpatialTargetFunctionBSDFApproximation.h) replaces the target function, the Jacobian is unchanged
  *
  * The kernels of the union domain spatial reuse (SpatialSPMISUnionDomainShadowSplit.h) evaluate the probes with it and trace the ray of a probe in
  * another kernel when its value is non-zero
@@ -68,8 +68,8 @@ HIPRT_DEVICE HIPRT_FORCEINLINE float spmis_target_function_at_domain_pixel(const
  * equal (initial candidates reservoirs as the only input)
  *
  * The partition of unity holds for any functions p_j with the support of the target functions. Every p_j(y) of these weights is the MIS target function
- * BSDF approximation of SpatialMISTargetFunctionBSDFApproximation.h, the own terms passed by the caller included
- * (ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term())
+ * BSDF approximation of SpatialTargetFunctionBSDFApproximation.h, the own terms passed by the caller included
+ * (ReSTIR_PT_target_function_bsdf_approximation_own_term())
  *
  * The visibility of the probes is traced in separate kernels (SpatialSPMISUnionDomainShadowSplit.h): these functions take the probe values with their
  * visibility already applied (zero for an occluded probe)
@@ -119,7 +119,7 @@ struct ReSTIRPTSpatialGroupwiseMISWeight
 	 * unbiased estimate of the sum over the domain of m_i f.
 	 *
 	 * 'target_function_at_neighbor' is p_i(y_i) in the measure of the center pixel (target function of the sample at its pixel / Jacobian of the shift)
-	 * and 'target_function_at_center' is p_c(y_i), both the MIS target function BSDF approximations of the neighbor's sample. 'group_target_function_sum'
+	 * and 'target_function_at_center' is p_c(y_i), both the target function BSDF approximations of the neighbor's sample. 'group_target_function_sum'
 	 * is the sum of p_i(y_i) and of the g - 1 companions of the group (zero for an occluded companion). 'domain_confidence_sum' is C.
 	 */
 	HIPRT_DEVICE float get_MIS_weight_non_canonical_from_group_sum(float neighbor_reservoir_confidence,

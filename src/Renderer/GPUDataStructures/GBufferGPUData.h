@@ -40,8 +40,8 @@ struct GBufferGPURenderer
 		first_hit_prim_index.free();
 		ray_volume_states.free();
 
-		if (mis_target_function_bsdf_approximation_lobe_records.size() > 0)
-			mis_target_function_bsdf_approximation_lobe_records.free();
+		if (target_function_bsdf_approximation_lobe_records.size() > 0)
+			target_function_bsdf_approximation_lobe_records.free();
 	}
 
 	GBufferDevice get_device_g_buffer()
@@ -54,8 +54,8 @@ struct GBufferGPURenderer
 		out.primary_hit_position = primary_hit_position.get_device_pointer();
 		out.first_hit_prim_index = first_hit_prim_index.get_device_pointer();
 		// Optional buffer, nullptr when not allocated
-		out.mis_target_function_bsdf_approximation_lobe_records =
-			mis_target_function_bsdf_approximation_lobe_records.size() > 0 ? mis_target_function_bsdf_approximation_lobe_records.get_device_pointer() : nullptr;
+		out.target_function_bsdf_approximation_lobe_records =
+			target_function_bsdf_approximation_lobe_records.size() > 0 ? target_function_bsdf_approximation_lobe_records.get_device_pointer() : nullptr;
 
 		return out;
 	}
@@ -66,10 +66,10 @@ struct GBufferGPURenderer
 	OrochiBuffer<Octahedral24BitNormalPadded32b> geometric_normals;
 	OrochiBuffer<float3_t> primary_hit_position;
 	OrochiBuffer<int> first_hit_prim_index;
-	// Lobe record of every pixel for the MIS target function BSDF approximation of ReSTIR PT
-	// (GBufferDevice::mis_target_function_bsdf_approximation_lobe_records). Not allocated by resize(): only allocated by the FillGBufferRenderPass while the
+	// Lobe record of every pixel for the target function BSDF approximation of ReSTIR PT
+	// (GBufferDevice::target_function_bsdf_approximation_lobe_records). Not allocated by resize(): only allocated by the FillGBufferRenderPass while the
 	// approximation is used with the principled BSDF
-	OrochiBuffer<ReSTIRPTMISTargetFunctionBSDFApproximationPixelLobeRecord> mis_target_function_bsdf_approximation_lobe_records;
+	OrochiBuffer<ReSTIRPTTargetFunctionBSDFApproximationPixelLobeRecord> target_function_bsdf_approximation_lobe_records;
 
 	OrochiBuffer<RayVolumeState> ray_volume_states;
 };

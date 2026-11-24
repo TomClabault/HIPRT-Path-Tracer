@@ -268,8 +268,8 @@ public:
 	}
 
 	/**
-	 * The padding byte can carry data next to the normal (the flags of the MIS target function BSDF approximation of ReSTIR PT in the G-buffer shading normals,
-	 * lobe codes in the reconnection normals of a ReSTIR PT sample, see SpatialMISTargetFunctionBSDFApproximation.h). pack() leaves it untouched
+	 * The padding byte can carry data next to the normal (the flags of the target function BSDF approximation of ReSTIR PT in the G-buffer shading normals,
+	 * lobe codes in the reconnection normals of a ReSTIR PT sample, see SpatialTargetFunctionBSDFApproximation.h). pack() leaves it untouched
 	 */
 	HIPRT_DEVICE unsigned char get_padding() const
 	{

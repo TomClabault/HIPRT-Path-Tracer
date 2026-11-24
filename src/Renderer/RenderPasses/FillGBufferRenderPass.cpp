@@ -65,8 +65,8 @@ void FillGBufferRenderPass::resize(unsigned int new_width, unsigned int new_heig
 
 	m_g_buffer.resize(new_width * new_height, g_buffers_ray_volume_state_byte_size);
 
-	if (mis_target_function_bsdf_approximation_lobe_records_needed())
-		m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.resize(new_width * new_height);
+	if (target_function_bsdf_approximation_lobe_records_needed())
+		m_g_buffer.target_function_bsdf_approximation_lobe_records.resize(new_width * new_height);
 
 	if (m_renderer->get_render_data().render_settings.use_prev_frame_g_buffer(m_renderer))
 		m_g_buffer_prev_frame.resize(new_width * new_height, g_buffers_ray_volume_state_byte_size);
@@ -84,17 +84,17 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 
 	bool render_data_invalidated = false;
 
-	// The lobe records of the MIS target function BSDF approximation are only allocated while the camera rays kernel writes them
-	bool lobe_records_needed = mis_target_function_bsdf_approximation_lobe_records_needed();
-	if (lobe_records_needed && m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.size() == 0)
+	// The lobe records of the target function BSDF approximation are only allocated while the camera rays kernel writes them
+	bool lobe_records_needed = target_function_bsdf_approximation_lobe_records_needed();
+	if (lobe_records_needed && m_g_buffer.target_function_bsdf_approximation_lobe_records.size() == 0)
 	{
-		m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.resize(m_render_resolution.x * m_render_resolution.y);
+		m_g_buffer.target_function_bsdf_approximation_lobe_records.resize(m_render_resolution.x * m_render_resolution.y);
 
 		render_data_invalidated = true;
 	}
-	else if (!lobe_records_needed && m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.size() > 0)
+	else if (!lobe_records_needed && m_g_buffer.target_function_bsdf_approximation_lobe_records.size() > 0)
 	{
-		m_g_buffer.mis_target_function_bsdf_approximation_lobe_records.free();
+		m_g_buffer.target_function_bsdf_approximation_lobe_records.free();
 
 		render_data_invalidated = true;
 	}
@@ -128,7 +128,7 @@ bool FillGBufferRenderPass::pre_frame_render_update(float delta_time)
 	return render_data_invalidated;
 }
 
-bool FillGBufferRenderPass::mis_target_function_bsdf_approximation_lobe_records_needed() const
+bool FillGBufferRenderPass::target_function_bsdf_approximation_lobe_records_needed() const
 {
 	bool restir_pt_path_sampling = path_sampling_strategy_is_restir_pt(m_compiler_options->get_macro_value(GPUKernelCompilerOptions::PATH_SAMPLING_STRATEGY));
 	bool principled_bsdf		 = m_compiler_options->get_macro_value(GPUKernelCompilerOptions::BSDF_KERNEL_MODEL) == BSDF_PRINCIPLED;

@@ -465,20 +465,20 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_rc_vertex_fill_information(const HIPRTRend
 	restir_pt_initial_sample.rc_vertex_texcoords_v	   = closest_hit_info.texcoords.y;
 	restir_pt_initial_sample.rc_vertex_primitive_index = closest_hit_info.primitive_index;
 
-	if (!ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))
+	if (!ReSTIR_PT_target_function_bsdf_approximation_enabled(render_data))
 		return;
 
-	// Material part of the MIS target function BSDF approximation flags and lobe of the sample. It is computed from the material that the target
+	// Material part of the target function BSDF approximation flags and lobe of the sample. It is computed from the material that the target
 	// function fetches for the reconnection vertex: get_intersection_material() with the same primitive and texcoords
 	if constexpr (hippt::is_same_v<MaterialType, DeviceUnpackedPrincipledFullMaterial>)
-		ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_vertex(render_data, material, restir_pt_initial_sample);
+		ReSTIR_PT_target_function_bsdf_approximation_fill_rc_vertex(render_data, material, restir_pt_initial_sample);
 	else
 	{
 		// The material of a material family does not have all the parameters of the full material
 		int material_index										= render_data.buffers.material_indices[closest_hit_info.primitive_index];
 		DeviceUnpackedPrincipledFullMaterial rc_vertex_material = get_intersection_material(render_data, material_index, closest_hit_info.texcoords);
 
-		ReSTIR_PT_MIS_target_function_bsdf_approximation_fill_rc_vertex(render_data, rc_vertex_material, restir_pt_initial_sample);
+		ReSTIR_PT_target_function_bsdf_approximation_fill_rc_vertex(render_data, rc_vertex_material, restir_pt_initial_sample);
 	}
 }
 
@@ -661,16 +661,15 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_finalize_initial_candidates(HIPRTRenderDat
 	restir_pt_initial_reservoir.end_with_normalization(1.0f, ReSTIR_PT_InitialPathTreesCount);
 	restir_pt_initial_reservoir_output->sanity_check(make_int2(pixel_x, pixel_y));
 
-	if (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(render_data))
+	if (ReSTIR_PT_target_function_bsdf_approximation_enabled(render_data))
 	{
-		// Final MIS target function BSDF approximation flags of the sample (the material part was written with the reconnection vertex). The flags depend only
+		// Final target function BSDF approximation flags of the sample (the material part was written with the reconnection vertex). The flags depend only
 		// on the reconnection data of the sample, they stay valid in every copy of the sample
-		unsigned char mis_target_function_bsdf_approximation_flags = 0;
+		unsigned char target_function_bsdf_approximation_flags = 0;
 		if (restir_pt_initial_reservoir_output->UCW > 0.0f)
-			mis_target_function_bsdf_approximation_flags =
-				ReSTIR_PT_MIS_target_function_bsdf_approximation_sample_flags(restir_pt_initial_reservoir_output->sample);
+			target_function_bsdf_approximation_flags = ReSTIR_PT_target_function_bsdf_approximation_sample_flags(restir_pt_initial_reservoir_output->sample);
 
-		restir_pt_initial_reservoir_output->sample.mis_target_function_bsdf_approximation_flags = mis_target_function_bsdf_approximation_flags;
+		restir_pt_initial_reservoir_output->sample.target_function_bsdf_approximation_flags = target_function_bsdf_approximation_flags;
 	}
 
 #if ReSTIR_PT_MISWeightsType == RESTIR_PT_MIS_WEIGHTS_TYPE_STOCHASTIC_PAIRWISE_MIS ||                                                                          \
@@ -816,6 +815,7 @@ HIPRT_DEVICE void ReSTIR_PT_wavefront_shade_path(HIPRTRenderData& render_data,
 		bool intersection_found;
 		wavefront_load_secondary_material_state(render_data, pixel_index, ray_payload, closest_hit_info, intersection_found);
 		wavefront_load_secondary_shading_state(render_data, pixel_index, ray_payload, ray, closest_hit_info);
+
 		ray.direction = restir_pt_wavefront_data.path_ray_directions[pixel_index];
 
 		restir_pt_initial_reservoir.weight_sum	   = restir_pt_wavefront_data.path_reservoir_weight_sums[pixel_index];

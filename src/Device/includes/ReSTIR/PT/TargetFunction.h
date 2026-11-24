@@ -10,7 +10,7 @@
 #include "Device/includes/Material.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
-#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
+#include "Device/includes/ReSTIR/PT/SpatialTargetFunctionBSDFApproximation.h"
 #include "Device/includes/ReSTIR/PT/Utils.h"
 #include "Device/includes/ReSTIR/Surface.h"
 #include "HostDeviceCommon/RenderData.h"
@@ -147,10 +147,10 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_sample_visible_at_surface(const HIPRTRenderData
 }
 
 /**
- * 'misTargetFunctionBSDFApproximation': returns the MIS target function BSDF approximation of the union domain reuse instead of the target function
- * (SpatialMISTargetFunctionBSDFApproximation.h). The zero tests below are the same, the approximation is computed before the visibility test (a zero
+ * 'targetFunctionBSDFApproximation': returns the target function BSDF approximation of the union domain reuse instead of the target function
+ * (SpatialTargetFunctionBSDFApproximation.h). The zero tests below are the same, the approximation is computed before the visibility test (a zero
  * approximation skips the ray): analytic value on the cheap path, full target function evaluation otherwise (see
- * ReSTIR_PT_MIS_target_function_bsdf_approximation_decision())
+ * ReSTIR_PT_target_function_bsdf_approximation_decision())
  *
  * This is a template parameter so that only one of the two evaluations is compiled at a call site: the approximation (with its full target function
  * fallback before the visibility test) or the full target function after the visibility test
@@ -158,7 +158,7 @@ HIPRT_HOST_DEVICE bool ReSTIR_PT_sample_visible_at_surface(const HIPRTRenderData
  * Forced inline: out of line, the sample and the shading point passed by reference live in scratch memory in the caller and every field read here
  * is a scratch load
  */
-template <bool withVisiblity, bool misTargetFunctionBSDFApproximation = false>
+template <bool withVisiblity, bool targetFunctionBSDFApproximation = false>
 HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_pixel(const HIPRTRenderData& render_data,
 																					  const ReSTIRPTReservoirSample& sample,
 																					  int surface_pixel_index,
@@ -193,7 +193,7 @@ HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_
 		// Backfacing light
 		return 0.0f;
 
-	// The padding byte of the packed shading normal holds the flags of the pixel for the MIS target function BSDF approximation
+	// The padding byte of the packed shading normal holds the flags of the pixel for the target function BSDF approximation
 	Octahedral24BitNormalPadded32b surface_packed_shading_normal = render_data.g_buffer.shading_normals[surface_pixel_index];
 	float3_t surface_shading_normal								 = surface_packed_shading_normal.unpack();
 
@@ -205,15 +205,15 @@ HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_
 
 	float approximation_value = 0.0f;
 
-	if constexpr (misTargetFunctionBSDFApproximation)
+	if constexpr (targetFunctionBSDFApproximation)
 	{
 		int decision =
-			ReSTIR_PT_MIS_target_function_bsdf_approximation_decision(render_data, sample, surface_packed_shading_normal.get_padding(), surface_shading_point,
-																	  surface_shading_normal, incident_light_direction, cosine_term);
-		if (decision == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH)
-			approximation_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_cheap_path_value(
-				render_data, sample, surface_pixel_index, surface_shading_point, surface_shading_normal, incident_light_direction, cosine_term);
-		else if (decision == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK)
+			ReSTIR_PT_target_function_bsdf_approximation_decision(render_data, sample, surface_packed_shading_normal.get_padding(), surface_shading_point,
+																  surface_shading_normal, incident_light_direction, cosine_term);
+		if (decision == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CHEAP_PATH)
+			approximation_value = ReSTIR_PT_target_function_bsdf_approximation_cheap_path_value(render_data, sample, surface_pixel_index, surface_shading_point,
+																								surface_shading_normal, incident_light_direction, cosine_term);
+		else if (decision == RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK)
 		{
 			// The full target function before the visibility test, as at the end of this function
 			DeviceUnpackedPrincipledFullMaterial fallback_surface_material = render_data.g_buffer.materials[surface_pixel_index].unpack();
@@ -229,7 +229,7 @@ HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_
 														fallback_surface_geometric_normal, surface_primitive_index, fallback_surface_ray_volume_state,
 														fallback_surface_material, incident_light_direction, cosine_term, random_number_generator);
 
-			approximation_value = ReSTIR_PT_MIS_target_function_bsdf_approximation_fallback_value(sample, full_target_function, cosine_term);
+			approximation_value = ReSTIR_PT_target_function_bsdf_approximation_fallback_value(sample, full_target_function, cosine_term);
 		}
 
 		if (approximation_value <= 0.0f)
@@ -251,7 +251,7 @@ HIPRT_HOST_DEVICE HIPRT_FORCEINLINE float ReSTIR_PT_evaluate_target_function_at_
 			return 0.0f;
 	}
 
-	if constexpr (misTargetFunctionBSDFApproximation)
+	if constexpr (targetFunctionBSDFApproximation)
 		return approximation_value;
 	else
 	{

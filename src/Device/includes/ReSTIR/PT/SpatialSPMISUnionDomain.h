@@ -8,7 +8,7 @@
 
 #include "Device/includes/BSDFs/BSDFDispatcher.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
-#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
+#include "Device/includes/ReSTIR/PT/SpatialTargetFunctionBSDFApproximation.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
 #include "Device/includes/ReSTIR/PT/UtilsSpatialSPMIS.h"
 #include "Device/includes/ReSTIR/Surface.h"
@@ -352,7 +352,7 @@ HIPRT_DEVICE Octahedral24BitNormalPadded32b spmis_neighbor_record_read_normal(fl
  * BSDF of the center pixel in the selection target of the neighbors (spmis_neighbor_record_target()), set up once per pixel by
  * spmis_union_domain_center_bsdf_setup().
  *
- * With the principled BSDF and a center material in an analytic class of SpatialMISTargetFunctionBSDFApproximation.h, the BSDF term toward a reconnection
+ * With the principled BSDF and a center material in an analytic class of SpatialTargetFunctionBSDFApproximation.h, the BSDF term toward a reconnection
  * vertex is the analytic lobe of the center material at the view direction of the pixel (specular GGX lobe + diffuse): the selection then favors the
  * neighbors whose reconnection vertex lies in the glossy lobe of the center. Otherwise it is the Lambertian proxy: the center BSDF evaluated once with
  * the incident direction along the shading normal, which ignores the direction of the reconnection vertex.
@@ -363,7 +363,7 @@ HIPRT_DEVICE Octahedral24BitNormalPadded32b spmis_neighbor_record_read_normal(fl
  */
 struct ReSTIRPTSPMISUnionDomainCenterBSDF
 {
-	ReSTIRPTMISTargetFunctionBSDFApproximationLobe lobe;
+	ReSTIRPTTargetFunctionBSDFApproximationLobe lobe;
 
 	// Luminance of the center BSDF evaluated with the incident direction along the shading normal, only used without the analytic lobe
 	float lambertian_proxy_luminance = 0.0f;
@@ -382,17 +382,17 @@ HIPRT_DEVICE ReSTIRPTSPMISUnionDomainCenterBSDF spmis_union_domain_center_bsdf_s
 	center_bsdf.view_cosine = hippt::dot(center_surface.view_direction, center_surface.shading_normal);
 
 	bool smooth_lobe;
-	int material_class = ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class(center_surface.material, smooth_lobe);
+	int material_class = ReSTIR_PT_target_function_bsdf_approximation_material_class(center_surface.material, smooth_lobe);
 
 	// From inside an object, the principled BSDF only evaluates the glass lobe, which has no analytic class
-	center_bsdf.analytic_lobe = material_class != RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE &&
-								center_bsdf.view_cosine > RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD &&
+	center_bsdf.analytic_lobe = material_class != RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE &&
+								center_bsdf.view_cosine > RESTIR_PT_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD &&
 								!center_surface.ray_volume_state.inside_material;
 
 	if (center_bsdf.analytic_lobe)
 	{
-		center_bsdf.lobe = ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(render_data, center_surface.material, material_class,
-																							   smooth_lobe, true, center_bsdf.view_cosine);
+		center_bsdf.lobe = ReSTIR_PT_target_function_bsdf_approximation_lobe_from_material(render_data, center_surface.material, material_class, smooth_lobe,
+																						   true, center_bsdf.view_cosine);
 
 		return center_bsdf;
 	}
@@ -421,9 +421,8 @@ HIPRT_DEVICE float spmis_union_domain_center_bsdf_value(const HIPRTRenderData& r
 	if (!center_bsdf.analytic_lobe)
 		return center_bsdf.lambertian_proxy_luminance * cosine_center;
 
-	return ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_value(render_data, center_bsdf.lobe, center_surface.shading_normal,
-																	   center_surface.view_direction, incident_direction, center_bsdf.view_cosine,
-																	   cosine_center, false);
+	return ReSTIR_PT_target_function_bsdf_approximation_lobe_value(render_data, center_bsdf.lobe, center_surface.shading_normal, center_surface.view_direction,
+																   incident_direction, center_bsdf.view_cosine, cosine_center, false);
 }
 
 /**

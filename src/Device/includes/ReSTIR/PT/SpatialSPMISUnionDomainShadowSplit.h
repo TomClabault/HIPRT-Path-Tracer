@@ -41,7 +41,7 @@
  *	  which would have to come from a separate generator started from the seed of the pixel (the seed buffer is not written before the resolve
  *	  kernel) to leave the chain above undisturbed and repeat the random decisions of the prepare kernel
  *
- * A probe ray is only traced when the value of its probe without visibility (MIS target function BSDF approximation times the Jacobian) is non-zero: a
+ * A probe ray is only traced when the value of its probe without visibility (target function BSDF approximation times the Jacobian) is non-zero: a
  * ray whose value is zero cannot change the estimate. A ray that repeats the query of an earlier ray of the same pixel (same origin, endpoint and seed)
  * is traced once and its answer copied, see "Duplicate rays" below.
  *
@@ -53,7 +53,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/Intersect.h"
 #include "Device/includes/ReSTIR/PT/Reservoir.h"
-#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
+#include "Device/includes/ReSTIR/PT/SpatialTargetFunctionBSDFApproximation.h"
 
 #include "HostDeviceCommon/KernelOptions/KernelOptions.h"
 #include "HostDeviceCommon/RenderData.h"

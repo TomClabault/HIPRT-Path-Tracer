@@ -25,8 +25,8 @@ struct GBufferCPUData
 		first_hit_prim_index.resize(new_element_count);
 		cameray_ray_hit.resize(new_element_count);
 		ray_volume_states.resize(new_element_count);
-		// Always allocated on the CPU, the kernels decide every frame whether they use them (ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled())
-		mis_target_function_bsdf_approximation_lobe_records.resize(new_element_count);
+		// Always allocated on the CPU, the kernels decide every frame whether they use them (ReSTIR_PT_target_function_bsdf_approximation_enabled())
+		target_function_bsdf_approximation_lobe_records.resize(new_element_count);
 	}
 
 	std::vector<DevicePackedEffectiveMaterial> materials;
@@ -34,9 +34,9 @@ struct GBufferCPUData
 	std::vector<Octahedral24BitNormalPadded32b> shading_normals;
 	std::vector<float3_t> primary_hit_position;
 	std::vector<int> first_hit_prim_index;
-	// Lobe record of every pixel for the MIS target function BSDF approximation of ReSTIR PT
-	// (GBufferDevice::mis_target_function_bsdf_approximation_lobe_records)
-	std::vector<ReSTIRPTMISTargetFunctionBSDFApproximationPixelLobeRecord> mis_target_function_bsdf_approximation_lobe_records;
+	// Lobe record of every pixel for the target function BSDF approximation of ReSTIR PT
+	// (GBufferDevice::target_function_bsdf_approximation_lobe_records)
+	std::vector<ReSTIRPTTargetFunctionBSDFApproximationPixelLobeRecord> target_function_bsdf_approximation_lobe_records;
 
 	std::vector<unsigned char> cameray_ray_hit;
 

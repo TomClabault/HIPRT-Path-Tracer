@@ -78,11 +78,11 @@ private:
 	size_t get_g_buffers_ray_volume_state_byte_size();
 
 	/**
-	 * Whether the G-buffer needs the lobe records of the MIS target function BSDF approximation of ReSTIR PT
-	 * (GBufferDevice::mis_target_function_bsdf_approximation_lobe_records): ReSTIR PT path sampling with the union domain SPMIS reuse, the approximation
+	 * Whether the G-buffer needs the lobe records of the target function BSDF approximation of ReSTIR PT
+	 * (GBufferDevice::target_function_bsdf_approximation_lobe_records): ReSTIR PT path sampling with the union domain SPMIS reuse, the approximation
 	 * enabled and the principled BSDF
 	 */
-	bool mis_target_function_bsdf_approximation_lobe_records_needed() const;
+	bool target_function_bsdf_approximation_lobe_records_needed() const;
 
 	int2_t m_render_resolution = make_int2(0, 0);
 

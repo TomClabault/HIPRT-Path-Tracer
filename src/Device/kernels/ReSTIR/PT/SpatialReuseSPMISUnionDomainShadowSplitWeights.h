@@ -9,7 +9,7 @@
 #include "Device/includes/FixIntellisense.h"
 #include "Device/includes/ReSTIR/Jacobian.h"
 #include "Device/includes/ReSTIR/PT/SpatialGroupwiseMISWeight.h"
-#include "Device/includes/ReSTIR/PT/SpatialMISTargetFunctionBSDFApproximation.h"
+#include "Device/includes/ReSTIR/PT/SpatialTargetFunctionBSDFApproximation.h"
 #include "Device/includes/ReSTIR/PT/SpatialSPMISUnionDomain.h"
 #include "Device/includes/ReSTIR/PT/SpatialSPMISUnionDomainShadowSplit.h"
 #include "Device/includes/ReSTIR/PT/TargetFunction.h"
@@ -38,7 +38,7 @@ HIPRT_DEVICE HIPRT_FORCEINLINE void spmis_union_domain_shadow_split_weights_pixe
 	// Continues the generator chain of the prepare kernel
 	Xorshift32Generator random_number_generator(shadow_split_buffers.random_states[center_pixel_index]);
 
-	// The target functions at the center pixel are the BSDF approximations of SpatialMISTargetFunctionBSDFApproximation.h: of the surface of the center
+	// The target functions at the center pixel are the BSDF approximations of SpatialTargetFunctionBSDFApproximation.h: of the surface of the center
 	// pixel, they only need its shading point, see the top of SpatialSPMISUnionDomainShadowSplit.h
 	float3_t center_pixel_shading_point = render_data.g_buffer.primary_hit_position[center_pixel_index];
 
@@ -106,8 +106,8 @@ HIPRT_DEVICE HIPRT_FORCEINLINE void spmis_union_domain_shadow_split_weights_pixe
 			// Own term of the neighbor's sample at the neighbor in the measure of the center pixel, from its target function in its own measure (the Jacobian
 			// division does not change the support)
 			float mis_target_at_neighbor =
-				ReSTIR_PT_MIS_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
-																		  neighbor_reservoir.sample.target_function) /
+				ReSTIR_PT_target_function_bsdf_approximation_own_term(render_data, neighbor_reservoir.sample, static_cast<int>(neighbor_pixel_index),
+																	  neighbor_reservoir.sample.target_function) /
 				shift_mapping_jacobian;
 
 			// The companion of the slot drawn by the prepare kernel and its value without visibility: its ray is traced by the resolve kernel
