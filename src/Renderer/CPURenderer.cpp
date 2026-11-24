@@ -11,7 +11,6 @@
 #include "Device/kernels/NEE++/GridPrepopulate.h"
 #include "Device/kernels/NEE++/NEEPlusPlusFinalizeAccumulation.h"
 
-#include "Device/kernels/ReSTIR/PT/InitialCandidates.h"
 #include "Device/kernels/ReSTIR/PT/Shading.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuse.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuseSPMIS.h"
@@ -20,6 +19,10 @@
 #include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitTraceSelection.h"
 #include "Device/kernels/ReSTIR/PT/SpatialReuseSPMISUnionDomainShadowSplitWeights.h"
 #include "Device/kernels/ReSTIR/PT/TemporalReuse.h"
+#include "Device/kernels/ReSTIR/PT/Wavefront/InitialCandidatesComplete.h"
+#include "Device/kernels/ReSTIR/PT/Wavefront/InitialCandidatesShade.h"
+#include "Device/kernels/ReSTIR/PT/Wavefront/InitialCandidatesShadePrimary.h"
+#include "Device/kernels/ReSTIR/PT/Wavefront/InitialCandidatesTrace.h"
 
 #include "Device/kernels/ReSTIR/SPMIS/BuildAliasTables.h"
 #include "Device/kernels/ReSTIR/SPMIS/BuildCDFs.h"
@@ -146,6 +149,13 @@ void CPURenderer::setup_buffers()
 	// Resizing buffers + initial value
 	m_pixel_active_buffer.resize(width * height, 0);
 	m_learning_to_cluster_pixel_envmap_statistics.resize(width * height, LearningToClusterPixelEnvmapStatistics());
+
+#if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
+	// Same capacities as the GPU KD tree render pass
+	m_illumination_aware_kd_tree_state.illumination_aware_kd_tree.resize(
+		IlluminationAwareKDTreeCoreDataHost<std::vector>::MAXIMUM_NUMBER_OF_NODES,
+		IlluminationAwareKDTreeCoreDataHost<std::vector>::INITIAL_TRAINING_SAMPLE_BUFFER_CAPACITY);
+#endif // #if DIRECT_LIGHT_NEE_IS_LEARNING_TO_CLUSTER(DirectLightNEEEstimator)
 	m_input_random_seeds.resize(width * height, 0);
 	m_updated_random_seeds.resize(width * height, 0);
 	m_denoiser_albedo.resize(width * height, ColorRGB32F(0.0f));
@@ -176,6 +186,20 @@ void CPURenderer::setup_buffers()
 	ReSTIRPTSPMISUnionDomainShadowSplitBuffers unused_shadow_split_buffers;
 	size_t shadow_split_buffer_byte_size = ReSTIRPTSPMISUnionDomainShadowSplitBuffers::layout(nullptr, width * height, unused_shadow_split_buffers);
 	m_restir_pt_state.spmis_union_domain_shadow_split_buffer.resize((shadow_split_buffer_byte_size + sizeof(float4_t) - 1) / sizeof(float4_t));
+
+	// The shading kernels of the initial candidates trace their NEE shadow rays themselves: no shadow work queue. Only the principled BSDF
+	// classifies the secondary hits into material families, the classification is cached for the shading kernels
+	bool allocate_resolved_material_control_cache  = UseMaterialTextures == KERNEL_OPTION_TRUE;
+	bool allocate_current_material_classifications = allocate_resolved_material_control_cache && BSDFKernelModel == BSDF_PRINCIPLED;
+	m_restir_pt_state.wavefront_data.resize(pixel_count, 0, sizeof(RayVolumeState), sizeof(NEEDeferredMISContext), allocate_resolved_material_control_cache,
+											allocate_current_material_classifications, false);
+	m_restir_pt_state.restir_pt_wavefront_data.resize(pixel_count);
+
+	if (ReSTIR_PT_InitialPathTreesCount > 1)
+	{
+		m_restir_pt_state.primary_material_family_indices_backup.resize(pixel_count * KernelMaterialSpecializationCount);
+		m_restir_pt_state.primary_material_family_counts_backup.resize(KernelMaterialSpecializationCount);
+	}
 #endif // #if PathSamplingStrategyIsReSTIRPT
 
 #if ReSTIRPGEnable == KERNEL_OPTION_TRUE
@@ -406,6 +430,9 @@ void CPURenderer::update_render_data()
 	m_render_data.aux_buffers.restir_pt_reservoir_buffer_3 = m_restir_pt_state.temporal_reservoirs.data();
 
 	m_restir_pt_state.spmis_data.to_device(m_render_data);
+
+	m_render_data.wavefront_data		   = m_restir_pt_state.wavefront_data.to_device();
+	m_render_data.restir_pt_wavefront_data = m_restir_pt_state.restir_pt_wavefront_data.to_device();
 
 	ReSTIRPTSPMISUnionDomainShadowSplitBuffers::layout(reinterpret_cast<unsigned char*>(m_restir_pt_state.spmis_union_domain_shadow_split_buffer.data()),
 													   m_resolution.x * m_resolution.y,
@@ -1061,7 +1088,101 @@ void CPURenderer::configure_ReSTIR_PT_initial_candidates_pass()
 
 void CPURenderer::launch_ReSTIR_PT_initial_candidates_pass()
 {
-	debug_render_pass([this](int x, int y) { ReSTIR_PT_InitialCandidates(m_render_data, x, y); });
+	WavefrontDataDevice& wavefront_data = m_render_data.wavefront_data;
+
+	unsigned int bounce_count = static_cast<unsigned int>(m_render_data.render_settings.nb_bounces);
+	if (m_render_data.render_settings.do_render_low_resolution())
+		// Reducing the number of bounces to 3 if rendering at low resolution
+		// for better interactivity
+		bounce_count = std::min(3u, bounce_count);
+
+	unsigned int path_tree_count = static_cast<unsigned int>(std::max(1, ReSTIR_PT_InitialPathTreesCount));
+
+	// With several path trees, the primary hits material family queues must be kept for the path trees after the first one
+	if (path_tree_count > 1)
+		copy_ReSTIR_PT_primary_material_family_queues(true);
+
+	for (unsigned int path_tree_index = 0; path_tree_index < path_tree_count; path_tree_index++)
+	{
+		if (path_tree_index > 0)
+			copy_ReSTIR_PT_primary_material_family_queues(false);
+
+		for (unsigned int bounce_index = 0; bounce_index <= bounce_count; bounce_index++)
+		{
+			wavefront_data.queue_counts[1]->store(0u);
+			wavefront_data.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX]->store(0u);
+
+			launch_ReSTIR_PT_wavefront_shade_pass(bounce_index, bounce_count, path_tree_index);
+
+			// The trace kernel appends the new hits to the material family queues, which the shading kernels of this bounce have already consumed
+			reset_ReSTIR_PT_material_family_counts();
+
+			unsigned int trace_queue_count = std::min(wavefront_data.queue_counts[1]->load(), wavefront_data.path_capacity);
+
+#pragma omp parallel for schedule(dynamic)
+			for (int queue_slot = 0; queue_slot < static_cast<int>(trace_queue_count); queue_slot++)
+				ReSTIR_PT_WavefrontInitialCandidatesTrace(m_render_data, queue_slot);
+
+			// The trace kernel has appended the misses and the terminal rays to the completion queue
+			unsigned int completion_queue_count = std::min(wavefront_data.queue_counts[WAVEFRONT_COMPLETION_QUEUE_INDEX]->load(), wavefront_data.path_capacity);
+
+#pragma omp parallel for schedule(dynamic)
+			for (int queue_slot = 0; queue_slot < static_cast<int>(completion_queue_count); queue_slot++)
+				ReSTIR_PT_WavefrontInitialCandidatesComplete(m_render_data, path_tree_index, queue_slot);
+		}
+	}
+
+	// The camera rays pass of the next frame appends the primary hits to the material family queues
+	reset_ReSTIR_PT_material_family_counts();
+}
+
+void CPURenderer::launch_ReSTIR_PT_wavefront_shade_pass(unsigned int bounce_index, unsigned int bounce_count, unsigned int path_tree_index)
+{
+	WavefrontDataDevice& wavefront_data = m_render_data.wavefront_data;
+
+	// The camera rays pass has appended the primary hits to the material family queues, the trace kernel of the previous bounce the secondary hits
+	for (unsigned int material_family = 0; material_family < KernelMaterialSpecializationCount; material_family++)
+	{
+		unsigned int queue_count = std::min(wavefront_data.material_family_counts[material_family].load(), wavefront_data.path_capacity);
+
+#pragma omp parallel for schedule(dynamic)
+		for (int queue_slot = 0; queue_slot < static_cast<int>(queue_count); queue_slot++)
+		{
+			if (bounce_index == 0)
+				ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(m_render_data, bounce_count, path_tree_index, material_family, queue_slot);
+			else
+				ReSTIR_PT_WavefrontInitialCandidatesShade(m_render_data, bounce_count, path_tree_index, material_family, queue_slot);
+		}
+	}
+}
+
+void CPURenderer::copy_ReSTIR_PT_primary_material_family_queues(bool backup)
+{
+	WavefrontDataDevice& wavefront_data = m_render_data.wavefront_data;
+
+	std::vector<unsigned int>& family_indices_backup = m_restir_pt_state.primary_material_family_indices_backup;
+	std::vector<unsigned int>& family_counts_backup	 = m_restir_pt_state.primary_material_family_counts_backup;
+
+	if (backup)
+	{
+		std::copy_n(wavefront_data.material_family_indices, family_indices_backup.size(), family_indices_backup.begin());
+
+		for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
+			family_counts_backup[family_index] = wavefront_data.material_family_counts[family_index].load();
+	}
+	else
+	{
+		std::copy_n(family_indices_backup.begin(), family_indices_backup.size(), wavefront_data.material_family_indices);
+
+		for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
+			wavefront_data.material_family_counts[family_index].store(family_counts_backup[family_index]);
+	}
+}
+
+void CPURenderer::reset_ReSTIR_PT_material_family_counts()
+{
+	for (unsigned int family_index = 0; family_index < KernelMaterialSpecializationCount; family_index++)
+		m_render_data.wavefront_data.material_family_counts[family_index].store(0u);
 }
 
 void CPURenderer::launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservoir* input_reservoirs)

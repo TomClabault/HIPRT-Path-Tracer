@@ -24,10 +24,8 @@ __launch_bounds__(64)
 
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(HIPRTRenderData render_data,
-														unsigned int bounce_count,
-														unsigned int path_tree_index,
-														unsigned int queue_slot)
+inline ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(
+	HIPRTRenderData render_data, unsigned int bounce_count, unsigned int path_tree_index, unsigned int material_family, unsigned int queue_slot)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -35,13 +33,16 @@ inline ReSTIR_PT_WavefrontInitialCandidatesShadePrimary(HIPRTRenderData render_d
 
 	unsigned int queue_slot	  = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int queue_stride = gridDim.x * blockDim.x;
+
+	unsigned int material_family = KERNEL_MATERIAL_SPECIALIZATION;
 #else  // #ifdef __KERNELCC__
+	// The CPU only compiles the kernel of the KernelMaterialSpecializationAll family: it shades the queue of every material family, given by
+	// 'material_family'
 	unsigned int queue_stride = render_data.wavefront_data.path_capacity;
 #endif // #ifdef __KERNELCC__
 
 	// The camera rays pass has appended the active pixels to the queue of the material family of their primary hit. The path trees after the
 	// first one read a copy of these queues that the render pass restores before each of them
-	unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
 	unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
 
 	unsigned int queue_count = render_data.wavefront_data.material_family_counts[material_family];

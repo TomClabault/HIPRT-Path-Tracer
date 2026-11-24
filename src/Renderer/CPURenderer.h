@@ -21,6 +21,8 @@
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSplattingSampleSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/PG/ReSTIRPGSufficientStatisticsSoAHost.h"
 #include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTSPMISDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/ReSTIR/ReSTIRPTWavefrontDataHost.h"
+#include "Renderer/CPUGPUCommonDataStructures/WavefrontDataHost.h"
 #include "Renderer/LightTree/LightTreeATSBuilder.h"
 #include "Renderer/LightTree/LightTreeSGBuilder.h"
 #include "Scene/SceneParser.h"
@@ -79,6 +81,17 @@ public:
 	void configure_ReSTIR_PT_shading_pass();
 
 	void launch_ReSTIR_PT_initial_candidates_pass();
+	/**
+	 * Shades the paths of every material family queue at the bounce 'bounce_index' of the path tree 'path_tree_index' of the wavefront
+	 * initial candidates
+	 */
+	void launch_ReSTIR_PT_wavefront_shade_pass(unsigned int bounce_index, unsigned int bounce_count, unsigned int path_tree_index);
+	/**
+	 * Copies the primary hits material family queues filled by the camera rays pass to the backup queues of the ReSTIR PT state if 'backup',
+	 * from them otherwise
+	 */
+	void copy_ReSTIR_PT_primary_material_family_queues(bool backup);
+	void reset_ReSTIR_PT_material_family_counts();
 	void launch_ReSTIR_PT_spmis_create_reuse_cells_pass(ReSTIRPTReservoir* input_reservoirs);
 	void launch_ReSTIR_PT_temporal_reuse_pass();
 	void launch_ReSTIR_PT_spatial_reuse_pass();
@@ -160,6 +173,14 @@ private:
 		ReSTIRPTSPMISDataHost<std::vector> spmis_data;
 		// Per-pixel state of the union domain spatial reuse kernels: every array of ReSTIRPTSPMISUnionDomainShadowSplitBuffers in one allocation
 		std::vector<float4_t> spmis_union_domain_shadow_split_buffer;
+
+		// Per-path state and queues of the wavefront initial candidates, one path per pixel
+		WavefrontDataHost<std::vector> wavefront_data;
+		ReSTIRPTWavefrontDataHost<std::vector> restir_pt_wavefront_data;
+		// The tracing of the first path tree overwrites the material family queues of the primary hits with the families of the secondary hits.
+		// The next path trees start from the same primary hits: the queues are kept in these buffers, only allocated with more than one path tree
+		std::vector<unsigned int> primary_material_family_indices_backup;
+		std::vector<unsigned int> primary_material_family_counts_backup;
 	} m_restir_pt_state;
 
 	struct ReSTIRPGState

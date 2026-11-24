@@ -17,7 +17,8 @@ extern "C"
 GLOBAL_KERNEL_SIGNATURE(void) ReSTIR_PT_WavefrontInitialCandidatesShade(unsigned int bounce_count, unsigned int path_tree_index)
 #else  // #ifdef __KERNELCC__
 GLOBAL_KERNEL_SIGNATURE(void)
-inline ReSTIR_PT_WavefrontInitialCandidatesShade(HIPRTRenderData render_data, unsigned int bounce_count, unsigned int path_tree_index, unsigned int queue_slot)
+inline ReSTIR_PT_WavefrontInitialCandidatesShade(
+	HIPRTRenderData render_data, unsigned int bounce_count, unsigned int path_tree_index, unsigned int material_family, unsigned int queue_slot)
 #endif // #ifdef __KERNELCC__
 {
 #ifdef __KERNELCC__
@@ -25,12 +26,15 @@ inline ReSTIR_PT_WavefrontInitialCandidatesShade(HIPRTRenderData render_data, un
 
 	unsigned int queue_slot	  = blockIdx.x * blockDim.x + threadIdx.x;
 	unsigned int queue_stride = gridDim.x * blockDim.x;
+
+	unsigned int material_family = KERNEL_MATERIAL_SPECIALIZATION;
 #else  // #ifdef __KERNELCC__
+	// The CPU only compiles the kernel of the KernelMaterialSpecializationAll family: it shades the queue of every material family, given by
+	// 'material_family'
 	unsigned int queue_stride = render_data.wavefront_data.path_capacity;
 #endif // #ifdef __KERNELCC__
 
 	// The trace kernel has appended the paths to the queue of the material family of their hit
-	unsigned int material_family   = KERNEL_MATERIAL_SPECIALIZATION;
 	unsigned int family_queue_base = material_family * render_data.wavefront_data.path_capacity;
 
 	unsigned int queue_count = render_data.wavefront_data.material_family_counts[material_family];
