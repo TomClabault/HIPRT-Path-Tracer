@@ -59,6 +59,8 @@
  *	  color > 0 on the three channels, anisotropy 0, Lambertian diffuse lobe, perfectly smooth or not
  *	- metal: metallic 1, no second roughness, no retro reflection, no coat / sheen / thin film / transmission and, when not perfectly smooth, anisotropy 0,
  *	  F82 = F90 = (1, 1, 1), F90 falloff exponent 5 and every base color channel >= 1e-6 (the metal Fresnel is then Schlick with F0 = base color)
+ *	- metallic blend: metallic in (0, 1), the conditions of the dielectric class, no second roughness, no retro reflection and, when not perfectly smooth,
+ *	  the default metal Fresnel of the metal class. Its lobe has the metal form, see ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material()
  *
  * Lobe value at a pair of directions (V, L) around the shading normal n, NoV and NoL above RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD:
  *
@@ -91,9 +93,10 @@
 #endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 // Analytic classes of the materials, see the top of this file
-#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE		  0
-#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC 1
-#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL	  2
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE			  0
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC	  1
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL		  2
+#define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND 3
 
 // Decisions of ReSTIR_PT_MIS_target_function_bsdf_approximation_decision() for a pair (sample, pixel)
 #define RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_FALLBACK	0
@@ -156,6 +159,41 @@ HIPRT_DEVICE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_enabled(const
 }
 
 /**
+ * Whether the glossy base of the principled BSDF of 'material' (internal_eval_glossy_base(): specular layer over the diffuse layer) is strictly positive for
+ * every pair of directions above the shading normal with cosines above RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD, outside of the
+ * object (volume state checked by the callers, no refraction): an opaque dielectric base without coat, sheen or thin film.
+ *
+ * The diffuse layer (Lambertian, PrincipledBSDFDiffuseLobe) is then base_color / pi times its diffuse weight (1 - metallic, no transmission) times the layers
+ * throughput of the specular layer only, lerp(1, (1 - F(NoL)) (1 - F(NoV)) darkening, specular): >= 1 - specular for specular < 1, and > 0 for specular = 1
+ * because the dielectric Fresnel of an IOR >= 1 (the relative IOR of the specular layer without a coat is the material IOR) stays below 1 above the cosine
+ * threshold.
+ *
+ * The specular GGX lobe adds a non-negative term, the glossy base energy compensation divides by a positive LUT value, the clearcoat compensation is 1
+ * without a coat
+ *
+ * Forced inline: out of line, the material passed by reference would live in scratch memory in the initial candidates kernels, and every field read here
+ * would be a scratch load
+ */
+HIPRT_DEVICE HIPRT_FORCEINLINE bool ReSTIR_PT_MIS_target_function_bsdf_approximation_strictly_positive_glossy_base(
+	const DeviceUnpackedPrincipledFullMaterial& material)
+{
+#if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+	return false;
+#endif // #if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
+
+	if (material.coat != 0.0f || material.sheen != 0.0f)
+		return false;
+
+	if (material.specular_transmission != 0.0f || material.diffuse_transmission != 0.0f || material.thin_film != 0.0f)
+		return false;
+
+	if (material.ior < 1.0f || material.specular < 0.0f || material.specular > 1.0f)
+		return false;
+
+	return material.base_color.r > 0.0f && material.base_color.g > 0.0f && material.base_color.b > 0.0f && material.anisotropy == 0.0f;
+}
+
+/**
  * Analytic class of 'material' (RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE when it is not in one) and whether its lobe is perfectly smooth
  * ('out_smooth_lobe', only meaningful for a class). Mirrors the zero cases of the BSDF model compiled in, see the top of this file
  */
@@ -177,30 +215,7 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class
 
 	if (material.metallic == 0.0f)
 	{
-#if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
-#endif // #if PrincipledBSDFDiffuseLobe != PRINCIPLED_DIFFUSE_LOBE_LAMBERTIAN
-
-		// principled_bsdf_eval() outside of the object (volume state checked by the callers) with NoV and NoL above
-		// RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_COSINE_THRESHOLD (no refraction): an opaque dielectric without coat, sheen or thin film.
-		//
-		// The diffuse layer (Lambertian, PrincipledBSDFDiffuseLobe) is then base_color / pi times a diffuse weight of 1 (no metallic, no transmission) times
-		// the layers throughput of the specular layer only, lerp(1, (1 - F(NoL)) (1 - F(NoV)) darkening, specular): >= 1 - specular for specular < 1, and > 0
-		// for specular = 1 because the dielectric Fresnel of an IOR >= 1 (the relative IOR of the specular layer without a coat is the material IOR) stays
-		// below 1 above the cosine threshold.
-		//
-		// The specular GGX lobe adds a non-negative term, the glossy base energy compensation divides by a positive LUT value, the clearcoat compensation is
-		// 1 without a coat
-		if (material.coat != 0.0f || material.sheen != 0.0f)
-			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
-
-		if (material.specular_transmission != 0.0f || material.diffuse_transmission != 0.0f || material.thin_film != 0.0f)
-			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
-
-		if (material.ior < 1.0f || material.specular < 0.0f || material.specular > 1.0f)
-			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
-
-		if (material.base_color.r <= 0.0f || material.base_color.g <= 0.0f || material.base_color.b <= 0.0f || material.anisotropy != 0.0f)
+		if (!ReSTIR_PT_MIS_target_function_bsdf_approximation_strictly_positive_glossy_base(material))
 			return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
 		out_smooth_lobe = smooth_lobe;
@@ -208,13 +223,15 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class
 		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_DIELECTRIC;
 	}
 
-	if (material.metallic != 1.0f || material.second_roughness_weight != 0.0f || material.retro_reflection != 0.0f)
+	// The metal class (metallic 1) and the metallic blend class (metallic in (0, 1)) share the conditions of the metal layer below
+	if (material.metallic < 0.0f || material.metallic > 1.0f || material.second_roughness_weight != 0.0f || material.retro_reflection != 0.0f)
 		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
 	if (material.coat != 0.0f || material.sheen != 0.0f || material.thin_film != 0.0f)
 		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
-	// Zero weights for metallic = 1 in compute_principled_lobe_weights(), excluded anyway (volume state of the target function)
+	// Zero weights for metallic = 1 in compute_principled_lobe_weights(), excluded anyway (volume state of the target function). A metallic blend with a
+	// transmission lobe has no analytic lobe
 	if (material.specular_transmission != 0.0f || material.diffuse_transmission != 0.0f)
 		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 
@@ -235,7 +252,17 @@ HIPRT_DEVICE int ReSTIR_PT_MIS_target_function_bsdf_approximation_material_class
 
 	out_smooth_lobe = smooth_lobe;
 
-	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL;
+	if (material.metallic == 1.0f)
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METAL;
+
+	// Blend of the metal layer (weight metallic) and of the glossy base (specular weight (1 - metallic) specular, diffuse weight 1 - metallic) in
+	// compute_principled_lobe_weights(): the glossy base alone is strictly positive under the conditions of the dielectric class, scaled by
+	// 1 - metallic > 0, and the metal layer adds a non-negative term (Schlick Fresnel of a base color > 0, or 0 off the peak of a perfectly smooth
+	// lobe). The metal conditions above only keep its value close to the Schlick lobe of the approximation
+	if (!ReSTIR_PT_MIS_target_function_bsdf_approximation_strictly_positive_glossy_base(material))
+		return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
+
+	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND;
 #else
 	return RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_NONE;
 #endif // #if BSDFKernelModel == BSDF_LAMBERTIAN
@@ -289,6 +316,45 @@ ReSTIR_PT_MIS_target_function_bsdf_approximation_lobe_from_material(const HIPRTR
 
 	if (pixel_side)
 		lobe.diffuse_fresnel *= 1.0f - full_fresnel_dielectric(view_cosine, material.ior);
+
+	if (material_class == RESTIR_PT_MIS_TARGET_FUNCTION_BSDF_APPROXIMATION_CLASS_METALLIC_BLEND)
+	{
+		// principled_bsdf_eval() is m metal(V, L) + (1 - m) glossy_base(V, L) / E with m the metallic weight: the glossy base lobe above scaled by
+		// 1 - m, plus the metal lobe scaled by m. Both specular lobes share the roughness and the GGX D and G2 terms, so the specular part is
+		// D G2 / (4 NoV NoL) times
+		//
+		//		Cs_d F_d(LoH) + Cs_m F_m(LoH),	Cs_d = (1 - m) Cs of the glossy base, Cs_m = m, F_m Schlick with F0_m = lum(base)
+		//
+		// With F_d replaced by the Schlick Fresnel of F0_d = ((ior - 1) / (ior + 1))^2, that sum is exactly (Cs_d + Cs_m) times the Schlick Fresnel of
+		// F0 = (Cs_d F0_d + Cs_m F0_m) / (Cs_d + Cs_m): the metal form of the lobe
+		float metallic		= material.metallic;
+		float dielectric_F0 = hippt::square((material.ior - 1.0f) / (material.ior + 1.0f));
+		float metal_F0		= material.base_color.luminance();
+
+		float dielectric_specular_scale = (1.0f - metallic) * lobe.specular_scale;
+		float specular_scale			= dielectric_specular_scale + metallic;
+
+		lobe.metal = true;
+		// A perfectly smooth lobe has no specular term and keeps the Fresnel of the metal (never read)
+		lobe.fresnel_parameter = metal_F0;
+		if (!smooth_lobe)
+		{
+			lobe.specular_scale	   = specular_scale;
+			lobe.fresnel_parameter = (dielectric_specular_scale * dielectric_F0 + metallic * metal_F0) / specular_scale;
+		}
+
+		// The metal form has no Fresnel transmission term: the (1 - F_d) factors of Cd1 not folded above are replaced by their cosine-weighted
+		// hemispherical average with the Schlick Fresnel, 1 - F0_d - (1 - F0_d) / 21: (1 - F_d(NoL)) on both sides, (1 - F_d(NoV)) on the reconnection
+		// side. Cd0 > 0 (positive base color, 1 - m > 0, transmissions > 0) keeps the approximation > 0 everywhere above the cosine threshold, as the BSDF
+		float average_transmission = 1.0f - dielectric_F0 - (1.0f - dielectric_F0) / 21.0f;
+
+		float folded_transmission = average_transmission;
+		if (!pixel_side)
+			folded_transmission *= average_transmission;
+
+		lobe.diffuse_constant = (1.0f - metallic) * (lobe.diffuse_constant + lobe.diffuse_fresnel * folded_transmission);
+		lobe.diffuse_fresnel  = 0.0f;
+	}
 #endif // #if BSDFKernelModel == BSDF_PRINCIPLED
 
 	return lobe;
@@ -461,7 +527,7 @@ ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_pixel_lobe(const ReSTIRP
 	ReSTIRPTMISTargetFunctionBSDFApproximationPixelLobeRecord record;
 	record.coefficients = specular_code | (diffuse_constant_code << 16);
 	record.parameters	= diffuse_fresnel_code | (ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_alpha(lobe.alpha) << 16) |
-						  (ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_fresnel(lobe, 7) << 24) | (lobe.metal ? (1u << 31) : 0u);
+						(ReSTIR_PT_MIS_target_function_bsdf_approximation_encode_fresnel(lobe, 7) << 24) | (lobe.metal ? (1u << 31) : 0u);
 
 	return record;
 }
