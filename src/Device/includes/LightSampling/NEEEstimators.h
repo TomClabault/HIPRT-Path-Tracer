@@ -1273,7 +1273,8 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 																RayPayloadCommon& ray_payload,
 																HitInfo& closest_hit_info,
 																Xorshift32Generator& random_number_generator,
-																NEEDeferredMISContext& nee_deferred_MIS_context)
+																NEEDeferredMISContext& nee_deferred_MIS_context,
+																int bounce_count)
 {
 #if !PathSamplingStrategyIsReSTIRPT
 	if (ray_payload.next_ray_state == RayState::MISSED)
@@ -1295,6 +1296,18 @@ template <typename PreviousBSDFMaterialType, NEEShadowMode shadow_mode = NEE_SHA
 		int material_index = render_data.buffers.material_indices[closest_hit_info.primitive_index];
 		load_effective_emission(render_data, material_index, closest_hit_info.texcoords, current_hit_emission);
 	}
+
+	// The uniform sky reached by the BSDF ray of the last vertex of the path. The sky reached by the BSDF ray of any other vertex is gathered
+	// when that ray misses in the bounce loop, but the BSDF ray of the last vertex is only traced here. 'bounce' is one past the last vertex
+	// when the path reached the bounce count. That ray is never continued, so its sky gets no russian roulette factor, whether or not russian
+	// roulette killed the path at the last vertex. The uniform sky isn't light sampled: the BSDF sample has a MIS weight of 1
+	bool bsdf_ray_of_last_vertex = ray_payload.bounce == bounce_count + 1;
+	bool uniform_sky			 = render_data.world_settings.ambient_light_type == AmbientLightType::UNIFORM || render_data.bsdfs_data.white_furnace_mode;
+	bool direct_lighting_allowed = bounce_count > 0 || render_data.render_settings.enable_direct_lighting;
+
+	if (!intersection_found && bsdf_ray_of_last_vertex && uniform_sky && direct_lighting_allowed && nee_deferred_MIS_context.last_bsdf_sample_pdf > 0.0f)
+		return nee_deferred_MIS_context.last_ray_throughput * render_data.world_settings.uniform_light_color * nee_deferred_MIS_context.last_bsdf_x_cos_theta /
+			   nee_deferred_MIS_context.last_bsdf_sample_pdf;
 
 	return do_deferred_NEE_MIS(render_data, intersection_found, ray_payload, closest_hit_info, current_hit_emission, nee_deferred_MIS_context,
 							   random_number_generator);
