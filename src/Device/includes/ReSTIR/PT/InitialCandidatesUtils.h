@@ -100,19 +100,25 @@ HIPRT_HOST_DEVICE ColorRGB32F ReSTIR_PT_compute_next_indirect_bounce(HIPRTRender
 	out_ray.origin	  = closest_hit_info.inter_point;
 	out_ray.direction = bounce_direction;
 
-	// Terminate ray if bad sampling
+#if PathSamplingStrategyIsReSTIRPT
+	// The last deferred MIS of a path that ends here reads the BSDF sample of this vertex from the context, not the one of the previous vertex
+	nee_deferred_MIS_context.last_bsdf_incident_light_info = incident_light_info;
+#endif
+
+	// Terminate ray if bad sampling. The failed sample goes into the context with a zero BSDF and PDF so that the last deferred MIS of the path
+	// adds no BSDF-sampled light, as in path tracing
 	if (bsdf_pdf <= 0.0f)
+	{
+		nee_deferred_MIS_context.fill_last_bsdf_information(ColorRGB32F(0.0f), bsdf_pdf);
+
 		return ReSTIR_PT_invalid_throughput;
+	}
 
 	ColorRGB32F this_bounce_unweighted_throughput;
 	if ((this_bounce_unweighted_throughput = ReSTIR_PT_update_ray_throughputs(render_data, ray_payload, closest_hit_info, bsdf_color, bounce_direction,
 																			  bsdf_pdf, random_number_generator, nee_deferred_MIS_context)) ==
 		ReSTIR_PT_invalid_throughput)
 		return ReSTIR_PT_invalid_throughput;
-
-#if PathSamplingStrategyIsReSTIRPT
-	nee_deferred_MIS_context.last_bsdf_incident_light_info = incident_light_info;
-#endif
 
 	// Returning this bounce's unweighted throughput
 	return this_bounce_unweighted_throughput;
